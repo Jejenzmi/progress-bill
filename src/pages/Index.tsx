@@ -1,31 +1,142 @@
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { PipelineOverview } from '@/components/dashboard/PipelineOverview';
 import { UpcomingTerms } from '@/components/dashboard/UpcomingTerms';
-import { mockProjects, mockPaymentTerms, formatCurrency } from '@/data/mockData';
-import { Briefcase, Receipt, TrendingUp, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Briefcase, Receipt, TrendingUp, AlertCircle, Target, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+interface DashboardStats {
+  activeProjects: number;
+  totalRevenue: number;
+  pendingInvoices: number;
+  pendingAmount: number;
+  needsDocuments: number;
+  monthlyTarget: number;
+  yearlyTarget: number;
+  yearlyProgress: number;
+}
 
 export default function Dashboard() {
-  // Calculate stats
-  const activeProjects = mockProjects.filter((p) => p.status === 'Won').length;
-  const totalRevenue = mockPaymentTerms
-    .filter((t) => t.invoice?.status === 'Paid')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const pendingInvoices = mockPaymentTerms.filter(
-    (t) => t.invoice?.status === 'Sent'
-  ).length;
-  const pendingAmount = mockPaymentTerms
-    .filter((t) => t.invoice?.status === 'Sent')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const lockedTermsNeedingDocs = mockPaymentTerms.filter(
-    (t) => !t.isLocked && t.evidences.length === 0
-  ).length;
+  const { hasRole } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    activeProjects: 0,
+    totalRevenue: 0,
+    pendingInvoices: 0,
+    pendingAmount: 0,
+    needsDocuments: 0,
+    monthlyTarget: 500000000,
+    yearlyTarget: 6000000000,
+    yearlyProgress: 0,
+  });
 
-  const activeProjectsList = mockProjects
-    .filter((p) => p.status === 'Won')
-    .slice(0, 3);
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch active projects count
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, status')
+        .eq('status', 'Won');
+
+      if (projectsError) throw projectsError;
+
+      // Fetch paid invoices for revenue
+      const { data: paidInvoices, error: paidError } = await supabase
+        .from('invoices')
+        .select('amount')
+        .eq('status', 'Paid');
+
+      if (paidError) throw paidError;
+
+      // Fetch pending invoices
+      const { data: pendingInvoices, error: pendingError } = await supabase
+        .from('invoices')
+        .select('amount')
+        .eq('status', 'Sent');
+
+      if (pendingError) throw pendingError;
+
+      // Fetch terms needing documents
+      const { data: terms, error: termsError } = await supabase
+        .from('payment_terms')
+        .select('id, is_locked');
+
+      if (termsError) throw termsError;
+
+      // Count terms needing documents
+      let needsDocsCount = 0;
+      for (const term of terms || []) {
+        if (!term.is_locked) {
+          const { data: evidences } = await supabase
+            .from('term_evidences')
+            .select('id')
+            .eq('term_id', term.id);
+          
+          if (!evidences || evidences.length === 0) {
+            needsDocsCount++;
+          }
+        }
+      }
+
+      // Fetch targets
+      const { data: targetsData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'targets')
+        .maybeSingle();
+
+      const targets = targetsData?.value as any || { monthly_target_2026: 500000000, yearly_target_2026: 6000000000 };
+
+      const totalRevenue = paidInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
+      const pendingAmount = pendingInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
+      const yearlyProgress = (totalRevenue / targets.yearly_target_2026) * 100;
+
+      setStats({
+        activeProjects: projects?.length || 0,
+        totalRevenue,
+        pendingInvoices: pendingInvoices?.length || 0,
+        pendingAmount,
+        needsDocuments: needsDocsCount,
+        monthlyTarget: targets.monthly_target_2026,
+        yearlyTarget: targets.yearly_target_2026,
+        yearlyProgress: Math.min(yearlyProgress, 100),
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout title="Dashboard" subtitle="Memuat data...">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const showFinanceData = hasRole('admin') || hasRole('finance') || hasRole('marketing');
 
   return (
     <AppLayout
@@ -36,34 +147,58 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Proyek Aktif"
-          value={activeProjects.toString()}
+          value={stats.activeProjects.toString()}
           subtitle="Sedang berjalan"
           icon={<Briefcase className="h-6 w-6" />}
           variant="primary"
         />
-        <StatCard
-          title="Total Pendapatan"
-          value={formatCurrency(totalRevenue)}
-          subtitle="Tahun ini"
-          icon={<TrendingUp className="h-6 w-6" />}
-          variant="success"
-          trend={{ value: '+12.5%', positive: true }}
-        />
-        <StatCard
-          title="Invoice Pending"
-          value={pendingInvoices.toString()}
-          subtitle={formatCurrency(pendingAmount)}
-          icon={<Receipt className="h-6 w-6" />}
-          variant="warning"
-        />
+        {showFinanceData && (
+          <>
+            <StatCard
+              title="Total Pendapatan"
+              value={formatCurrency(stats.totalRevenue)}
+              subtitle="Tahun ini"
+              icon={<TrendingUp className="h-6 w-6" />}
+              variant="success"
+            />
+            <StatCard
+              title="Invoice Pending"
+              value={stats.pendingInvoices.toString()}
+              subtitle={formatCurrency(stats.pendingAmount)}
+              icon={<Receipt className="h-6 w-6" />}
+              variant="warning"
+            />
+          </>
+        )}
         <StatCard
           title="Butuh Dokumen"
-          value={lockedTermsNeedingDocs.toString()}
+          value={stats.needsDocuments.toString()}
           subtitle="Termin menunggu upload"
           icon={<AlertCircle className="h-6 w-6" />}
           variant="default"
         />
       </div>
+
+      {/* Target Progress */}
+      {showFinanceData && (
+        <div className="rounded-xl border bg-card p-5 shadow-card mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Target Tahunan 2026</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Progress</p>
+              <p className="font-semibold text-primary">{stats.yearlyProgress.toFixed(1)}%</p>
+            </div>
+          </div>
+          <Progress value={stats.yearlyProgress} className="h-3 mb-2" />
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Tercapai: {formatCurrency(stats.totalRevenue)}</span>
+            <span>Target: {formatCurrency(stats.yearlyTarget)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -72,26 +207,8 @@ export default function Dashboard() {
           {/* Pipeline Overview */}
           <PipelineOverview />
 
-          {/* Active Projects */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Proyek Aktif</h2>
-              <a
-                href="/projects"
-                className="text-sm text-primary hover:underline"
-              >
-                Lihat Semua
-              </a>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeProjectsList.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          </div>
-
           {/* Recent Invoices */}
-          <RecentInvoices />
+          {showFinanceData && <RecentInvoices />}
         </div>
 
         {/* Right Column - Actions & Upcoming */}

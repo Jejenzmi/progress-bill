@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { formatCurrency } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +11,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Calculator, FileText, Download } from 'lucide-react';
-import { ManDaysEstimate } from '@/types';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { generateQuotationHTML, openPrintWindow } from '@/lib/pdfGenerator';
+import { Plus, Trash2, Calculator, FileText, Download, Save, Loader2 } from 'lucide-react';
+
+interface ManDaysEstimate {
+  role: string;
+  ratePerDay: number;
+  days: number;
+  total: number;
+}
+
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 const defaultRoles = [
   { role: 'Project Manager', rate: 1500000 },
@@ -26,6 +43,8 @@ const defaultRoles = [
 ];
 
 export default function Quotation() {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
   const [manDays, setManDays] = useState<ManDaysEstimate[]>([
@@ -67,6 +86,97 @@ export default function Quotation() {
   const totalDevelopment = manDays.reduce((sum, m) => sum + m.total, 0);
   const grandTotal = totalDevelopment + hostingCost + maintenanceCost;
 
+  const handleSave = async () => {
+    if (!projectName) {
+      toast({
+        title: 'Error',
+        description: 'Nama proyek wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const validUntil = new Date();
+      validUntil.setDate(validUntil.getDate() + 30);
+
+      const { error } = await supabase.from('quotations').insert([{
+        project_name: projectName,
+        man_days: manDays as any,
+        hosting_cost: hostingCost,
+        maintenance_cost: maintenanceCost,
+        maintenance_period: maintenancePeriod,
+        total_development: totalDevelopment,
+        grand_total: grandTotal,
+        valid_until: validUntil.toISOString().split('T')[0],
+        status: 'Draft',
+      }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Quotation berhasil disimpan',
+      });
+    } catch (error: any) {
+      console.error('Error saving quotation:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal menyimpan quotation',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!projectName) {
+      toast({
+        title: 'Error',
+        description: 'Nama proyek wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Fetch company profile
+    const { data: companyData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company_profile')
+      .maybeSingle();
+
+    const company = companyData?.value as any || {
+      name: 'PT Zen Multimedia Indonesia',
+      npwp: '-',
+      address: '-',
+      phone: '-',
+      email: '-',
+      website: '-',
+      bank_info: '-',
+    };
+
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30);
+
+    const quotationData = {
+      projectName,
+      clientName: clientName || 'Klien',
+      manDays,
+      hostingCost,
+      maintenanceCost,
+      maintenancePeriod,
+      totalDevelopment,
+      grandTotal,
+      validUntil,
+    };
+
+    const html = generateQuotationHTML(quotationData, company);
+    openPrintWindow(html);
+  };
+
   return (
     <AppLayout title="Quotation Builder" subtitle="Buat penawaran harga proyek dengan Man-days Calculator">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -81,7 +191,7 @@ export default function Quotation() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="projectName">Nama Proyek</Label>
+                  <Label htmlFor="projectName">Nama Proyek *</Label>
                   <Input
                     id="projectName"
                     placeholder="Contoh: Dashboard Eksekutif"
@@ -288,11 +398,13 @@ export default function Quotation() {
               </div>
 
               <div className="space-y-2 pt-4">
-                <Button className="w-full">
+                <Button className="w-full" onClick={handleDownloadPDF}>
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleSave} disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save className="h-4 w-4 mr-2" />
                   Simpan Draft
                 </Button>
               </div>

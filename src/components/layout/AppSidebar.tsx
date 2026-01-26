@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Briefcase,
@@ -9,27 +9,55 @@ import {
   Calendar,
   Settings,
   TrendingUp,
+  Target,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 import zenLogo from '@/assets/zen-logo.png';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Proyek', href: '/projects', icon: Briefcase },
-  { name: 'Klien', href: '/clients', icon: Users },
-  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
-  { name: 'Quotation', href: '/quotation', icon: Calculator },
-  { name: 'Invoice', href: '/invoices', icon: Receipt },
-  { name: 'Dokumen', href: '/documents', icon: FileText },
-  { name: 'Cashflow', href: '/cashflow', icon: Calendar },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance'] },
+  { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager'] },
+  { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
+  { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing'] },
+  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },
+  { name: 'Quotation', href: '/quotation', icon: Calculator, roles: ['admin', 'marketing'] },
+  { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance'] },
+  { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
+  { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance'] },
 ];
 
 const secondaryNavigation = [
-  { name: 'Pengaturan', href: '/settings', icon: Settings },
+  { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, roles, signOut, hasRole } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  const filteredNavigation = navigation.filter((item) =>
+    item.roles.some((role) => hasRole(role as any))
+  );
+
+  const filteredSecondaryNavigation = secondaryNavigation.filter((item) =>
+    item.roles.some((role) => hasRole(role as any))
+  );
+
+  const getRoleLabel = () => {
+    if (hasRole('admin')) return 'Admin';
+    if (hasRole('finance')) return 'Finance';
+    if (hasRole('marketing')) return 'Marketing';
+    if (hasRole('project_manager')) return 'Project Manager';
+    return 'User';
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar">
@@ -40,9 +68,9 @@ export function AppSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           <div className="space-y-1">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -62,41 +90,59 @@ export function AppSidebar() {
             })}
           </div>
 
-          <div className="my-4 border-t border-sidebar-border" />
-
-          <div className="space-y-1">
-            {secondaryNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                    isActive
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
+          {filteredSecondaryNavigation.length > 0 && (
+            <>
+              <div className="my-4 border-t border-sidebar-border" />
+              <div className="space-y-1">
+                {filteredSecondaryNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                        isActive
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </nav>
 
         {/* Footer */}
         <div className="border-t border-sidebar-border px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
-              <span className="text-sm font-semibold">ZM</span>
+              <span className="text-sm font-semibold">
+                {profile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">Admin</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">admin@zenmultimedia.co.id</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {profile?.full_name || 'User'}
+              </p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">
+                {getRoleLabel()}
+              </p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
     </aside>
