@@ -1,7 +1,23 @@
-import { mockProjects } from '@/data/mockData';
-import { formatCurrency } from '@/data/mockData';
-import { TrendingUp, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { TrendingUp, ArrowRight, Loader2 } from 'lucide-react';
+
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+interface PipelineProject {
+  id: string;
+  project_name: string;
+  client_name: string;
+  total_value: number;
+  pipeline_stage: string;
+}
 
 const pipelineStages = [
   { name: 'Meeting', color: 'bg-muted' },
@@ -11,20 +27,69 @@ const pipelineStages = [
 ];
 
 export function PipelineOverview() {
-  const pipelineProjects = mockProjects.filter((p) => p.status === 'Pipeline');
+  const [projects, setProjects] = useState<PipelineProject[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPipelineProjects();
+  }, []);
+
+  const fetchPipelineProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          id,
+          project_name,
+          total_value,
+          pipeline_stage,
+          client:clients!inner(name)
+        `)
+        .eq('status', 'Pipeline');
+
+      if (error) throw error;
+
+      setProjects(
+        (data || []).map((p) => ({
+          id: p.id,
+          project_name: p.project_name,
+          client_name: (p.client as any).name,
+          total_value: Number(p.total_value),
+          pipeline_stage: p.pipeline_stage || 'Meeting',
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching pipeline:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProjectsByStage = (stage: string) =>
+    projects.filter((p) => p.pipeline_stage === stage);
+
+  const totalPipelineValue = projects.reduce((sum, p) => sum + p.total_value, 0);
 
   const stageData = pipelineStages.map((stage) => {
-    const projects = pipelineProjects.filter((p) => p.pipelineStage === stage.name);
-    const totalValue = projects.reduce((sum, p) => sum + p.totalValue, 0);
+    const stageProjects = getProjectsByStage(stage.name);
+    const totalValue = stageProjects.reduce((sum, p) => sum + p.total_value, 0);
     return {
       ...stage,
-      count: projects.length,
+      count: stageProjects.length,
       value: totalValue,
-      projects,
+      projects: stageProjects,
     };
   });
 
-  const totalPipelineValue = pipelineProjects.reduce((sum, p) => sum + p.totalValue, 0);
+  if (loading) {
+    return (
+      <div className="rounded-xl border bg-card shadow-card animate-fade-in">
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border bg-card shadow-card animate-fade-in">
@@ -57,26 +122,32 @@ export function PipelineOverview() {
           ))}
         </div>
 
-        {pipelineProjects.length > 0 && (
+        {projects.length > 0 && (
           <div className="mt-4 space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Prospek Aktif:</p>
-            {pipelineProjects.slice(0, 3).map((project) => (
+            {projects.slice(0, 3).map((project) => (
               <div
                 key={project.id}
                 className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
               >
                 <div>
-                  <p className="font-medium text-sm">{project.projectName}</p>
-                  <p className="text-xs text-muted-foreground">{project.clientName}</p>
+                  <p className="font-medium text-sm">{project.project_name}</p>
+                  <p className="text-xs text-muted-foreground">{project.client_name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-sm">{formatCurrency(project.totalValue)}</p>
+                  <p className="font-semibold text-sm">{formatCurrency(project.total_value)}</p>
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                    {project.pipelineStage}
+                    {project.pipeline_stage}
                   </span>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {projects.length === 0 && (
+          <div className="mt-4 text-center text-muted-foreground py-4">
+            <p>Belum ada prospek di pipeline</p>
           </div>
         )}
       </div>

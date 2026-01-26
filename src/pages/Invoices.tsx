@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { mockPaymentTerms, mockProjects, formatCurrency, formatShortDate } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,11 +20,37 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Filter, Download, Eye, MoreHorizontal, Receipt, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { InvoiceStatus } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { generateInvoiceHTML, openPrintWindow } from '@/lib/pdfGenerator';
+import { Search, Filter, Download, Eye, MoreHorizontal, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const statusFilters: { value: InvoiceStatus | 'all'; label: string }[] = [
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatDate = (dateStr: string): string => {
+  return new Date(dateStr).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+
+const statusFilters = [
   { value: 'all', label: 'Semua Status' },
   { value: 'Draft', label: 'Draft' },
   { value: 'Sent', label: 'Terkirim' },
@@ -30,39 +58,168 @@ const statusFilters: { value: InvoiceStatus | 'all'; label: string }[] = [
   { value: 'Overdue', label: 'Jatuh Tempo' },
 ];
 
-const statusStyles = {
+const statusStyles: Record<string, { bg: string; text: string; icon: any }> = {
   Draft: { bg: 'bg-muted', text: 'text-muted-foreground', icon: Receipt },
   Sent: { bg: 'bg-info/10', text: 'text-info', icon: Clock },
   Paid: { bg: 'bg-success/10', text: 'text-success', icon: CheckCircle },
   Overdue: { bg: 'bg-destructive/10', text: 'text-destructive', icon: AlertTriangle },
 };
 
-export default function Invoices() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
+interface InvoiceData {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  invoice_date: string;
+  due_date: string;
+  status: InvoiceStatus;
+  term_id: string;
+  term_name: string;
+  percentage: number;
+  project_id: string;
+  project_name: string;
+  client_name: string;
+  client_address: string;
+}
 
-  // Get all invoices with project info
-  const invoices = mockPaymentTerms
-    .filter((t) => t.invoice)
-    .map((t) => {
-      const project = mockProjects.find((p) => p.id === t.projectId);
-      return {
-        ...t.invoice!,
-        termName: t.termName,
-        percentage: t.percentage,
-        projectName: project?.projectName || '',
-        clientName: project?.clientName || '',
-      };
-    });
+export default function Invoices() {
+  const { hasRole } = useAuth();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          id,
+          invoice_number,
+          amount,
+          invoice_date,
+          due_date,
+          status,
+          term_id,
+          project_id,
+          term:payment_terms!inner(
+            term_name,
+            percentage,
+            project:projects!inner(
+              project_name,
+              client:clients!inner(name, address)
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setInvoices(
+        (data || []).map((inv) => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          amount: Number(inv.amount),
+          invoice_date: inv.invoice_date,
+          due_date: inv.due_date,
+          status: inv.status as InvoiceStatus,
+          term_id: inv.term_id,
+          term_name: (inv.term as any).term_name,
+          percentage: Number((inv.term as any).percentage),
+          project_id: inv.project_id,
+          project_name: (inv.term as any).project.project_name,
+          client_name: (inv.term as any).project.client.name,
+          client_address: (inv.term as any).project.client.address || '',
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat data invoice',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
-      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase());
+      invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.client_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleDownloadPDF = async (invoice: InvoiceData) => {
+    // Fetch company profile
+    const { data: companyData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company_profile')
+      .maybeSingle();
+
+    const company = companyData?.value as any || {
+      name: 'PT Zen Multimedia Indonesia',
+      npwp: '-',
+      address: '-',
+      phone: '-',
+      email: '-',
+      website: '-',
+      bank_info: '-',
+    };
+
+    const invoiceData = {
+      invoiceNumber: invoice.invoice_number,
+      invoiceDate: new Date(invoice.invoice_date),
+      dueDate: new Date(invoice.due_date),
+      clientName: invoice.client_name,
+      clientAddress: invoice.client_address,
+      projectName: invoice.project_name,
+      termName: invoice.term_name,
+      amount: invoice.amount,
+    };
+
+    const html = generateInvoiceHTML(invoiceData, company);
+    openPrintWindow(html);
+  };
+
+  const updateInvoiceStatus = async (invoiceId: string, newStatus: InvoiceStatus) => {
+    try {
+      const updates: any = { status: newStatus };
+      if (newStatus === 'Paid') {
+        updates.paid_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('invoices')
+        .update(updates)
+        .eq('id', invoiceId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: `Status invoice diubah ke ${newStatus}`,
+      });
+
+      fetchInvoices();
+      setSelectedInvoice(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Stats
   const totalPaid = invoices
@@ -74,6 +231,18 @@ export default function Invoices() {
   const totalDraft = invoices
     .filter((i) => i.status === 'Draft')
     .reduce((sum, i) => sum + i.amount, 0);
+
+  const canManage = hasRole('admin') || hasRole('finance');
+
+  if (loading) {
+    return (
+      <AppLayout title="Invoice" subtitle="Memuat data...">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Invoice" subtitle="Kelola invoice dan tagihan klien">
@@ -110,7 +279,7 @@ export default function Invoices() {
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as InvoiceStatus | 'all')}
+          onValueChange={setStatusFilter}
         >
           <SelectTrigger className="w-[160px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -124,94 +293,160 @@ export default function Invoices() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
       </div>
 
       {/* Invoice Table */}
       <div className="rounded-xl border bg-card shadow-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>No. Invoice</TableHead>
-              <TableHead>Proyek / Klien</TableHead>
-              <TableHead>Termin</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Jatuh Tempo</TableHead>
-              <TableHead className="text-right">Nilai</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredInvoices.map((invoice) => {
-              const StatusIcon = statusStyles[invoice.status].icon;
-              return (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{invoice.projectName}</p>
-                      <p className="text-xs text-muted-foreground">{invoice.clientName}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm">{invoice.termName}</p>
-                      <p className="text-xs text-muted-foreground">{invoice.percentage}%</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatShortDate(invoice.invoiceDate)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatShortDate(invoice.dueDate)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatCurrency(invoice.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        'status-badge flex items-center gap-1',
-                        statusStyles[invoice.status].bg,
-                        statusStyles[invoice.status].text
-                      )}
-                    >
-                      <StatusIcon className="h-3 w-3" />
-                      {invoice.status === 'Paid'
-                        ? 'Lunas'
-                        : invoice.status === 'Sent'
-                        ? 'Terkirim'
-                        : invoice.status === 'Overdue'
-                        ? 'Jatuh Tempo'
-                        : 'Draft'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-
-        {filteredInvoices.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Tidak ada invoice ditemukan</p>
+        {invoices.length === 0 ? (
+          <div className="p-12 text-center">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Belum ada invoice</p>
           </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>No. Invoice</TableHead>
+                <TableHead>Proyek / Klien</TableHead>
+                <TableHead>Termin</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Jatuh Tempo</TableHead>
+                <TableHead className="text-right">Nilai</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInvoices.map((invoice) => {
+                const StatusIcon = statusStyles[invoice.status].icon;
+                return (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{invoice.project_name}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.client_name}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm">{invoice.term_name}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.percentage}%</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(invoice.invoice_date)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(invoice.due_date)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(invoice.amount)}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          'status-badge flex items-center gap-1',
+                          statusStyles[invoice.status].bg,
+                          statusStyles[invoice.status].text
+                        )}
+                      >
+                        <StatusIcon className="h-3 w-3" />
+                        {invoice.status === 'Paid'
+                          ? 'Lunas'
+                          : invoice.status === 'Sent'
+                          ? 'Terkirim'
+                          : invoice.status === 'Overdue'
+                          ? 'Jatuh Tempo'
+                          : 'Draft'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDownloadPDF(invoice)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setSelectedInvoice(invoice)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
+        <DialogContent>
+          {selectedInvoice && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedInvoice.invoice_number}</DialogTitle>
+                <DialogDescription>
+                  {selectedInvoice.project_name} - {selectedInvoice.client_name}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-xs text-muted-foreground">Nilai</p>
+                    <p className="text-lg font-bold">{formatCurrency(selectedInvoice.amount)}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="text-lg font-bold capitalize">{selectedInvoice.status}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tanggal Invoice</p>
+                    <p className="font-medium">{formatDate(selectedInvoice.invoice_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Jatuh Tempo</p>
+                    <p className="font-medium">{formatDate(selectedInvoice.due_date)}</p>
+                  </div>
+                </div>
+
+                {canManage && (
+                  <div className="flex gap-2 pt-4 border-t">
+                    {selectedInvoice.status === 'Draft' && (
+                      <Button onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Sent')} className="flex-1">
+                        Kirim Invoice
+                      </Button>
+                    )}
+                    {selectedInvoice.status === 'Sent' && (
+                      <Button onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Paid')} className="flex-1" variant="default">
+                        Tandai Lunas
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => handleDownloadPDF(selectedInvoice)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
