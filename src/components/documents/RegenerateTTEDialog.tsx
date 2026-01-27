@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { QRPositionSelector } from './QRPositionSelector';
+import { QRPositionSelector, QRPositionValue, stringifyQRPosition } from './QRPositionSelector';
 import { Loader2, RefreshCw, FileSignature } from 'lucide-react';
 
 interface SignedDocument {
@@ -83,7 +83,16 @@ export function RegenerateTTEDialog({
           {/* QR Position */}
           <div className="space-y-2">
             <Label>Posisi QR Code TTE</Label>
-            <QRPositionSelector value={qrPosition} onChange={setQrPosition} />
+            <QRPositionSelector 
+              value={qrPosition} 
+              onChange={(val) => {
+                if (typeof val === 'string') {
+                  setQrPosition(val);
+                } else {
+                  setQrPosition(stringifyQRPosition(val));
+                }
+              }} 
+            />
           </div>
 
           {/* Signer Info */}

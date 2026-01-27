@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { QRPositionSelector } from './QRPositionSelector';
+import { QRPositionSelector, QRPositionValue, stringifyQRPosition } from './QRPositionSelector';
 import { Loader2, FileSignature, Upload, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -213,7 +213,16 @@ export function BatchSigningDialog({
 
             <div className="space-y-2">
               <Label>Posisi QR Code TTE</Label>
-              <QRPositionSelector value={qrPosition} onChange={setQrPosition} />
+              <QRPositionSelector 
+                value={qrPosition} 
+                onChange={(val) => {
+                  if (typeof val === 'string') {
+                    setQrPosition(val);
+                  } else {
+                    setQrPosition(stringifyQRPosition(val));
+                  }
+                }} 
+              />
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { QRPositionSelector } from './QRPositionSelector';
-import { Loader2, FileSignature, Download, Eye } from 'lucide-react';
+import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition } from './QRPositionSelector';
+import { Loader2, FileSignature, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DocumentPreviewDialogProps {
@@ -57,16 +57,39 @@ export function DocumentPreviewDialog({
     }
   }, [file, fileUrl]);
 
-  const getQrOverlayPosition = () => {
-    const positions: Record<string, string> = {
-      'top-left': 'top-4 left-4',
-      'top-right': 'top-4 right-4',
-      'bottom-left': 'bottom-4 left-4',
-      'bottom-right': 'bottom-4 right-4',
-      'center': 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+  // Handle QR position change from selector (supports both preset and custom)
+  const handleQrPositionChange = useCallback((value: string | QRPositionValue) => {
+    if (typeof value === 'string') {
+      onQrPositionChange(value);
+    } else {
+      onQrPositionChange(stringifyQRPosition(value));
+    }
+  }, [onQrPositionChange]);
+
+  // Calculate QR overlay style for preview
+  const getQrOverlayStyle = useCallback(() => {
+    const parsed = parseQRPosition(qrPosition);
+    
+    if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
+      return {
+        position: 'absolute' as const,
+        left: `${parsed.x}%`,
+        top: `${parsed.y}%`,
+        transform: 'translate(-50%, -50%)',
+      };
+    }
+    
+    // Preset positions
+    const presetStyles: Record<string, React.CSSProperties> = {
+      'top-left': { position: 'absolute', top: '1rem', left: '1rem' },
+      'top-right': { position: 'absolute', top: '1rem', right: '1rem' },
+      'bottom-left': { position: 'absolute', bottom: '1rem', left: '1rem' },
+      'bottom-right': { position: 'absolute', bottom: '1rem', right: '1rem' },
+      'center': { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
     };
-    return positions[qrPosition] || positions['bottom-right'];
-  };
+    
+    return presetStyles[parsed.preset || 'bottom-right'] || presetStyles['bottom-right'];
+  }, [qrPosition]);
 
   const isImage = fileType.startsWith('image/');
   const isPdf = fileType === 'application/pdf';
@@ -102,10 +125,8 @@ export function DocumentPreviewDialog({
                     />
                     {/* QR Overlay for images */}
                     <div
-                      className={cn(
-                        'absolute w-16 h-16 border-2 border-dashed border-primary bg-primary/10 rounded flex items-center justify-center transition-all',
-                        getQrOverlayPosition()
-                      )}
+                      className="w-16 h-16 border-2 border-dashed border-primary bg-primary/10 rounded flex items-center justify-center transition-all"
+                      style={getQrOverlayStyle()}
                     >
                       <div className="text-[8px] font-bold text-primary text-center leading-tight">
                         QR<br/>TTE
@@ -121,10 +142,8 @@ export function DocumentPreviewDialog({
                     />
                     {/* QR Overlay indicator for PDF */}
                     <div
-                      className={cn(
-                        'absolute w-16 h-16 border-2 border-dashed border-primary bg-primary/20 rounded flex items-center justify-center pointer-events-none',
-                        getQrOverlayPosition()
-                      )}
+                      className="w-16 h-16 border-2 border-dashed border-primary bg-primary/20 rounded flex items-center justify-center pointer-events-none"
+                      style={getQrOverlayStyle()}
                     >
                       <div className="text-[8px] font-bold text-primary text-center leading-tight">
                         QR<br/>TTE
@@ -145,10 +164,24 @@ export function DocumentPreviewDialog({
                         ))}
                       </div>
                       <div
-                        className={cn(
-                          'absolute w-10 h-10 border-2 border-primary bg-primary/20 rounded flex items-center justify-center',
-                          getQrOverlayPosition().replace('top-4', 'top-2').replace('bottom-4', 'bottom-2').replace('left-4', 'left-2').replace('right-4', 'right-2')
-                        )}
+                        className="w-10 h-10 border-2 border-primary bg-primary/20 rounded flex items-center justify-center"
+                        style={{
+                          position: 'absolute',
+                          ...(() => {
+                            const parsed = parseQRPosition(qrPosition);
+                            if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
+                              return { left: `${parsed.x}%`, top: `${parsed.y}%`, transform: 'translate(-50%, -50%)' };
+                            }
+                            const presets: Record<string, any> = {
+                              'top-left': { top: '0.5rem', left: '0.5rem' },
+                              'top-right': { top: '0.5rem', right: '0.5rem' },
+                              'bottom-left': { bottom: '0.5rem', left: '0.5rem' },
+                              'bottom-right': { bottom: '0.5rem', right: '0.5rem' },
+                              'center': { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                            };
+                            return presets[parsed.preset || 'bottom-right'] || presets['bottom-right'];
+                          })()
+                        }}
                       >
                         <span className="text-[6px] font-bold text-primary">QR</span>
                       </div>
@@ -167,7 +200,7 @@ export function DocumentPreviewDialog({
           <div className="space-y-4 overflow-y-auto">
             <div className="space-y-2">
               <Label className="text-base font-semibold">Posisi QR Code TTE</Label>
-              <QRPositionSelector value={qrPosition} onChange={onQrPositionChange} />
+              <QRPositionSelector value={qrPosition} onChange={handleQrPositionChange} />
             </div>
 
             <div className="border-t pt-4 space-y-4">
