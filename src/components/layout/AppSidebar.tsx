@@ -12,6 +12,7 @@ import {
   Target,
   LogOut,
   UserCog,
+  FileSignature,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing'] },
   { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance'] },
   { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
+  { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance'] },
   { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance'] },
 ];
 

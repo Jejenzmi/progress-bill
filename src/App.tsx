@@ -11,6 +11,7 @@ import Pipeline from "./pages/Pipeline";
 import Quotation from "./pages/Quotation";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
+import SignedDocuments from "./pages/SignedDocuments";
 import Cashflow from "./pages/Cashflow";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -140,6 +141,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Documents />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/signed-documents"
+        element={
+          <ProtectedRoute>
+            <SignedDocuments />
           </ProtectedRoute>
         }
       />

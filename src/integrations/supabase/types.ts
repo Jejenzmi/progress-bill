@@ -368,6 +368,54 @@ export type Database = {
         }
         Relationships: []
       }
+      signed_documents: {
+        Row: {
+          created_at: string
+          file_size: number | null
+          file_type: string
+          id: string
+          original_file_name: string
+          original_file_path: string
+          qr_position: string
+          signed_at: string
+          signed_file_path: string | null
+          signer_name: string
+          signer_position: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          original_file_name: string
+          original_file_path: string
+          qr_position?: string
+          signed_at?: string
+          signed_file_path?: string | null
+          signer_name: string
+          signer_position: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          original_file_name?: string
+          original_file_path?: string
+          qr_position?: string
+          signed_at?: string
+          signed_file_path?: string | null
+          signer_name?: string
+          signer_position?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       term_evidences: {
         Row: {
           created_at: string
