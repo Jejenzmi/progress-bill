@@ -15,6 +15,7 @@ import Cashflow from "./pages/Cashflow";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import PMDashboard from "./pages/PMDashboard";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -146,6 +147,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         }
       />
