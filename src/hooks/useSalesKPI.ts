@@ -134,16 +134,30 @@ export function useSalesKPI() {
         return sum + (Number(p.total_value || 0) * probability / 100);
       }, 0);
 
-      // Target metrics
+      // Target metrics - find the correct target records
+      // Monthly target: match current month (YYYY-MM format) or find any monthly target for this month
       const monthlyTargetRecord = targets.find(t => 
-        t.target_type === 'monthly' && t.target_period === currentMonth && !t.user_id
-      );
-      const yearlyTargetRecord = targets.find(t => 
-        t.target_type === 'yearly' && t.target_period === currentYear && !t.user_id
+        t.target_type === 'monthly' && 
+        (t.target_period === currentMonth || t.target_period.startsWith(currentMonth)) && 
+        !t.user_id
       );
       
-      const monthlyTarget = Number(monthlyTargetRecord?.target_amount || 0);
+      // Yearly target: match current year
+      const yearlyTargetRecord = targets.find(t => 
+        t.target_type === 'yearly' && 
+        (t.target_period === currentYear || t.target_period.startsWith(currentYear)) && 
+        !t.user_id
+      );
+      
+      // If no specific monthly target, try to calculate from yearly / 12
+      let monthlyTarget = Number(monthlyTargetRecord?.target_amount || 0);
       const yearlyTarget = Number(yearlyTargetRecord?.target_amount || 0);
+      
+      // Fallback: if no monthly target but yearly exists, divide by 12
+      if (monthlyTarget === 0 && yearlyTarget > 0) {
+        monthlyTarget = yearlyTarget / 12;
+      }
+      
       const monthlyProgress = monthlyTarget > 0 ? (totalRevenueThisMonth / monthlyTarget) * 100 : 0;
       
       // Calculate yearly revenue from all paid invoices this year

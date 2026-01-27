@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useLeads, Lead, LeadStatus, LeadInput } from '@/hooks/useLeads';
 import { useActivities } from '@/hooks/useActivities';
@@ -82,6 +83,7 @@ const sourceOptions = [
 ];
 
 export default function Leads() {
+  const navigate = useNavigate();
   const { leads, loading, createLead, updateLead, deleteLead, updateLeadStatus, convertToClient, importLeadsFromCSV } = useLeads();
   const { toast } = useToast();
   
@@ -443,7 +445,14 @@ export default function Leads() {
                   </TableRow>
                 ) : (
                   filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className={lead.converted_to_client_id ? 'bg-green-50/50' : ''}>
+                    <TableRow 
+                      key={lead.id} 
+                      className={cn(
+                        'cursor-pointer hover:bg-muted/50',
+                        lead.converted_to_client_id ? 'bg-green-50/50' : ''
+                      )}
+                      onClick={() => navigate(`/leads/${lead.id}`)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
