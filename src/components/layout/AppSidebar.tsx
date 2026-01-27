@@ -19,6 +19,7 @@ import {
   Activity,
   FileBarChart,
   Crown,
+  Briefcase as BriefcaseBusiness,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +29,7 @@ import zenLogo from '@/assets/zen-logo.png';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
   { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin', 'coo'] },
+  { name: 'BDO Dashboard', href: '/bdo-dashboard', icon: BriefcaseBusiness, roles: ['admin', 'bdo'] },
   { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing', 'bdo'] },
   { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing', 'bdo', 'coo'] },
   { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager', 'coo'] },

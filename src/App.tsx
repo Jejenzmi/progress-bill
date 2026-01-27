@@ -12,6 +12,7 @@ import PipelineKanban from "./pages/PipelineKanban";
 import SalesDashboard from "./pages/SalesDashboard";
 import SalesReport from "./pages/SalesReport";
 import CEODashboard from "./pages/CEODashboard";
+import BDODashboard from "./pages/BDODashboard";
 import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
 import Activities from "./pages/Activities";
@@ -102,6 +103,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CEODashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bdo-dashboard"
+        element={
+          <ProtectedRoute>
+            <BDODashboard />
           </ProtectedRoute>
         }
       />
