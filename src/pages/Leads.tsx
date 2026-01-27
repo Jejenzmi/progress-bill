@@ -59,10 +59,14 @@ import {
   LayoutList,
   LayoutGrid,
   BarChart3,
+  Tag,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
 import { LeadAnalyticsDashboard } from '@/components/leads/LeadAnalyticsDashboard';
+import { LeadSegmentation } from '@/components/leads/LeadSegmentation';
+import { SalesWorkloadView } from '@/components/leads/SalesWorkloadView';
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   cold: { label: 'Cold', color: 'text-blue-700', bgColor: 'bg-blue-100' },
@@ -388,7 +392,7 @@ export default function Leads() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <LayoutList className="h-4 w-4" />
               List
@@ -400,6 +404,14 @@ export default function Leads() {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="segmentation" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Segmentation
+            </TabsTrigger>
+            <TabsTrigger value="workload" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Workload
             </TabsTrigger>
           </TabsList>
 
@@ -612,6 +624,24 @@ export default function Leads() {
         {/* Analytics View */}
         <TabsContent value="analytics">
           <LeadAnalyticsDashboard leads={leads} />
+        </TabsContent>
+
+        {/* Segmentation View */}
+        <TabsContent value="segmentation">
+          <LeadSegmentation 
+            leads={leads}
+            onUpdateLead={updateLead}
+          />
+        </TabsContent>
+
+        {/* Workload View */}
+        <TabsContent value="workload">
+          <SalesWorkloadView 
+            leads={leads}
+            onAssignLead={async (leadId, userId) => {
+              await updateLead(leadId, { assigned_to: userId });
+            }}
+          />
         </TabsContent>
       </Tabs>
 

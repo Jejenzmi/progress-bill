@@ -233,6 +233,7 @@ export type Database = {
           address: string | null
           assigned_to: string | null
           company_name: string | null
+          company_size: string | null
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
@@ -240,6 +241,7 @@ export type Database = {
           email: string | null
           estimated_value: number | null
           id: string
+          industry: string | null
           last_contacted_at: string | null
           name: string
           next_follow_up_at: string | null
@@ -248,12 +250,14 @@ export type Database = {
           score: number
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
           updated_at: string
         }
         Insert: {
           address?: string | null
           assigned_to?: string | null
           company_name?: string | null
+          company_size?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
@@ -261,6 +265,7 @@ export type Database = {
           email?: string | null
           estimated_value?: number | null
           id?: string
+          industry?: string | null
           last_contacted_at?: string | null
           name: string
           next_follow_up_at?: string | null
@@ -269,12 +274,14 @@ export type Database = {
           score?: number
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
           updated_at?: string
         }
         Update: {
           address?: string | null
           assigned_to?: string | null
           company_name?: string | null
+          company_size?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
@@ -282,6 +289,7 @@ export type Database = {
           email?: string | null
           estimated_value?: number | null
           id?: string
+          industry?: string | null
           last_contacted_at?: string | null
           name?: string
           next_follow_up_at?: string | null
@@ -290,6 +298,7 @@ export type Database = {
           score?: number
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
           updated_at?: string
         }
         Relationships: [

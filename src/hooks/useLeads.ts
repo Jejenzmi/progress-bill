@@ -23,6 +23,10 @@ export interface Lead {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Segmentation fields
+  industry: string | null;
+  company_size: string | null;
+  tags: string[];
 }
 
 export interface LeadInput {
@@ -37,6 +41,10 @@ export interface LeadInput {
   notes?: string;
   assigned_to?: string;
   next_follow_up_at?: string;
+  // Segmentation fields
+  industry?: string;
+  company_size?: string;
+  tags?: string[];
 }
 
 export function useLeads() {
