@@ -1,1 +1,10 @@
 project_id = "losdqqhabpcqpgoaosyy"
+
+[functions.check-overdue]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.send-role-notification]
+verify_jwt = false

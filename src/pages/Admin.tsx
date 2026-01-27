@@ -33,6 +33,7 @@ type AppRole = Database['public']['Enums']['app_role'];
 interface UserWithRoles {
   user_id: string;
   full_name: string | null;
+  email?: string;
   roles: AppRole[];
 }
 
@@ -51,7 +52,7 @@ const ROLE_COLORS: Record<AppRole, string> = {
 };
 
 export default function Admin() {
-  const { hasRole } = useAuth();
+  const { hasRole, profile } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +144,36 @@ export default function Admin() {
           .eq('user_id', selectedUser.user_id)
           .eq('role', role);
         if (error) throw error;
+      }
+
+      // Send email notification if there are changes
+      if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
+        try {
+          // Get user email - we need to fetch it from auth or use a placeholder
+          const userEmail = selectedUser.email || '';
+          
+          if (userEmail) {
+            const { error: notifError } = await supabase.functions.invoke('send-role-notification', {
+              body: {
+                user_id: selectedUser.user_id,
+                user_email: userEmail,
+                user_name: selectedUser.full_name || 'User',
+                added_roles: rolesToAdd,
+                removed_roles: rolesToRemove,
+                changed_by: profile?.full_name || 'Administrator',
+              },
+            });
+
+            if (notifError) {
+              console.error('Failed to send notification:', notifError);
+              // Don't throw - notification failure shouldn't block role update
+            } else {
+              console.log('Role change notification sent successfully');
+            }
+          }
+        } catch (notifError) {
+          console.error('Error sending notification:', notifError);
+        }
       }
 
       toast({
