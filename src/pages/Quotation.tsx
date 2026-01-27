@@ -15,10 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
-import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
+import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -32,10 +33,16 @@ const formatCurrencyLocal = (amount: number): string => {
 export default function Quotation() {
   const { toast } = useToast();
   const { clients, loading: clientsLoading, refetch: refetchClients } = useClients();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const editId = searchParams.get('edit');
+  
   const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [addClientOpen, setAddClientOpen] = useState(false);
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   
   // Basic Info
   const [quotationNumber, setQuotationNumber] = useState('');
@@ -63,14 +70,66 @@ export default function Quotation() {
     'Opsional maintenance bulanan tersedia jika diperlukan',
   ]);
 
-  // Generate quotation number on mount
+  // Generate quotation number on mount or load edit data
   useEffect(() => {
-    const now = new Date();
-    const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
-    const year = now.getFullYear();
-    const random = Math.floor(Math.random() * 900) + 100;
-    setQuotationNumber(`${random}/QUO-ZMI/${month}/${year}`);
-  }, []);
+    if (editId) {
+      loadQuotationForEdit(editId);
+    } else {
+      const now = new Date();
+      const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+      const year = now.getFullYear();
+      const random = Math.floor(Math.random() * 900) + 100;
+      setQuotationNumber(`${random}/QUO-ZMI/${month}/${year}`);
+    }
+  }, [editId]);
+
+  const loadQuotationForEdit = async (id: string) => {
+    setLoadingEdit(true);
+    try {
+      const { data: quotation, error } = await supabase
+        .from('quotations')
+        .select('*, clients(name, address)')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (quotation) {
+        setEditingQuotationId(quotation.id);
+        setProjectName(quotation.project_name);
+        
+        // Set client info
+        if (quotation.client_id) {
+          setSelectedClientId(quotation.client_id);
+        }
+        if (quotation.clients) {
+          const clientData = quotation.clients as { name: string; address: string | null };
+          setClientName(clientData.name);
+          setClientAddress(clientData.address || '');
+        }
+
+        // Set items from man_days
+        const manDays = quotation.man_days as unknown as QuotationItem[];
+        if (Array.isArray(manDays) && manDays.length > 0) {
+          setItems(manDays);
+        }
+
+        toast({
+          title: 'Quotation Dimuat',
+          description: `Editing: ${quotation.project_name}`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading quotation:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat quotation untuk diedit',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
 
   // Auto-fill client data when selected
   const handleClientSelect = (clientId: string) => {
@@ -146,6 +205,23 @@ export default function Quotation() {
       email: (value?.email as string) || 'info@zenmultimedia.co.id',
       website: (value?.website as string) || 'www.zenmultimedia.co.id',
       bank_info: (value?.bank_info as string) || '-',
+      logo_url: (value?.logo_url as string) || undefined,
+    };
+  };
+
+  const getTTESettings = async (): Promise<TTESettings> => {
+    const { data: tteData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'tte_settings')
+      .maybeSingle();
+
+    const value = tteData?.value as Record<string, unknown> | null;
+    
+    return {
+      signer_name: (value?.signer_name as string) || '',
+      signer_position: (value?.signer_position as string) || 'Direktur',
+      enabled: value?.enabled !== false,
     };
   };
 
@@ -187,7 +263,7 @@ export default function Quotation() {
       const validUntil = new Date();
       validUntil.setDate(validUntil.getDate() + 30);
 
-      const { error } = await supabase.from('quotations').insert([{
+      const quotationData = {
         project_name: projectName,
         client_id: selectedClientId || null,
         man_days: items as any,
@@ -198,14 +274,34 @@ export default function Quotation() {
         grand_total: grandTotal,
         valid_until: validUntil.toISOString().split('T')[0],
         status: 'Draft',
-      }]);
+      };
 
-      if (error) throw error;
+      if (editingQuotationId) {
+        // Update existing
+        const { error } = await supabase
+          .from('quotations')
+          .update(quotationData)
+          .eq('id', editingQuotationId);
 
-      toast({
-        title: 'Berhasil',
-        description: 'Quotation berhasil disimpan',
-      });
+        if (error) throw error;
+
+        toast({
+          title: 'Berhasil',
+          description: 'Quotation berhasil diupdate',
+        });
+      } else {
+        // Insert new
+        const { error } = await supabase.from('quotations').insert([quotationData]);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Berhasil',
+          description: 'Quotation berhasil disimpan',
+        });
+      }
+      
+      navigate('/quotations');
     } catch (error: any) {
       console.error('Error saving quotation:', error);
       toast({
@@ -229,8 +325,9 @@ export default function Quotation() {
     }
 
     const company = await getCompanyProfile();
+    const tteSettings = await getTTESettings();
     const quotationData = buildQuotationData();
-    const html = await generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company, tteSettings);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };
@@ -246,8 +343,9 @@ export default function Quotation() {
     }
 
     const company = await getCompanyProfile();
+    const tteSettings = await getTTESettings();
     const quotationData = buildQuotationData();
-    const html = await generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company, tteSettings);
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -255,6 +353,16 @@ export default function Quotation() {
       printWindow.document.close();
     }
   };
+
+  if (loadingEdit) {
+    return (
+      <AppLayout title="Quotation Builder" subtitle="Memuat data...">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Quotation Builder" subtitle="Buat penawaran harga sesuai format PT Zen Multimedia Indonesia">

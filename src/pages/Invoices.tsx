@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { generateInvoicePDF, type CompanyProfile, type InvoiceItem } from '@/lib/invoicePdfGenerator';
+import { generateInvoicePDF, type CompanyProfile, type InvoiceItem, type TTESettings } from '@/lib/invoicePdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -178,6 +178,23 @@ export default function Invoices() {
       email: (value?.email as string) || 'info@zenmultimedia.co.id',
       website: (value?.website as string) || 'www.zenmultimedia.co.id',
       bank_info: (value?.bank_info as string) || '-',
+      logo_url: (value?.logo_url as string) || undefined,
+    };
+  };
+
+  const getTTESettings = async (): Promise<TTESettings> => {
+    const { data: tteData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'tte_settings')
+      .maybeSingle();
+
+    const value = tteData?.value as Record<string, unknown> | null;
+    
+    return {
+      signer_name: (value?.signer_name as string) || '',
+      signer_position: (value?.signer_position as string) || 'Direktur',
+      enabled: value?.enabled !== false,
     };
   };
 
@@ -208,16 +225,18 @@ export default function Invoices() {
 
   const handlePreviewPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
+    const tteSettings = await getTTESettings();
     const invoiceData = buildInvoicePDFData(invoice);
-    const html = await generateInvoicePDF(invoiceData, company);
+    const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };
 
   const handleDownloadPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
+    const tteSettings = await getTTESettings();
     const invoiceData = buildInvoicePDFData(invoice);
-    const html = await generateInvoicePDF(invoiceData, company);
+    const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {

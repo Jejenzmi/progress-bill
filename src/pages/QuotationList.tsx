@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
-import { generateQuotationPDF, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
+import { generateQuotationPDF, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
 import {
   Table,
   TableBody,
@@ -129,8 +129,25 @@ export default function QuotationList() {
     };
   };
 
+  const getTTESettings = async (): Promise<TTESettings> => {
+    const { data: tteData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'tte_settings')
+      .maybeSingle();
+
+    const value = tteData?.value as Record<string, unknown> | null;
+    
+    return {
+      signer_name: (value?.signer_name as string) || '',
+      signer_position: (value?.signer_position as string) || 'Direktur',
+      enabled: value?.enabled !== false,
+    };
+  };
+
   const handlePreview = async (quotation: Quotation) => {
     const company = await getCompanyProfile();
+    const tteSettings = await getTTESettings();
     
     const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
     const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -155,7 +172,7 @@ export default function QuotationList() {
       grandTotal,
     };
 
-    const html = await generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company, tteSettings);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };
