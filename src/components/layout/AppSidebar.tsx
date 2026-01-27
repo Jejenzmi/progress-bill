@@ -26,27 +26,27 @@ import { Button } from '@/components/ui/button';
 import zenLogo from '@/assets/zen-logo.png';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance'] },
-  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin'] },
-  { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing'] },
-  { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing'] },
-  { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager'] },
-  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing'] },
-  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },
-  { name: 'Aktivitas', href: '/activities', icon: Activity, roles: ['admin', 'marketing', 'project_manager'] },
-  { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
-  { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing'] },
-  { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing'] },
-  { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance'] },
-  { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
-  { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance'] },
-  { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance'] },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
+  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin', 'coo'] },
+  { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager', 'coo'] },
+  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'Aktivitas', href: '/activities', icon: Activity, roles: ['admin', 'marketing', 'project_manager', 'bdo'] },
+  { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
+  { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance', 'coo'] },
+  { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
+  { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance', 'coo'] },
+  { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance', 'coo'] },
 ];
 
 const secondaryNavigation = [
-  { name: 'Panduan', href: '/guide', icon: BookOpen, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
+  { name: 'Panduan', href: '/guide', icon: BookOpen, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
   { name: 'Kelola User', href: '/admin', icon: UserCog, roles: ['admin'] },
-  { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin'] },
+  { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin', 'coo'] },
 ];
 
 export function AppSidebar() {
@@ -69,6 +69,8 @@ export function AppSidebar() {
 
   const getRoleLabel = () => {
     if (hasRole('admin')) return 'Admin';
+    if (hasRole('coo')) return 'Chief Operational Officer';
+    if (hasRole('bdo')) return 'Business Development Officer';
     if (hasRole('finance')) return 'Finance';
     if (hasRole('marketing')) return 'Marketing';
     if (hasRole('project_manager')) return 'Project Manager';

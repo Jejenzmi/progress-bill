@@ -49,6 +49,8 @@ const ROLE_LABELS: Record<AppRole, string> = {
   marketing: 'Marketing',
   finance: 'Finance',
   project_manager: 'Project Manager',
+  bdo: 'Business Development Officer',
+  coo: 'Chief Operational Officer',
 };
 
 const ROLE_COLORS: Record<AppRole, string> = {
@@ -56,6 +58,8 @@ const ROLE_COLORS: Record<AppRole, string> = {
   marketing: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   finance: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   project_manager: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  bdo: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  coo: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
 };
 
 export default function Admin() {
