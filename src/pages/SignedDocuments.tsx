@@ -41,13 +41,16 @@ import {
   Trash2, 
   Loader2, 
   FileText,
-  Eye,
   RefreshCw,
-  FileDown
+  FileDown,
+  Files,
+  RotateCcw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DocumentPreviewDialog } from '@/components/documents/DocumentPreviewDialog';
+import { BatchSigningDialog } from '@/components/documents/BatchSigningDialog';
+import { RegenerateTTEDialog } from '@/components/documents/RegenerateTTEDialog';
 import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
 
 interface SignedDocument {
@@ -73,11 +76,14 @@ export default function SignedDocuments() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
   
   // Dialog states
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<SignedDocument | null>(null);
   
   // Upload form state
@@ -343,6 +349,161 @@ export default function SignedDocuments() {
     }
   };
 
+  // Batch signing handler
+  const handleBatchSign = async (files: File[], batchQrPosition: string) => {
+    if (!user) return;
+
+    setUploading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const file of files) {
+        try {
+          const signedAt = new Date();
+          
+          const tteData: DocumentTTEData = {
+            documentName: file.name,
+            signerName: signerName.trim(),
+            signerPosition: signerPosition.trim(),
+            signedAt,
+            qrPosition: batchQrPosition,
+          };
+          
+          const signedPdfBlob = await generateSignedPDF(file, tteData);
+          
+          // Upload original
+          const originalFileName = `${Date.now()}-${file.name}`;
+          const originalFilePath = `${user.id}/originals/${originalFileName}`;
+          await supabase.storage.from('signed-documents').upload(originalFilePath, file);
+
+          // Upload signed
+          const signedFileName = `${Date.now()}-signed-${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
+          const signedFilePath = `${user.id}/signed/${signedFileName}`;
+          await supabase.storage.from('signed-documents').upload(signedFilePath, signedPdfBlob);
+
+          // Save to database
+          await supabase.from('signed_documents').insert({
+            user_id: user.id,
+            original_file_name: file.name,
+            original_file_path: originalFilePath,
+            signed_file_path: signedFilePath,
+            file_type: file.type || 'application/octet-stream',
+            file_size: file.size,
+            qr_position: batchQrPosition,
+            signer_name: signerName.trim(),
+            signer_position: signerPosition.trim(),
+            signed_at: signedAt.toISOString(),
+          });
+
+          successCount++;
+        } catch (err) {
+          console.error(`Error signing ${file.name}:`, err);
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: 'Batch Signing Selesai',
+        description: `${successCount} dokumen berhasil, ${errorCount} gagal`,
+      });
+
+      setBatchDialogOpen(false);
+      fetchDocuments();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Gagal memproses batch signing',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Regenerate TTE handler
+  const handleRegenerateTTE = async (
+    docId: string, 
+    newQrPosition: string, 
+    newSignerName: string, 
+    newSignerPosition: string
+  ) => {
+    if (!user) return;
+
+    setRegenerating(true);
+    try {
+      const doc = documents.find(d => d.id === docId);
+      if (!doc) throw new Error('Dokumen tidak ditemukan');
+
+      // Download original file
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('signed-documents')
+        .download(doc.original_file_path);
+
+      if (downloadError) throw downloadError;
+
+      const file = new File([fileData], doc.original_file_name, { type: doc.file_type });
+      const signedAt = new Date();
+
+      const tteData: DocumentTTEData = {
+        documentName: file.name,
+        signerName: newSignerName,
+        signerPosition: newSignerPosition,
+        signedAt,
+        qrPosition: newQrPosition,
+      };
+
+      const signedPdfBlob = await generateSignedPDF(file, tteData);
+
+      // Delete old signed file if exists
+      if (doc.signed_file_path) {
+        await supabase.storage.from('signed-documents').remove([doc.signed_file_path]);
+      }
+
+      // Upload new signed file
+      const signedFileName = `${Date.now()}-signed-${doc.original_file_name.replace(/\.[^/.]+$/, '')}.pdf`;
+      const signedFilePath = `${user.id}/signed/${signedFileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('signed-documents')
+        .upload(signedFilePath, signedPdfBlob);
+
+      if (uploadError) throw uploadError;
+
+      // Update database record
+      const { error: dbError } = await supabase
+        .from('signed_documents')
+        .update({
+          signed_file_path: signedFilePath,
+          qr_position: newQrPosition,
+          signer_name: newSignerName,
+          signer_position: newSignerPosition,
+          signed_at: signedAt.toISOString(),
+        })
+        .eq('id', docId);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: 'Berhasil',
+        description: 'TTE berhasil di-regenerate dengan pengaturan baru',
+      });
+
+      setRegenerateDialogOpen(false);
+      setSelectedDoc(null);
+      fetchDocuments();
+    } catch (error: any) {
+      console.error('Error regenerating TTE:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal regenerate TTE',
+        variant: 'destructive',
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '-';
     if (bytes < 1024) return `${bytes} B`;
@@ -365,10 +526,14 @@ export default function SignedDocuments() {
     <AppLayout title="Tanda Tangan Elektronik" subtitle="Upload dan tandatangani dokumen dengan QR Code TTE">
       <div className="space-y-6">
         {/* Action Buttons */}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" onClick={fetchDocuments} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button variant="outline" onClick={() => setBatchDialogOpen(true)}>
+            <Files className="mr-2 h-4 w-4" />
+            Batch Signing
           </Button>
           <Button onClick={() => setUploadDialogOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
@@ -459,6 +624,17 @@ export default function SignedDocuments() {
                               ) : (
                                 <FileDown className="h-4 w-4" />
                               )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDoc(doc);
+                                setRegenerateDialogOpen(true);
+                              }}
+                              title="Regenerate TTE"
+                            >
+                              <RotateCcw className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="outline"
@@ -558,6 +734,27 @@ export default function SignedDocuments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Batch Signing Dialog */}
+      <BatchSigningDialog
+        open={batchDialogOpen}
+        onOpenChange={setBatchDialogOpen}
+        signerName={signerName}
+        onSignerNameChange={setSignerName}
+        signerPosition={signerPosition}
+        onSignerPositionChange={setSignerPosition}
+        onConfirm={handleBatchSign}
+        uploading={uploading}
+      />
+
+      {/* Regenerate TTE Dialog */}
+      <RegenerateTTEDialog
+        open={regenerateDialogOpen}
+        onOpenChange={setRegenerateDialogOpen}
+        document={selectedDoc}
+        onConfirm={handleRegenerateTTE}
+        loading={regenerating}
+      />
     </AppLayout>
   );
 }
