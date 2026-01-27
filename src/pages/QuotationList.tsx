@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { generateQuotationPDF, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
 import { useUserTTE } from '@/hooks/useUserTTE';
+import { QuotationApprovalDialog } from '@/components/quotations/QuotationApprovalDialog';
 import {
   Table,
   TableBody,
@@ -27,6 +29,10 @@ import {
   Download,
   FileText,
   Loader2,
+  Send,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -40,7 +46,14 @@ interface Quotation {
   grand_total: number | null;
   valid_until: string | null;
   status: string | null;
+  approval_status: string | null;
+  submitted_at: string | null;
+  submitted_by: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
   created_at: string;
+  created_by: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -58,6 +71,7 @@ const formatCurrency = (amount: number): string => {
 
 export default function QuotationList() {
   const { toast } = useToast();
+  const { user, hasRole } = useAuth();
   const navigate = useNavigate();
   const { fetchTTEForPDF } = useUserTTE();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -68,6 +82,14 @@ export default function QuotationList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Approval workflow states
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [approvalMode, setApprovalMode] = useState<'submit' | 'review'>('submit');
+  
+  const canReview = hasRole('admin') || hasRole('coo');
+  const canSubmit = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
 
   useEffect(() => {
     fetchQuotations();
@@ -197,6 +219,12 @@ export default function QuotationList() {
     setDeleteDialogOpen(true);
   };
 
+  const handleOpenApproval = (quotation: Quotation, mode: 'submit' | 'review') => {
+    setSelectedQuotation(quotation);
+    setApprovalMode(mode);
+    setApprovalDialogOpen(true);
+  };
+
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'Approved':
@@ -207,6 +235,19 @@ export default function QuotationList() {
         return <Badge variant="destructive">Ditolak</Badge>;
       default:
         return <Badge variant="secondary">Draft</Badge>;
+    }
+  };
+
+  const getApprovalStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="border-orange-500 text-orange-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="border-green-500 text-green-600"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="border-red-500 text-red-600"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -275,6 +316,7 @@ export default function QuotationList() {
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Berlaku Hingga</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Approval</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -302,6 +344,9 @@ export default function QuotationList() {
                     <TableCell>
                       {getStatusBadge(quotation.status)}
                     </TableCell>
+                    <TableCell>
+                      {getApprovalStatusBadge(quotation.approval_status)}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
@@ -312,6 +357,33 @@ export default function QuotationList() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        
+                        {/* Submit for approval button - for BDO/Marketing on draft quotations */}
+                        {canSubmit && (!quotation.approval_status || quotation.approval_status === 'draft' || quotation.approval_status === 'rejected') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenApproval(quotation, 'submit')}
+                            title="Submit untuk Approval"
+                            className="text-orange-600 hover:text-orange-700"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Review button - for COO/Admin on pending quotations */}
+                        {canReview && quotation.approval_status === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenApproval(quotation, 'review')}
+                            title="Review Quotation"
+                            className="text-primary hover:text-primary"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <Button
                           variant="ghost"
                           size="icon"
@@ -354,6 +426,18 @@ export default function QuotationList() {
         itemName="Quotation ini"
         onConfirm={handleDelete}
         loading={deleting}
+      />
+
+      {/* Approval Dialog */}
+      <QuotationApprovalDialog
+        quotation={selectedQuotation ? {
+          ...selectedQuotation,
+          client_name: selectedQuotation.clients?.name,
+        } : null}
+        open={approvalDialogOpen}
+        onOpenChange={setApprovalDialogOpen}
+        onSuccess={fetchQuotations}
+        mode={approvalMode}
       />
     </AppLayout>
   );

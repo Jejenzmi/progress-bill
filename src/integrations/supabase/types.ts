@@ -491,6 +491,9 @@ export type Database = {
       }
       quotations: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -501,12 +504,20 @@ export type Database = {
           maintenance_period: string | null
           man_days: Json
           project_name: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           total_development: number | null
           updated_at: string
           valid_until: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -517,12 +528,20 @@ export type Database = {
           maintenance_period?: string | null
           man_days?: Json
           project_name: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -533,7 +552,12 @@ export type Database = {
           maintenance_period?: string | null
           man_days?: Json
           project_name?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
