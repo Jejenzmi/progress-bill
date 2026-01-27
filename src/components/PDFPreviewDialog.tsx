@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,21 +27,65 @@ export function PDFPreviewDialog({
 }: PDFPreviewDialogProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Clear timeout on unmount
   useEffect(() => {
-    if (open && iframeRef.current && html) {
-      setLoading(true);
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const writeToIframe = useCallback(() => {
+    if (!iframeRef.current || !html) return;
+    
+    setLoading(true);
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    const doc = iframeRef.current.contentDocument;
+    if (doc) {
+      try {
         // Remove print button from preview
         const cleanHtml = html.replace(/<div class="no-print"[\s\S]*?<\/div>\s*<\/body>/, '</body>');
         doc.open();
         doc.write(cleanHtml);
         doc.close();
-        setTimeout(() => setLoading(false), 300);
+        
+        // Set loading to false after a short delay to ensure content is rendered
+        timeoutRef.current = setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      } catch (error) {
+        console.error('Error writing to iframe:', error);
+        setLoading(false);
       }
+    } else {
+      // If no document access, hide loading after timeout
+      timeoutRef.current = setTimeout(() => {
+        setLoading(false);
+      }, 1000);
     }
-  }, [open, html]);
+  }, [html]);
+
+  useEffect(() => {
+    if (open && html) {
+      // Small delay to ensure dialog is mounted
+      const mountTimeout = setTimeout(() => {
+        writeToIframe();
+      }, 100);
+      
+      return () => clearTimeout(mountTimeout);
+    } else if (!open) {
+      // Reset loading state when closed
+      setLoading(true);
+    }
+  }, [open, html, writeToIframe]);
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -61,15 +105,22 @@ export function PDFPreviewDialog({
 
         <div className="flex-1 relative overflow-hidden bg-muted/30">
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Memuat preview...</p>
             </div>
           )}
           <iframe
             ref={iframeRef}
             className="w-full h-full border-0"
             title="PDF Preview"
-            style={{ transform: 'scale(0.85)', transformOrigin: 'top center', height: '118%' }}
+            style={{ 
+              transform: 'scale(0.85)', 
+              transformOrigin: 'top center', 
+              height: '118%',
+              opacity: loading ? 0 : 1,
+              transition: 'opacity 0.3s ease'
+            }}
           />
         </div>
 
@@ -78,7 +129,7 @@ export function PDFPreviewDialog({
             <X className="h-4 w-4 mr-2" />
             Tutup
           </Button>
-          <Button onClick={handlePrint}>
+          <Button onClick={handlePrint} disabled={loading}>
             <Printer className="h-4 w-4 mr-2" />
             Cetak / Download PDF
           </Button>

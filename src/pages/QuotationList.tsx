@@ -79,6 +79,7 @@ export default function QuotationList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -147,35 +148,47 @@ export default function QuotationList() {
   // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const handlePreview = async (quotation: Quotation) => {
-    const company = await getCompanyProfile();
-    const tteSettings = await fetchTTEForPDF();
-    
-    const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
-    const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const ppnAmount = Math.round(subtotal * 0.11);
-    const grandTotal = subtotal + ppnAmount;
+    setPreviewLoading(true);
+    try {
+      const company = await getCompanyProfile();
+      const tteSettings = await fetchTTEForPDF();
+      
+      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const ppnAmount = Math.round(subtotal * 0.11);
+      const grandTotal = subtotal + ppnAmount;
 
-    const validUntil = quotation.valid_until 
-      ? new Date(quotation.valid_until) 
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const validUntil = quotation.valid_until 
+        ? new Date(quotation.valid_until) 
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const quotationData = {
-      quotationNumber: `QUO-${quotation.id.substring(0, 8).toUpperCase()}`,
-      quotationDate: new Date(quotation.created_at),
-      validUntil,
-      clientName: quotation.clients?.name || 'Klien',
-      clientAddress: quotation.clients?.address || '',
-      projectName: quotation.project_name,
-      items,
-      subtotal,
-      ppnPercentage: 11,
-      ppnAmount,
-      grandTotal,
-    };
+      const quotationData = {
+        quotationNumber: `QUO-${quotation.id.substring(0, 8).toUpperCase()}`,
+        quotationDate: new Date(quotation.created_at),
+        validUntil,
+        clientName: quotation.clients?.name || 'Klien',
+        clientAddress: quotation.clients?.address || '',
+        projectName: quotation.project_name,
+        items,
+        subtotal,
+        ppnPercentage: 11,
+        ppnAmount,
+        grandTotal,
+      };
 
-    const html = await generateQuotationPDF(quotationData, company, tteSettings);
-    setPreviewHtml(html);
-    setPreviewOpen(true);
+      const html = await generateQuotationPDF(quotationData, company, tteSettings);
+      setPreviewHtml(html);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal membuat preview',
+        variant: 'destructive',
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const handleEdit = (quotation: Quotation) => {
@@ -354,8 +367,9 @@ export default function QuotationList() {
                           size="icon"
                           onClick={() => handlePreview(quotation)}
                           title="Lihat PDF"
+                          disabled={previewLoading}
                         >
-                          <Eye className="h-4 w-4" />
+                          {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                         </Button>
                         
                         {/* Submit for approval button - for BDO/Marketing on draft quotations */}

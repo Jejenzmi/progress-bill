@@ -41,6 +41,8 @@ export default function Quotation() {
   
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingDownload, setLoadingDownload] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [addClientOpen, setAddClientOpen] = useState(false);
@@ -318,12 +320,24 @@ export default function Quotation() {
       return;
     }
 
-    const company = await getCompanyProfile();
-    const tteSettings = await fetchTTEForPDF();
-    const quotationData = buildQuotationData();
-    const html = await generateQuotationPDF(quotationData, company, tteSettings);
-    setPreviewHtml(html);
-    setPreviewOpen(true);
+    setLoadingPreview(true);
+    try {
+      const company = await getCompanyProfile();
+      const tteSettings = await fetchTTEForPDF();
+      const quotationData = buildQuotationData();
+      const html = await generateQuotationPDF(quotationData, company, tteSettings);
+      setPreviewHtml(html);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal membuat preview',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -336,15 +350,27 @@ export default function Quotation() {
       return;
     }
 
-    const company = await getCompanyProfile();
-    const tteSettings = await fetchTTEForPDF();
-    const quotationData = buildQuotationData();
-    const html = await generateQuotationPDF(quotationData, company, tteSettings);
-    
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
+    setLoadingDownload(true);
+    try {
+      const company = await getCompanyProfile();
+      const tteSettings = await fetchTTEForPDF();
+      const quotationData = buildQuotationData();
+      const html = await generateQuotationPDF(quotationData, company, tteSettings);
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal membuat PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingDownload(false);
     }
   };
 
@@ -673,13 +699,13 @@ export default function Quotation() {
               </div>
 
               <div className="space-y-2 pt-4">
-                <Button className="w-full" variant="outline" onClick={handlePreview}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview PDF
+                <Button className="w-full" variant="outline" onClick={handlePreview} disabled={loadingPreview}>
+                  {loadingPreview ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {loadingPreview ? 'Memuat Preview...' : 'Preview PDF'}
                 </Button>
-                <Button className="w-full" onClick={handleDownloadPDF}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                <Button className="w-full" onClick={handleDownloadPDF} disabled={loadingDownload}>
+                  {loadingDownload ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  {loadingDownload ? 'Memuat...' : 'Download PDF'}
                 </Button>
                 <Button variant="outline" className="w-full" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
