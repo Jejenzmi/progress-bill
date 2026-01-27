@@ -13,6 +13,7 @@ import {
   LogOut,
   UserCog,
   FileSignature,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +34,7 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
+  { name: 'Panduan', href: '/guide', icon: BookOpen, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
   { name: 'Kelola User', href: '/admin', icon: UserCog, roles: ['admin'] },
   { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
