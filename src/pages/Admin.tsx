@@ -269,6 +269,22 @@ export default function Admin() {
 
     setCreating(true);
     try {
+      // Ensure we have a valid session before calling the edge function
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        console.error('Session error:', sessionError);
+        toast({
+          title: 'Error',
+          description: 'Sesi tidak valid. Silakan login ulang.',
+          variant: 'destructive',
+        });
+        setCreating(false);
+        return;
+      }
+
+      console.log('Calling create-user with session token');
+      
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: newUserEmail,
