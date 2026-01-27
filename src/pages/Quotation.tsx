@@ -135,6 +135,12 @@ export default function Quotation() {
 
   // Auto-fill client data when selected
   const handleClientSelect = (clientId: string) => {
+    if (clientId === 'manual') {
+      setSelectedClientId('manual');
+      setClientName('');
+      setClientAddress('');
+      return;
+    }
     setSelectedClientId(clientId);
     const client = clients.find(c => c.id === clientId);
     if (client) {
@@ -418,7 +424,7 @@ export default function Quotation() {
                     <SelectValue placeholder={clientsLoading ? "Memuat..." : "Pilih klien..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Isi Manual --</SelectItem>
+                    <SelectItem value="manual">-- Isi Manual --</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name} ({client.client_type})
