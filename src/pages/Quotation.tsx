@@ -14,8 +14,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateQuotationPDF, openPrintWindow, formatCurrency, numberToWords, type QuotationItem } from '@/lib/quotationPdfGenerator';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator } from 'lucide-react';
+import { useClients } from '@/hooks/useClients';
+import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
+import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users } from 'lucide-react';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -28,12 +30,16 @@ const formatCurrencyLocal = (amount: number): string => {
 
 export default function Quotation() {
   const { toast } = useToast();
+  const { clients, loading: clientsLoading } = useClients();
   const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
   
   // Basic Info
   const [quotationNumber, setQuotationNumber] = useState('');
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   
@@ -63,6 +69,16 @@ export default function Quotation() {
     const random = Math.floor(Math.random() * 900) + 100;
     setQuotationNumber(`${random}/QUO-ZMI/${month}/${year}`);
   }, []);
+
+  // Auto-fill client data when selected
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setClientName(client.name);
+      setClientAddress(client.address || '');
+    }
+  };
 
   const addItem = () => {
     setItems([...items, { item: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
@@ -104,6 +120,49 @@ export default function Quotation() {
   const ppnAmount = Math.round(subtotal * (ppnPercentage / 100));
   const grandTotal = subtotal + ppnAmount;
 
+  const getCompanyProfile = async (): Promise<CompanyProfile> => {
+    const { data: companyData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company_profile')
+      .maybeSingle();
+
+    const value = companyData?.value as Record<string, unknown> | null;
+    
+    return {
+      name: (value?.name as string) || 'PT. ZEN MULTIMEDIA INDONESIA',
+      npwp: (value?.npwp as string) || '-',
+      address: (value?.address as string) || 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, Jawa Barat - Indonesia',
+      phone: (value?.phone as string) || '085121045798',
+      email: (value?.email as string) || 'info@zenmultimedia.co.id',
+      website: (value?.website as string) || 'www.zenmultimedia.co.id',
+      bank_info: (value?.bank_info as string) || '-',
+    };
+  };
+
+  const buildQuotationData = () => {
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30);
+
+    return {
+      quotationNumber,
+      quotationDate: new Date(),
+      validUntil,
+      clientName: clientName || 'Klien',
+      clientAddress: clientAddress || '',
+      projectName,
+      projectDescription: projectDescription || undefined,
+      items,
+      subtotal,
+      ppnPercentage,
+      ppnAmount,
+      grandTotal,
+      paymentTerms: paymentTerms.filter(t => t.trim()),
+      estimatedDuration: estimatedDuration || undefined,
+      guaranteeTerms: guaranteeTerms.filter(t => t.trim()),
+    };
+  };
+
   const handleSave = async () => {
     if (!projectName) {
       toast({
@@ -121,6 +180,7 @@ export default function Quotation() {
 
       const { error } = await supabase.from('quotations').insert([{
         project_name: projectName,
+        client_id: selectedClientId || null,
         man_days: items as any,
         hosting_cost: 0,
         maintenance_cost: 0,
@@ -149,6 +209,23 @@ export default function Quotation() {
     }
   };
 
+  const handlePreview = async () => {
+    if (!projectName) {
+      toast({
+        title: 'Error',
+        description: 'Nama proyek wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const company = await getCompanyProfile();
+    const quotationData = buildQuotationData();
+    const html = generateQuotationPDF(quotationData, company);
+    setPreviewHtml(html);
+    setPreviewOpen(true);
+  };
+
   const handleDownloadPDF = async () => {
     if (!projectName) {
       toast({
@@ -159,46 +236,15 @@ export default function Quotation() {
       return;
     }
 
-    // Fetch company profile
-    const { data: companyData } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'company_profile')
-      .maybeSingle();
-
-    const company = companyData?.value as any || {
-      name: 'PT. ZEN MULTIMEDIA INDONESIA',
-      npwp: '-',
-      address: 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, Jawa Barat - Indonesia',
-      phone: '085121045798',
-      email: 'info@zenmultimedia.co.id',
-      website: 'www.zenmultimedia.co.id',
-      bank_info: '-',
-    };
-
-    const validUntil = new Date();
-    validUntil.setDate(validUntil.getDate() + 30);
-
-    const quotationData = {
-      quotationNumber,
-      quotationDate: new Date(),
-      validUntil,
-      clientName: clientName || 'Klien',
-      clientAddress: clientAddress || '',
-      projectName,
-      projectDescription: projectDescription || undefined,
-      items,
-      subtotal,
-      ppnPercentage,
-      ppnAmount,
-      grandTotal,
-      paymentTerms: paymentTerms.filter(t => t.trim()),
-      estimatedDuration: estimatedDuration || undefined,
-      guaranteeTerms: guaranteeTerms.filter(t => t.trim()),
-    };
-
+    const company = await getCompanyProfile();
+    const quotationData = buildQuotationData();
     const html = generateQuotationPDF(quotationData, company);
-    openPrintWindow(html);
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
   };
 
   return (
@@ -243,7 +289,28 @@ export default function Quotation() {
                   rows={2}
                 />
               </div>
+              
+              {/* Client Selection */}
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Pilih Klien dari Database
+                  </Label>
+                  <Select value={selectedClientId} onValueChange={handleClientSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={clientsLoading ? "Memuat..." : "Pilih klien..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">-- Isi Manual --</SelectItem>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name} ({client.client_type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="clientName">Nama Klien *</Label>
                   <Input
@@ -253,15 +320,15 @@ export default function Quotation() {
                     onChange={(e) => setClientName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientAddress">Alamat Klien</Label>
-                  <Input
-                    id="clientAddress"
-                    placeholder="Alamat lengkap klien"
-                    value={clientAddress}
-                    onChange={(e) => setClientAddress(e.target.value)}
-                  />
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clientAddress">Alamat Klien</Label>
+                <Input
+                  id="clientAddress"
+                  placeholder="Alamat lengkap klien"
+                  value={clientAddress}
+                  onChange={(e) => setClientAddress(e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -483,6 +550,10 @@ export default function Quotation() {
               </div>
 
               <div className="space-y-2 pt-4">
+                <Button className="w-full" variant="outline" onClick={handlePreview}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview PDF
+                </Button>
                 <Button className="w-full" onClick={handleDownloadPDF}>
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
@@ -497,6 +568,15 @@ export default function Quotation() {
           </Card>
         </div>
       </div>
+
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        html={previewHtml}
+        title="Preview Quotation"
+        description={`${quotationNumber} - ${projectName}`}
+      />
     </AppLayout>
   );
 }

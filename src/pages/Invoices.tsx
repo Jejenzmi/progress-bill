@@ -27,8 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { generateInvoiceHTML, openPrintWindow } from '@/lib/pdfGenerator';
-import { Search, Filter, Download, Eye, MoreHorizontal, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { generateInvoicePDF, type CompanyProfile, type InvoiceItem } from '@/lib/invoicePdfGenerator';
+import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
+import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const formatCurrency = (amount: number): string => {
@@ -89,6 +90,8 @@ export default function Invoices() {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   useEffect(() => {
     fetchInvoices();
@@ -158,25 +161,36 @@ export default function Invoices() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDownloadPDF = async (invoice: InvoiceData) => {
-    // Fetch company profile
+  const getCompanyProfile = async (): Promise<CompanyProfile> => {
     const { data: companyData } = await supabase
       .from('settings')
       .select('value')
       .eq('key', 'company_profile')
       .maybeSingle();
 
-    const company = companyData?.value as any || {
-      name: 'PT Zen Multimedia Indonesia',
-      npwp: '-',
-      address: '-',
-      phone: '-',
-      email: '-',
-      website: '-',
-      bank_info: '-',
+    const value = companyData?.value as Record<string, unknown> | null;
+    
+    return {
+      name: (value?.name as string) || 'PT. ZEN MULTIMEDIA INDONESIA',
+      npwp: (value?.npwp as string) || '-',
+      address: (value?.address as string) || 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, Jawa Barat - Indonesia',
+      phone: (value?.phone as string) || '085121045798',
+      email: (value?.email as string) || 'info@zenmultimedia.co.id',
+      website: (value?.website as string) || 'www.zenmultimedia.co.id',
+      bank_info: (value?.bank_info as string) || '-',
     };
+  };
 
-    const invoiceData = {
+  const buildInvoicePDFData = (invoice: InvoiceData) => {
+    const items: InvoiceItem[] = [{
+      description: `${invoice.project_name} - ${invoice.term_name} (${invoice.percentage}%)`,
+      quantity: 1,
+      unit: 'Paket',
+      unitPrice: invoice.amount,
+      total: invoice.amount,
+    }];
+
+    return {
       invoiceNumber: invoice.invoice_number,
       invoiceDate: new Date(invoice.invoice_date),
       dueDate: new Date(invoice.due_date),
@@ -184,11 +198,32 @@ export default function Invoices() {
       clientAddress: invoice.client_address,
       projectName: invoice.project_name,
       termName: invoice.term_name,
-      amount: invoice.amount,
+      items,
+      subtotal: invoice.amount,
+      ppnPercentage: 0,
+      ppnAmount: 0,
+      grandTotal: invoice.amount,
     };
+  };
 
-    const html = generateInvoiceHTML(invoiceData, company);
-    openPrintWindow(html);
+  const handlePreviewPDF = async (invoice: InvoiceData) => {
+    const company = await getCompanyProfile();
+    const invoiceData = buildInvoicePDFData(invoice);
+    const html = generateInvoicePDF(invoiceData, company);
+    setPreviewHtml(html);
+    setPreviewOpen(true);
+  };
+
+  const handleDownloadPDF = async (invoice: InvoiceData) => {
+    const company = await getCompanyProfile();
+    const invoiceData = buildInvoicePDFData(invoice);
+    const html = generateInvoicePDF(invoiceData, company);
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
   };
 
   const updateInvoiceStatus = async (invoiceId: string, newStatus: InvoiceStatus) => {
@@ -367,17 +402,19 @@ export default function Invoices() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleDownloadPDF(invoice)}
+                          onClick={() => handlePreviewPDF(invoice)}
+                          title="Preview PDF"
                         >
-                          <Download className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => setSelectedInvoice(invoice)}
+                          onClick={() => handleDownloadPDF(invoice)}
+                          title="Download PDF"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -447,6 +484,15 @@ export default function Invoices() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        html={previewHtml}
+        title="Preview Invoice"
+        description="Preview invoice sebelum download atau cetak"
+      />
     </AppLayout>
   );
 }
