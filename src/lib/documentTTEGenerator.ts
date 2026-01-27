@@ -73,7 +73,25 @@ interface QRPositionCoords {
 }
 
 /**
+ * Parse custom position string (format: "custom-X-Y" where X,Y are percentages)
+ */
+const parseCustomPosition = (position: string): { x: number; y: number } | null => {
+  if (!position.startsWith('custom-')) return null;
+  
+  const parts = position.split('-');
+  if (parts.length >= 3) {
+    const x = parseFloat(parts[1]);
+    const y = parseFloat(parts[2]);
+    if (!isNaN(x) && !isNaN(y)) {
+      return { x, y };
+    }
+  }
+  return null;
+};
+
+/**
  * Calculate QR position coordinates based on position string
+ * Supports both preset positions and custom positions (format: "custom-X-Y")
  */
 const getQRPositionCoords = (
   position: string,
@@ -82,6 +100,22 @@ const getQRPositionCoords = (
   qrSize: number,
   margin: number = 15
 ): QRPositionCoords => {
+  // Check for custom position first
+  const customPos = parseCustomPosition(position);
+  if (customPos) {
+    // Convert percentage to actual coordinates
+    // Center the QR box on the clicked position
+    const x = (customPos.x / 100) * pageWidth - qrSize / 2;
+    const y = (customPos.y / 100) * pageHeight - qrSize / 2;
+    
+    // Clamp to page bounds
+    return {
+      x: Math.max(margin, Math.min(pageWidth - qrSize - margin, x)),
+      y: Math.max(margin, Math.min(pageHeight - qrSize - margin - 20, y)),
+    };
+  }
+
+  // Preset positions
   switch (position) {
     case 'top-left':
       return { x: margin, y: margin };
