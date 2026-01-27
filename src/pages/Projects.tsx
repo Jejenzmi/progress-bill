@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TermStatusCard } from '@/components/dashboard/TermStatusCard';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
+import { EditProjectDialog } from '@/components/projects/EditProjectDialog';
 import { useProjects, ProjectWithDetails } from '@/hooks/useProjects';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/data/mockData';
@@ -22,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Filter, Loader2, Briefcase } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Briefcase, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Database } from '@/integrations/supabase/types';
 
@@ -50,6 +51,7 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [selectedProject, setSelectedProject] = useState<ProjectWithDetails | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectWithDetails | null>(null);
 
   const canCreateProject = hasRole('admin') || hasRole('marketing');
 
@@ -198,6 +200,19 @@ export default function Projects() {
                       {selectedProject.client?.name || 'No client'}
                     </DialogDescription>
                   </div>
+                  {canCreateProject && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingProject(selectedProject);
+                        setSelectedProject(null);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
                 </div>
               </DialogHeader>
 
@@ -287,6 +302,14 @@ export default function Projects() {
       <CreateProjectDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+        onSuccess={refetch}
+      />
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        project={editingProject}
+        open={!!editingProject}
+        onOpenChange={(open) => !open && setEditingProject(null)}
         onSuccess={refetch}
       />
     </AppLayout>
