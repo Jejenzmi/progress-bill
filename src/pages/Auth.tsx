@@ -234,7 +234,16 @@ export default function Auth() {
                     Daftar
                   </Button>
 
-                  <p className="text-xs text-muted-foreground text-center">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-4">
+                    <p className="text-xs text-primary font-medium mb-1">
+                      💡 Akun CEO/Superadmin
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Untuk mendaftar sebagai CEO, gunakan nama lengkap: <strong>Jejen Jaenudin, SM., M. Kom</strong>
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center mt-3">
                     Dengan mendaftar, Anda menyetujui ketentuan layanan kami.
                   </p>
                 </form>
