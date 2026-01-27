@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
 import { AppSidebar } from './AppSidebar';
-import { Bell, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { NotificationBell } from './NotificationBell';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -34,12 +34,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
               />
             </div>
             
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                3
-              </span>
-            </Button>
+            <NotificationBell />
           </div>
         </header>
 

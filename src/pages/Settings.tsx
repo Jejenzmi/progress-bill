@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrCode } from 'lucide-react';
 import { LogoUpload } from '@/components/settings/LogoUpload';
+import { SalesTargetManager } from '@/components/settings/SalesTargetManager';
 
 interface SettingsData {
   company_profile: {
@@ -366,15 +367,20 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Targets */}
+        {/* Sales Targets */}
+        {isAdmin && (
+          <SalesTargetManager />
+        )}
+
+        {/* Legacy Targets (for backwards compatibility) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Target 2026
+              Target Default 2026
             </CardTitle>
             <CardDescription>
-              Target pendapatan bulanan dan tahunan
+              Target default untuk dashboard (gunakan Sales Target Manager untuk target lebih detail)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
