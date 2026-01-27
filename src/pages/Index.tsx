@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { PipelineOverview } from '@/components/dashboard/PipelineOverview';
 import { UpcomingTerms } from '@/components/dashboard/UpcomingTerms';
+import { MonthlyRevenueChart } from '@/components/dashboard/MonthlyRevenueChart';
+import { ProjectStatusChart } from '@/components/dashboard/ProjectStatusChart';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Briefcase, Receipt, TrendingUp, AlertCircle, Target, Loader2 } from 'lucide-react';
@@ -200,9 +201,17 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Analytics Charts */}
+      {showFinanceData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <MonthlyRevenueChart />
+          <ProjectStatusChart />
+        </div>
+      )}
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Projects & Pipeline */}
+        {/* Left Column - Pipeline & Invoices */}
         <div className="lg:col-span-2 space-y-6">
           {/* Pipeline Overview */}
           <PipelineOverview />
@@ -211,7 +220,7 @@ export default function Dashboard() {
           {showFinanceData && <RecentInvoices />}
         </div>
 
-        {/* Right Column - Actions & Upcoming */}
+        {/* Right Column - Upcoming Terms */}
         <div className="space-y-6">
           <UpcomingTerms />
         </div>
