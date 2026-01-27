@@ -16,6 +16,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import PMDashboard from "./pages/PMDashboard";
 import Admin from "./pages/Admin";
+import QuotationList from "./pages/QuotationList";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -115,6 +116,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Quotation />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/quotations"
+        element={
+          <ProtectedRoute>
+            <QuotationList />
           </ProtectedRoute>
         }
       />
