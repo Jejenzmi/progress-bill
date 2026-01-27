@@ -160,6 +160,7 @@ export default function SignedDocuments() {
     setUploading(true);
     try {
       const signedAt = new Date();
+      const verifyUrl = `${window.location.origin}/verify`;
       
       // Generate signed PDF with TTE
       const tteData: DocumentTTEData = {
@@ -170,7 +171,7 @@ export default function SignedDocuments() {
         qrPosition,
       };
       
-      const signedPdfBlob = await generateSignedPDF(selectedFile, tteData);
+      const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(selectedFile, tteData, verifyUrl);
       
       // Upload original file
       const originalFileName = `${Date.now()}-${selectedFile.name}`;
@@ -206,6 +207,7 @@ export default function SignedDocuments() {
           signer_name: signerName.trim(),
           signer_position: signerPosition.trim(),
           signed_at: signedAt.toISOString(),
+          verification_id: verificationId,
         });
 
       if (dbError) throw dbError;
@@ -358,6 +360,8 @@ export default function SignedDocuments() {
     let errorCount = 0;
 
     try {
+      const verifyUrl = `${window.location.origin}/verify`;
+      
       for (const file of files) {
         try {
           const signedAt = new Date();
@@ -370,7 +374,7 @@ export default function SignedDocuments() {
             qrPosition: batchQrPosition,
           };
           
-          const signedPdfBlob = await generateSignedPDF(file, tteData);
+          const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(file, tteData, verifyUrl);
           
           // Upload original
           const originalFileName = `${Date.now()}-${file.name}`;
@@ -394,6 +398,7 @@ export default function SignedDocuments() {
             signer_name: signerName.trim(),
             signer_position: signerPosition.trim(),
             signed_at: signedAt.toISOString(),
+            verification_id: verificationId,
           });
 
           successCount++;
@@ -444,6 +449,7 @@ export default function SignedDocuments() {
 
       const file = new File([fileData], doc.original_file_name, { type: doc.file_type });
       const signedAt = new Date();
+      const verifyUrl = `${window.location.origin}/verify`;
 
       const tteData: DocumentTTEData = {
         documentName: file.name,
@@ -453,7 +459,7 @@ export default function SignedDocuments() {
         qrPosition: newQrPosition,
       };
 
-      const signedPdfBlob = await generateSignedPDF(file, tteData);
+      const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(file, tteData, verifyUrl);
 
       // Delete old signed file if exists
       if (doc.signed_file_path) {
@@ -479,6 +485,7 @@ export default function SignedDocuments() {
           signer_name: newSignerName,
           signer_position: newSignerPosition,
           signed_at: signedAt.toISOString(),
+          verification_id: verificationId,
         })
         .eq('id', docId);
 

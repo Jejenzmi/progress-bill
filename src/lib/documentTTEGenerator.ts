@@ -7,25 +7,30 @@ export interface DocumentTTEData {
   signerPosition: string;
   signedAt: Date;
   qrPosition: string;
+  verificationId?: string;
 }
 
-interface QRPositionCoords {
-  x: number;
-  y: number;
-}
+/**
+ * Generate a unique verification ID for the document
+ */
+export const generateVerificationId = (data: DocumentTTEData): string => {
+  const timestamp = data.signedAt.getTime().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  const hash = btoa(JSON.stringify({
+    doc: data.documentName,
+    signer: data.signerName,
+    ts: timestamp,
+  })).replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+  
+  return `${hash}${random}`.toUpperCase().substring(0, 12);
+};
 
 /**
  * Generate TTE verification data for QR Code
  */
-export const generateTTEVerificationData = (data: DocumentTTEData): string => {
-  const timestamp = data.signedAt.toISOString();
-  const hash = btoa(JSON.stringify({
-    doc: data.documentName,
-    signer: data.signerName,
-    position: data.signerPosition,
-    signed: timestamp,
-  })).replace(/=/g, '').substring(0, 16);
-
+export const generateTTEVerificationData = (data: DocumentTTEData, verifyUrl: string): string => {
+  const verificationId = data.verificationId || generateVerificationId(data);
+  
   return JSON.stringify({
     document: data.documentName,
     signer: data.signerName,
@@ -37,7 +42,8 @@ export const generateTTEVerificationData = (data: DocumentTTEData): string => {
       hour: '2-digit',
       minute: '2-digit',
     }).format(data.signedAt) + ' WIB',
-    verification_id: hash.toUpperCase(),
+    verification_id: verificationId,
+    verify_url: `${verifyUrl}?id=${verificationId}`,
   }, null, 2);
 };
 
@@ -60,6 +66,11 @@ export const generateQRCodeForTTE = async (data: string): Promise<string> => {
     return '';
   }
 };
+
+interface QRPositionCoords {
+  x: number;
+  y: number;
+}
 
 /**
  * Calculate QR position coordinates based on position string
@@ -95,7 +106,8 @@ const getQRPositionCoords = (
  */
 export const generatePDFWithTTEFromImage = async (
   imageDataUrl: string,
-  data: DocumentTTEData
+  data: DocumentTTEData,
+  verifyUrl: string = ''
 ): Promise<Blob> => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -133,7 +145,7 @@ export const generatePDFWithTTEFromImage = async (
   pdf.addImage(imageDataUrl, 'JPEG', imgX, imgY, imgWidth, imgHeight);
 
   // Generate and add QR Code
-  await addTTEQRCodeToPDF(pdf, data);
+  await addTTEQRCodeToPDF(pdf, data, verifyUrl);
 
   return pdf.output('blob');
 };
@@ -143,7 +155,8 @@ export const generatePDFWithTTEFromImage = async (
  */
 export const generatePDFWithTTEForDocument = async (
   fileName: string,
-  data: DocumentTTEData
+  data: DocumentTTEData,
+  verifyUrl: string = ''
 ): Promise<Blob> => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -202,7 +215,7 @@ export const generatePDFWithTTEForDocument = async (
   pdf.text('Dokumen asli tersimpan dalam sistem.', 20, noteY + 15);
 
   // Generate and add QR Code
-  await addTTEQRCodeToPDF(pdf, data);
+  await addTTEQRCodeToPDF(pdf, data, verifyUrl);
 
   return pdf.output('blob');
 };
@@ -212,7 +225,8 @@ export const generatePDFWithTTEForDocument = async (
  */
 export const addTTEQRCodeToPDF = async (
   pdf: jsPDF,
-  data: DocumentTTEData
+  data: DocumentTTEData,
+  verifyUrl: string = ''
 ): Promise<void> => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -231,7 +245,7 @@ export const addTTEQRCodeToPDF = async (
   pdf.roundedRect(coords.x, coords.y, boxWidth, boxHeight, 2, 2, 'FD');
 
   // Generate QR Code
-  const verificationData = generateTTEVerificationData(data);
+  const verificationData = generateTTEVerificationData(data, verifyUrl);
   const qrDataUrl = await generateQRCodeForTTE(verificationData);
 
   if (qrDataUrl) {
@@ -271,26 +285,43 @@ export const addTTEQRCodeToPDF = async (
 };
 
 /**
+ * Result from generateSignedPDF containing both the blob and verification ID
+ */
+export interface SignedPDFResult {
+  blob: Blob;
+  verificationId: string;
+}
+
+/**
  * Main function to generate signed PDF from any file
  */
 export const generateSignedPDF = async (
   file: File,
-  tteData: DocumentTTEData
-): Promise<Blob> => {
+  tteData: DocumentTTEData,
+  verifyUrl: string = ''
+): Promise<SignedPDFResult> => {
   const fileType = file.type;
+  
+  // Generate verification ID if not provided
+  const verificationId = tteData.verificationId || generateVerificationId(tteData);
+  const dataWithId = { ...tteData, verificationId };
+
+  let blob: Blob;
 
   if (fileType.startsWith('image/')) {
     // Handle image files
     const imageDataUrl = await readFileAsDataURL(file);
-    return generatePDFWithTTEFromImage(imageDataUrl, tteData);
+    blob = await generatePDFWithTTEFromImage(imageDataUrl, dataWithId, verifyUrl);
   } else if (fileType === 'application/pdf') {
     // For PDF files, we'll create a cover page with TTE
     // (Full PDF manipulation would require pdf-lib which is more complex)
-    return generatePDFWithTTEForDocument(file.name, tteData);
+    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
   } else {
     // For other document types, create a certificate page
-    return generatePDFWithTTEForDocument(file.name, tteData);
+    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
   }
+
+  return { blob, verificationId };
 };
 
 /**
