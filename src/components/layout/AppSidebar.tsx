@@ -17,6 +17,7 @@ import {
   BarChart3,
   UserPlus,
   Activity,
+  FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ import zenLogo from '@/assets/zen-logo.png';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance'] },
   { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing'] },
+  { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing'] },
   { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager'] },
   { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing'] },
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },

@@ -10,6 +10,7 @@ import Clients from "./pages/Clients";
 import Pipeline from "./pages/Pipeline";
 import PipelineKanban from "./pages/PipelineKanban";
 import SalesDashboard from "./pages/SalesDashboard";
+import SalesReport from "./pages/SalesReport";
 import Leads from "./pages/Leads";
 import Activities from "./pages/Activities";
 import Quotation from "./pages/Quotation";
@@ -139,6 +140,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Activities />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales-report"
+        element={
+          <ProtectedRoute>
+            <SalesReport />
           </ProtectedRoute>
         }
       />
