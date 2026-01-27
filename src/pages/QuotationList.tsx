@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { generateQuotationPDF, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
+import { useUserTTE } from '@/hooks/useUserTTE';
 import {
   Table,
   TableBody,
@@ -67,6 +68,7 @@ const formatCurrency = (amount: number): string => {
 export default function QuotationList() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { fetchTTEForPDF } = useUserTTE();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,25 +131,11 @@ export default function QuotationList() {
     };
   };
 
-  const getTTESettings = async (): Promise<TTESettings> => {
-    const { data: tteData } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'tte_settings')
-      .maybeSingle();
-
-    const value = tteData?.value as Record<string, unknown> | null;
-    
-    return {
-      signer_name: (value?.signer_name as string) || '',
-      signer_position: (value?.signer_position as string) || 'Direktur',
-      enabled: value?.enabled !== false,
-    };
-  };
+  // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const handlePreview = async (quotation: Quotation) => {
     const company = await getCompanyProfile();
-    const tteSettings = await getTTESettings();
+    const tteSettings = await fetchTTEForPDF();
     
     const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
     const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
