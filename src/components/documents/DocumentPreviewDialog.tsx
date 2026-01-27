@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition, QRSize } from './QRPositionSelector';
+import { PDFPageSelector } from './PDFPageSelector';
 import { Loader2, FileSignature, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +26,7 @@ interface DocumentPreviewDialogProps {
   onSignerNameChange: (name: string) => void;
   signerPosition: string;
   onSignerPositionChange: (position: string) => void;
-  onConfirm: () => void;
+  onConfirm: (pageNumber?: number) => void;
   uploading: boolean;
 }
 
@@ -45,6 +46,7 @@ export function DocumentPreviewDialog({
 }: DocumentPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string>('');
+  const [selectedPage, setSelectedPage] = useState<number>(1);
 
   useEffect(() => {
     if (file) {
@@ -219,6 +221,17 @@ export function DocumentPreviewDialog({
 
           {/* Settings Panel */}
           <div className="space-y-4 overflow-y-auto">
+            {/* Page Selector for multi-page PDFs */}
+            {isPdf && (
+              <div className="border-b pb-4">
+                <PDFPageSelector
+                  file={file}
+                  value={selectedPage}
+                  onChange={setSelectedPage}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="text-base font-semibold">Posisi & Ukuran QR Code TTE</Label>
               <QRPositionSelector 
@@ -258,6 +271,7 @@ export function DocumentPreviewDialog({
                 <li>• QR Code di-embed langsung ke dalam PDF asli</li>
                 <li>• Ukuran QR dapat disesuaikan (kecil/sedang/besar)</li>
                 <li>• Informasi penandatangan akan tercantum dalam QR</li>
+                {isPdf && <li>• Pilih halaman untuk PDF multi-halaman</li>}
               </ul>
             </div>
           </div>
@@ -268,7 +282,7 @@ export function DocumentPreviewDialog({
             Batal
           </Button>
           <Button
-            onClick={onConfirm}
+            onClick={() => onConfirm(isPdf ? selectedPage : undefined)}
             disabled={!file || uploading || !signerName.trim() || !signerPosition.trim()}
           >
             {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -16,6 +16,7 @@ export interface DocumentTTEData {
   qrPosition: string;
   qrSize?: QRSize;
   verificationId?: string;
+  pageNumber?: number; // 1-indexed page number for multi-page PDFs
 }
 
 /**
@@ -131,7 +132,8 @@ export const generateSignedPDF = async (
   if (fileType === 'application/pdf') {
     // Handle PDF files - embed TTE directly into original PDF
     const pdfBytes = await file.arrayBuffer();
-    resultBytes = await embedTTEIntoPDF(pdfBytes, embedData, verifyUrl);
+    const pageNumber = tteData.pageNumber || 1;
+    resultBytes = await embedTTEIntoPDF(pdfBytes, embedData, verifyUrl, pageNumber);
   } else if (fileType.startsWith('image/')) {
     // Handle image files - convert to PDF with embedded TTE
     const imageBytes = await file.arrayBuffer();
