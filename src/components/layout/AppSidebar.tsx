@@ -20,6 +20,7 @@ import {
   FileBarChart,
   Crown,
   Briefcase as BriefcaseBusiness,
+  LineChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'BDO Dashboard', href: '/bdo-dashboard', icon: BriefcaseBusiness, roles: ['admin', 'bdo', 'coo'] },
   { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing', 'bdo', 'coo'] },
   { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Laporan Performa', href: '/sales-performance', icon: LineChart, roles: ['admin', 'marketing', 'bdo', 'coo'] },
   { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager', 'bdo', 'coo'] },
   { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing', 'bdo', 'coo'] },
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing', 'bdo', 'coo'] },
