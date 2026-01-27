@@ -9,6 +9,7 @@ export interface TTEData {
   clientName: string;
   totalAmount: number;
   signedBy?: string;
+  signerPosition?: string;
   signedAt?: Date;
 }
 
@@ -69,6 +70,8 @@ export const generateTTESection = async (data: TTEData): Promise<string> => {
   const verificationData = generateVerificationData(data);
   const qrCodeDataURL = await generateQRCodeDataURL(verificationData);
   const signedAt = data.signedAt || new Date();
+  const signerName = data.signedBy || data.companyName;
+  const signerPosition = data.signerPosition || '';
   
   return `
     <div class="tte-section">
@@ -93,7 +96,7 @@ export const generateTTESection = async (data: TTEData): Promise<string> => {
         </div>
         <div class="tte-detail">
           <span class="tte-label">Oleh:</span>
-          <span>${data.signedBy || data.companyName}</span>
+          <span>${signerName}${signerPosition ? ` (${signerPosition})` : ''}</span>
         </div>
         <div class="tte-hash">
           ID: ${btoa(data.documentNumber).substring(0, 16).toUpperCase()}

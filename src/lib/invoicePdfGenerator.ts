@@ -2,6 +2,12 @@
 
 import { generateTTESection, getTTEStyles, TTEData } from './qrCodeGenerator';
 
+export interface TTESettings {
+  signer_name: string;
+  signer_position: string;
+  enabled: boolean;
+}
+
 export interface CompanyProfile {
   name: string;
   npwp: string;
@@ -76,7 +82,8 @@ export const numberToWords = (num: number): string => {
 
 export const generateInvoicePDF = async (
   invoice: InvoiceData,
-  company: CompanyProfile
+  company: CompanyProfile,
+  tteSettings?: TTESettings
 ): Promise<string> => {
   // Generate TTE data
   const tteData: TTEData = {
@@ -86,10 +93,13 @@ export const generateInvoicePDF = async (
     companyName: company.name,
     clientName: invoice.clientName,
     totalAmount: invoice.grandTotal,
+    signedBy: tteSettings?.signer_name || undefined,
+    signerPosition: tteSettings?.signer_position || undefined,
     signedAt: new Date(),
   };
   
-  const tteSection = await generateTTESection(tteData);
+  const tteEnabled = tteSettings?.enabled !== false;
+  const tteSection = tteEnabled ? await generateTTESection(tteData) : '';
   const itemRows = invoice.items.map((item) => `
     <tr>
       <td style="padding: 12px; border: 1px solid #e0e0e0;">${item.description}</td>

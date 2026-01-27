@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText } from 'lucide-react';
+import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrCode } from 'lucide-react';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 
 interface SettingsData {
@@ -26,6 +26,11 @@ interface SettingsData {
   invoice_settings: {
     prefix: string;
     default_top_days: number;
+  };
+  tte_settings: {
+    signer_name: string;
+    signer_position: string;
+    enabled: boolean;
   };
   rate_card: Record<string, number>;
   targets: {
@@ -63,6 +68,11 @@ export default function Settings() {
       prefix: 'INV/ZEN',
       default_top_days: 14,
     },
+    tte_settings: {
+      signer_name: '',
+      signer_position: 'Direktur',
+      enabled: true,
+    },
     rate_card: {},
     targets: {
       monthly_target_2026: 500000000,
@@ -89,6 +99,8 @@ export default function Settings() {
             newSettings.company_profile = item.value as any;
           } else if (item.key === 'invoice_settings') {
             newSettings.invoice_settings = item.value as any;
+          } else if (item.key === 'tte_settings') {
+            newSettings.tte_settings = item.value as any;
           } else if (item.key === 'rate_card') {
             newSettings.rate_card = item.value as any;
           } else if (item.key === 'targets') {
@@ -111,6 +123,7 @@ export default function Settings() {
       const updates = [
         { key: 'company_profile', value: settings.company_profile },
         { key: 'invoice_settings', value: settings.invoice_settings },
+        { key: 'tte_settings', value: settings.tte_settings },
         { key: 'rate_card', value: settings.rate_card },
         { key: 'targets', value: settings.targets },
       ];
@@ -175,6 +188,16 @@ export default function Settings() {
       ...settings,
       targets: {
         ...settings.targets,
+        [field]: value,
+      },
+    });
+  };
+
+  const updateTTESettings = (field: string, value: string | boolean) => {
+    setSettings({
+      ...settings,
+      tte_settings: {
+        ...settings.tte_settings,
         [field]: value,
       },
     });
@@ -289,6 +312,57 @@ export default function Settings() {
               onLogoChange={(url) => updateCompanyProfile('logo_url', url)}
               disabled={!isAdmin}
             />
+          </CardContent>
+        </Card>
+
+        {/* TTE Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Pengaturan TTE (Tanda Tangan Elektronik)
+            </CardTitle>
+            <CardDescription>
+              Konfigurasi nama dan jabatan penandatangan yang tampil di QR Code dokumen
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="tteEnabled"
+                checked={settings.tte_settings.enabled}
+                onChange={(e) => updateTTESettings('enabled', e.target.checked)}
+                disabled={!isAdmin}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="tteEnabled">Aktifkan TTE dengan QR Code di dokumen PDF</Label>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="signerName">Nama Penandatangan</Label>
+                <Input
+                  id="signerName"
+                  value={settings.tte_settings.signer_name}
+                  onChange={(e) => updateTTESettings('signer_name', e.target.value)}
+                  disabled={!isAdmin}
+                  placeholder="Nama lengkap penandatangan"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signerPosition">Jabatan</Label>
+                <Input
+                  id="signerPosition"
+                  value={settings.tte_settings.signer_position}
+                  onChange={(e) => updateTTESettings('signer_position', e.target.value)}
+                  disabled={!isAdmin}
+                  placeholder="Direktur"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Informasi ini akan tampil di bagian TTE pada PDF Invoice dan Quotation
+            </p>
           </CardContent>
         </Card>
 
