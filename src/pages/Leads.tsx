@@ -1,14 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useLeads, Lead, LeadStatus, LeadInput } from '@/hooks/useLeads';
-import { useActivities } from '@/hooks/useActivities';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -51,19 +51,18 @@ import {
   Building2,
   User,
   Thermometer,
-  TrendingUp,
   UserPlus,
-  Calendar,
-  FileText,
   Loader2,
   Edit,
   Trash2,
   CheckCircle2,
-  AlertCircle,
+  LayoutList,
+  LayoutGrid,
+  BarChart3,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
+import { LeadAnalyticsDashboard } from '@/components/leads/LeadAnalyticsDashboard';
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   cold: { label: 'Cold', color: 'text-blue-700', bgColor: 'bg-blue-100' },
@@ -87,6 +86,7 @@ export default function Leads() {
   const { leads, loading, createLead, updateLead, deleteLead, updateLeadStatus, convertToClient, importLeadsFromCSV } = useLeads();
   const { toast } = useToast();
   
+  const [activeTab, setActiveTab] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -385,195 +385,235 @@ export default function Leads() {
         </Card>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Cari nama, perusahaan, atau email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            <SelectItem value="cold">Cold</SelectItem>
-            <SelectItem value="warm">Warm</SelectItem>
-            <SelectItem value="hot">Hot</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Import CSV
-        </Button>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Lead
-        </Button>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <LayoutList className="h-4 w-4" />
+              List
+            </TabsTrigger>
+            <TabsTrigger value="kanban" className="flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Leads Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Kontak</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Est. Value</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      {searchQuery || statusFilter !== 'all' 
-                        ? 'Tidak ada lead yang sesuai filter'
-                        : 'Belum ada leads. Klik "Tambah Lead" untuk memulai.'
-                      }
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLeads.map((lead) => (
-                    <TableRow 
-                      key={lead.id} 
-                      className={cn(
-                        'cursor-pointer hover:bg-muted/50',
-                        lead.converted_to_client_id ? 'bg-green-50/50' : ''
-                      )}
-                      onClick={() => navigate(`/leads/${lead.id}`)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                            <User className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            {lead.company_name && (
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <Building2 className="h-3 w-3" />
-                                {lead.company_name}
-                              </p>
-                            )}
-                          </div>
-                          {lead.converted_to_client_id && (
-                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Converted
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {lead.email && (
-                            <p className="text-sm flex items-center gap-1">
-                              <Mail className="h-3 w-3 text-muted-foreground" />
-                              {lead.email}
-                            </p>
-                          )}
-                          {lead.phone && (
-                            <p className="text-sm flex items-center gap-1">
-                              <Phone className="h-3 w-3 text-muted-foreground" />
-                              {lead.phone}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{lead.source || '-'}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={lead.status}
-                          onValueChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
-                          disabled={!!lead.converted_to_client_id}
-                        >
-                          <SelectTrigger className={cn(
-                            'w-24 h-8',
-                            statusConfig[lead.status].bgColor,
-                            statusConfig[lead.status].color
-                          )}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="cold">Cold</SelectItem>
-                            <SelectItem value="warm">Warm</SelectItem>
-                            <SelectItem value="hot">Hot</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full rounded-full",
-                                lead.score >= 70 ? "bg-red-500" :
-                                lead.score >= 40 ? "bg-yellow-500" : "bg-blue-500"
-                              )}
-                              style={{ width: `${lead.score}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium">{lead.score}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">
-                          {lead.estimated_value > 0 ? formatCurrency(lead.estimated_value) : '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenDialog(lead)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            {!lead.converted_to_client_id && (
-                              <DropdownMenuItem onClick={() => handleConvert(lead)}>
-                                <UserPlus className="h-4 w-4 mr-2" />
-                                Convert to Client
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => {
-                                setSelectedLead(lead);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Lead
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* List View */}
+        <TabsContent value="list" className="space-y-4">
+          {/* Search & Filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Cari nama, perusahaan, atau email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="cold">Cold</SelectItem>
+                <SelectItem value="warm">Warm</SelectItem>
+                <SelectItem value="hot">Hot</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Leads Table */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Kontak</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Est. Value</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          {searchQuery || statusFilter !== 'all' 
+                            ? 'Tidak ada lead yang sesuai filter'
+                            : 'Belum ada leads. Klik "Tambah Lead" untuk memulai.'
+                          }
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredLeads.map((lead) => (
+                        <TableRow 
+                          key={lead.id} 
+                          className={cn(
+                            'cursor-pointer hover:bg-muted/50',
+                            lead.converted_to_client_id ? 'bg-green-50/50' : ''
+                          )}
+                          onClick={() => navigate(`/leads/${lead.id}`)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                <User className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{lead.name}</p>
+                                {lead.company_name && (
+                                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {lead.company_name}
+                                  </p>
+                                )}
+                              </div>
+                              {lead.converted_to_client_id && (
+                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Converted
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {lead.email && (
+                                <p className="text-sm flex items-center gap-1">
+                                  <Mail className="h-3 w-3 text-muted-foreground" />
+                                  {lead.email}
+                                </p>
+                              )}
+                              {lead.phone && (
+                                <p className="text-sm flex items-center gap-1">
+                                  <Phone className="h-3 w-3 text-muted-foreground" />
+                                  {lead.phone}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{lead.source || '-'}</span>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              value={lead.status}
+                              onValueChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
+                              disabled={!!lead.converted_to_client_id}
+                            >
+                              <SelectTrigger className={cn(
+                                'w-24 h-8',
+                                statusConfig[lead.status].bgColor,
+                                statusConfig[lead.status].color
+                              )}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="cold">Cold</SelectItem>
+                                <SelectItem value="warm">Warm</SelectItem>
+                                <SelectItem value="hot">Hot</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={cn(
+                                    "h-full rounded-full",
+                                    lead.score >= 70 ? "bg-destructive" :
+                                    lead.score >= 40 ? "bg-warning" : "bg-info"
+                                  )}
+                                  style={{ width: `${lead.score}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{lead.score}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium">
+                              {lead.estimated_value > 0 ? formatCurrency(lead.estimated_value) : '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenDialog(lead)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                {!lead.converted_to_client_id && (
+                                  <DropdownMenuItem onClick={() => handleConvert(lead)}>
+                                    <UserPlus className="h-4 w-4 mr-2" />
+                                    Convert to Client
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Hapus
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Kanban View */}
+        <TabsContent value="kanban">
+          <LeadKanbanBoard 
+            leads={leads}
+            onStatusChange={handleStatusChange}
+            onConvert={handleConvert}
+          />
+        </TabsContent>
+
+        {/* Analytics View */}
+        <TabsContent value="analytics">
+          <LeadAnalyticsDashboard leads={leads} />
+        </TabsContent>
+      </Tabs>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
