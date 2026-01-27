@@ -14,6 +14,9 @@ import {
   UserCog,
   FileSignature,
   BookOpen,
+  BarChart3,
+  UserPlus,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,10 +25,13 @@ import zenLogo from '@/assets/zen-logo.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance'] },
+  { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing'] },
   { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager'] },
+  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing'] },
+  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },
+  { name: 'Aktivitas', href: '/activities', icon: Activity, roles: ['admin', 'marketing', 'project_manager'] },
   { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
   { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing'] },
-  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },
   { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing'] },
   { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance'] },
   { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager'] },

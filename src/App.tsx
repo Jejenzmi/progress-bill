@@ -8,6 +8,10 @@ import Dashboard from "./pages/Index";
 import Projects from "./pages/Projects";
 import Clients from "./pages/Clients";
 import Pipeline from "./pages/Pipeline";
+import PipelineKanban from "./pages/PipelineKanban";
+import SalesDashboard from "./pages/SalesDashboard";
+import Leads from "./pages/Leads";
+import Activities from "./pages/Activities";
 import Quotation from "./pages/Quotation";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
@@ -110,7 +114,31 @@ function AppRoutes() {
         path="/pipeline"
         element={
           <ProtectedRoute>
-            <Pipeline />
+            <PipelineKanban />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales-dashboard"
+        element={
+          <ProtectedRoute>
+            <SalesDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/leads"
+        element={
+          <ProtectedRoute>
+            <Leads />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/activities"
+        element={
+          <ProtectedRoute>
+            <Activities />
           </ProtectedRoute>
         }
       />
