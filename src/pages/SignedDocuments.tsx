@@ -13,13 +13,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,11 +42,13 @@ import {
   Loader2, 
   FileText,
   Eye,
-  RefreshCw
+  RefreshCw,
+  FileDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { QRPositionSelector } from '@/components/documents/QRPositionSelector';
+import { DocumentPreviewDialog } from '@/components/documents/DocumentPreviewDialog';
+import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
 
 interface SignedDocument {
   id: string;
@@ -77,7 +72,11 @@ export default function SignedDocuments() {
   const [documents, setDocuments] = useState<SignedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
+  
+  // Dialog states
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<SignedDocument | null>(null);
   
@@ -125,7 +124,6 @@ export default function SignedDocuments() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max 20MB)
       if (file.size > 20 * 1024 * 1024) {
         toast({
           title: 'File Terlalu Besar',
@@ -135,10 +133,13 @@ export default function SignedDocuments() {
         return;
       }
       setSelectedFile(file);
+      // Open preview dialog after selecting file
+      setUploadDialogOpen(false);
+      setPreviewDialogOpen(true);
     }
   };
 
-  const handleUpload = async () => {
+  const handleUploadAndSign = async () => {
     if (!selectedFile || !user) return;
 
     if (!signerName.trim() || !signerPosition.trim()) {
@@ -152,16 +153,38 @@ export default function SignedDocuments() {
 
     setUploading(true);
     try {
-      // Upload file to storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${selectedFile.name}`;
-      const filePath = `${user.id}/${fileName}`;
+      const signedAt = new Date();
+      
+      // Generate signed PDF with TTE
+      const tteData: DocumentTTEData = {
+        documentName: selectedFile.name,
+        signerName: signerName.trim(),
+        signerPosition: signerPosition.trim(),
+        signedAt,
+        qrPosition,
+      };
+      
+      const signedPdfBlob = await generateSignedPDF(selectedFile, tteData);
+      
+      // Upload original file
+      const originalFileName = `${Date.now()}-${selectedFile.name}`;
+      const originalFilePath = `${user.id}/originals/${originalFileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadOriginalError } = await supabase.storage
         .from('signed-documents')
-        .upload(filePath, selectedFile);
+        .upload(originalFilePath, selectedFile);
 
-      if (uploadError) throw uploadError;
+      if (uploadOriginalError) throw uploadOriginalError;
+
+      // Upload signed PDF
+      const signedFileName = `${Date.now()}-signed-${selectedFile.name.replace(/\.[^/.]+$/, '')}.pdf`;
+      const signedFilePath = `${user.id}/signed/${signedFileName}`;
+
+      const { error: uploadSignedError } = await supabase.storage
+        .from('signed-documents')
+        .upload(signedFilePath, signedPdfBlob);
+
+      if (uploadSignedError) throw uploadSignedError;
 
       // Create database record
       const { error: dbError } = await supabase
@@ -169,24 +192,25 @@ export default function SignedDocuments() {
         .insert({
           user_id: user.id,
           original_file_name: selectedFile.name,
-          original_file_path: filePath,
-          file_type: selectedFile.type || `application/${fileExt}`,
+          original_file_path: originalFilePath,
+          signed_file_path: signedFilePath,
+          file_type: selectedFile.type || 'application/octet-stream',
           file_size: selectedFile.size,
           qr_position: qrPosition,
           signer_name: signerName.trim(),
           signer_position: signerPosition.trim(),
+          signed_at: signedAt.toISOString(),
         });
 
       if (dbError) throw dbError;
 
       toast({
         title: 'Berhasil',
-        description: 'Dokumen berhasil diupload dan ditandatangani',
+        description: 'Dokumen berhasil ditandatangani dan disimpan',
       });
 
       // Reset form and refresh
-      setSelectedFile(null);
-      setDialogOpen(false);
+      resetForm();
       fetchDocuments();
     } catch (error: any) {
       console.error('Error uploading document:', error);
@@ -200,7 +224,18 @@ export default function SignedDocuments() {
     }
   };
 
-  const handleDownload = async (doc: SignedDocument) => {
+  const resetForm = () => {
+    setSelectedFile(null);
+    setQrPosition('bottom-right');
+    setPreviewDialogOpen(false);
+    setUploadDialogOpen(false);
+    if (tteSettings) {
+      setSignerName(tteSettings.signer_name);
+      setSignerPosition(tteSettings.signer_position);
+    }
+  };
+
+  const handleDownloadOriginal = async (doc: SignedDocument) => {
     try {
       const { data, error } = await supabase.storage
         .from('signed-documents')
@@ -208,7 +243,6 @@ export default function SignedDocuments() {
 
       if (error) throw error;
 
-      // Create download link
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
@@ -218,12 +252,50 @@ export default function SignedDocuments() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error('Error downloading document:', error);
+      console.error('Error downloading original:', error);
       toast({
         title: 'Error',
-        description: 'Gagal mengunduh dokumen',
+        description: 'Gagal mengunduh dokumen asli',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDownloadSigned = async (doc: SignedDocument) => {
+    if (!doc.signed_file_path) {
+      toast({
+        title: 'Error',
+        description: 'Dokumen bertanda tangan tidak tersedia',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setGenerating(doc.id);
+    try {
+      const { data, error } = await supabase.storage
+        .from('signed-documents')
+        .download(doc.signed_file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signed-${doc.original_file_name.replace(/\.[^/.]+$/, '')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading signed doc:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengunduh dokumen bertanda tangan',
+        variant: 'destructive',
+      });
+    } finally {
+      setGenerating(null);
     }
   };
 
@@ -231,10 +303,15 @@ export default function SignedDocuments() {
     if (!selectedDoc) return;
 
     try {
-      // Delete from storage
+      // Delete files from storage
+      const pathsToDelete = [selectedDoc.original_file_path];
+      if (selectedDoc.signed_file_path) {
+        pathsToDelete.push(selectedDoc.signed_file_path);
+      }
+
       const { error: storageError } = await supabase.storage
         .from('signed-documents')
-        .remove([selectedDoc.original_file_path]);
+        .remove(pathsToDelete);
 
       if (storageError) {
         console.warn('Storage delete error:', storageError);
@@ -293,7 +370,7 @@ export default function SignedDocuments() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setUploadDialogOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Upload Dokumen
           </Button>
@@ -361,13 +438,27 @@ export default function SignedDocuments() {
                           {format(new Date(doc.signed_at), 'dd MMM yyyy, HH:mm', { locale: id })}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDownload(doc)}
+                              onClick={() => handleDownloadOriginal(doc)}
+                              title="Download dokumen asli"
                             >
                               <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleDownloadSigned(doc)}
+                              disabled={generating === doc.id || !doc.signed_file_path}
+                              title="Download PDF bertanda tangan"
+                            >
+                              {generating === doc.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <FileDown className="h-4 w-4" />
+                              )}
                             </Button>
                             <Button
                               variant="outline"
@@ -377,6 +468,7 @@ export default function SignedDocuments() {
                                 setSelectedDoc(doc);
                                 setDeleteDialogOpen(true);
                               }}
+                              title="Hapus dokumen"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -392,21 +484,20 @@ export default function SignedDocuments() {
         </Card>
       </div>
 
-      {/* Upload Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+      {/* Initial Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSignature className="h-5 w-5" />
-              Upload & Tanda Tangan Dokumen
+              <Upload className="h-5 w-5" />
+              Pilih Dokumen
             </DialogTitle>
             <DialogDescription>
-              Upload dokumen dan tambahkan tanda tangan elektronik dengan QR Code
+              Pilih dokumen yang ingin ditandatangani secara elektronik
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* File Upload */}
             <div className="space-y-2">
               <Label>Pilih Dokumen *</Label>
               <Input
@@ -414,55 +505,37 @@ export default function SignedDocuments() {
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
               />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground">
-                  File dipilih: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
-              )}
-            </div>
-
-            {/* QR Position Selector */}
-            <div className="space-y-2">
-              <Label>Posisi QR Code TTE *</Label>
-              <QRPositionSelector value={qrPosition} onChange={setQrPosition} />
-            </div>
-
-            {/* Signer Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nama Penandatangan *</Label>
-                <Input
-                  placeholder="Nama lengkap"
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Jabatan *</Label>
-                <Input
-                  placeholder="Jabatan"
-                  value={signerPosition}
-                  onChange={(e) => setSignerPosition(e.target.value)}
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Format: PDF, Word, Excel, PowerPoint, Gambar (maks. 20MB)
+              </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
               Batal
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploading || tteLoading}
-            >
-              {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <FileSignature className="mr-2 h-4 w-4" />
-              Tanda Tangani
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Document Preview Dialog */}
+      <DocumentPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={(open) => {
+          setPreviewDialogOpen(open);
+          if (!open) resetForm();
+        }}
+        file={selectedFile}
+        qrPosition={qrPosition}
+        onQrPositionChange={setQrPosition}
+        signerName={signerName}
+        onSignerNameChange={setSignerName}
+        signerPosition={signerPosition}
+        onSignerPositionChange={setSignerPosition}
+        onConfirm={handleUploadAndSign}
+        uploading={uploading}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -470,8 +543,8 @@ export default function SignedDocuments() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Dokumen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dokumen "{selectedDoc?.original_file_name}" akan dihapus secara permanen.
-              Tindakan ini tidak dapat dibatalkan.
+              Dokumen "{selectedDoc?.original_file_name}" akan dihapus secara permanen beserta
+              versi bertanda tangan. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
