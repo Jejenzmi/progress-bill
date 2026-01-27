@@ -230,7 +230,7 @@ export default function Quotation() {
 
     const company = await getCompanyProfile();
     const quotationData = buildQuotationData();
-    const html = generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };
@@ -247,7 +247,7 @@ export default function Quotation() {
 
     const company = await getCompanyProfile();
     const quotationData = buildQuotationData();
-    const html = generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company);
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {

@@ -1,5 +1,7 @@
 // Invoice PDF Generator untuk format PT Zen Multimedia Indonesia
 
+import { generateTTESection, getTTEStyles, TTEData } from './qrCodeGenerator';
+
 export interface CompanyProfile {
   name: string;
   npwp: string;
@@ -72,10 +74,22 @@ export const numberToWords = (num: number): string => {
   return convert(num) + ' Rupiah';
 };
 
-export const generateInvoicePDF = (
+export const generateInvoicePDF = async (
   invoice: InvoiceData,
   company: CompanyProfile
-): string => {
+): Promise<string> => {
+  // Generate TTE data
+  const tteData: TTEData = {
+    documentType: 'Invoice',
+    documentNumber: invoice.invoiceNumber,
+    documentDate: invoice.invoiceDate,
+    companyName: company.name,
+    clientName: invoice.clientName,
+    totalAmount: invoice.grandTotal,
+    signedAt: new Date(),
+  };
+  
+  const tteSection = await generateTTESection(tteData);
   const itemRows = invoice.items.map((item) => `
     <tr>
       <td style="padding: 12px; border: 1px solid #e0e0e0;">${item.description}</td>
@@ -274,7 +288,7 @@ export const generateInvoicePDF = (
           gap: 30px;
         }
         .signature-section {
-          margin-top: 50px;
+          margin-top: 30px;
           display: flex;
           justify-content: flex-end;
         }
@@ -284,9 +298,10 @@ export const generateInvoicePDF = (
         }
         .signature-line {
           border-bottom: 1px solid #333;
-          margin-top: 70px;
+          margin-top: 50px;
           margin-bottom: 5px;
         }
+        ${getTTEStyles()}
         .due-date-box {
           display: inline-block;
           background: #dc3545;
@@ -434,6 +449,9 @@ export const generateInvoicePDF = (
             <p style="font-size: 9pt; color: #666;">Authorized Signature</p>
           </div>
         </div>
+
+        <!-- TTE Section with QR Code -->
+        ${tteSection}
 
         <!-- Footer -->
         <div class="footer">
