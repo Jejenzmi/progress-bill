@@ -26,29 +26,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import zenLogo from '@/assets/zen-logo.png';
 
+// BDO dan COO adalah orang yang sama, jadi akses disamakan
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
-  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin', 'coo'] },
-  { name: 'BDO Dashboard', href: '/bdo-dashboard', icon: BriefcaseBusiness, roles: ['admin', 'bdo'] },
-  { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing', 'bdo'] },
+  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin', 'bdo', 'coo'] },
+  { name: 'BDO Dashboard', href: '/bdo-dashboard', icon: BriefcaseBusiness, roles: ['admin', 'bdo', 'coo'] },
+  { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing', 'bdo', 'coo'] },
   { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing', 'bdo', 'coo'] },
-  { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager', 'coo'] },
-  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing', 'bdo'] },
-  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing', 'bdo'] },
-  { name: 'Aktivitas', href: '/activities', icon: Activity, roles: ['admin', 'marketing', 'project_manager', 'bdo'] },
+  { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager', 'bdo', 'coo'] },
+  { name: 'Leads', href: '/leads', icon: UserPlus, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Aktivitas', href: '/activities', icon: Activity, roles: ['admin', 'marketing', 'project_manager', 'bdo', 'coo'] },
   { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
-  { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing', 'bdo'] },
-  { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing', 'bdo'] },
-  { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance', 'coo'] },
+  { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+  { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance', 'bdo', 'coo'] },
   { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
-  { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance', 'coo'] },
-  { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance', 'coo'] },
+  { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
+  { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance', 'bdo', 'coo'] },
 ];
 
 const secondaryNavigation = [
   { name: 'Panduan', href: '/guide', icon: BookOpen, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
   { name: 'Kelola User', href: '/admin', icon: UserCog, roles: ['admin'] },
-  { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin', 'coo'] },
+  { name: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin', 'bdo', 'coo'] },
 ];
 
 export function AppSidebar() {
