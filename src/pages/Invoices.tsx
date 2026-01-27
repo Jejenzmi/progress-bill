@@ -209,7 +209,7 @@ export default function Invoices() {
   const handlePreviewPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
     const invoiceData = buildInvoicePDFData(invoice);
-    const html = generateInvoicePDF(invoiceData, company);
+    const html = await generateInvoicePDF(invoiceData, company);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };
@@ -217,7 +217,7 @@ export default function Invoices() {
   const handleDownloadPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
     const invoiceData = buildInvoicePDFData(invoice);
-    const html = generateInvoicePDF(invoiceData, company);
+    const html = await generateInvoicePDF(invoiceData, company);
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {

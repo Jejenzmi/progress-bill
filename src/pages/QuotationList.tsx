@@ -155,7 +155,7 @@ export default function QuotationList() {
       grandTotal,
     };
 
-    const html = generateQuotationPDF(quotationData, company);
+    const html = await generateQuotationPDF(quotationData, company);
     setPreviewHtml(html);
     setPreviewOpen(true);
   };

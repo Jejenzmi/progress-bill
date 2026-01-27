@@ -1,5 +1,7 @@
 // Quotation PDF Generator untuk format PT Zen Multimedia Indonesia
 
+import { generateTTESection, getTTEStyles, TTEData } from './qrCodeGenerator';
+
 export interface CompanyProfile {
   name: string;
   npwp: string;
@@ -82,10 +84,22 @@ export const numberToWords = (num: number): string => {
   return convert(num) + ' Rupiah';
 };
 
-export const generateQuotationPDF = (
+export const generateQuotationPDF = async (
   quotation: QuotationData,
   company: CompanyProfile
-): string => {
+): Promise<string> => {
+  // Generate TTE data
+  const tteData: TTEData = {
+    documentType: 'Quotation',
+    documentNumber: quotation.quotationNumber,
+    documentDate: quotation.quotationDate,
+    companyName: company.name,
+    clientName: quotation.clientName,
+    totalAmount: quotation.grandTotal,
+    signedAt: new Date(),
+  };
+  
+  const tteSection = await generateTTESection(tteData);
   const itemRows = quotation.items.map((item, index) => `
     <tr>
       <td style="padding: 12px; border: 1px solid #e0e0e0;">${item.item}</td>
@@ -295,7 +309,7 @@ export const generateQuotationPDF = (
           gap: 30px;
         }
         .signature-section {
-          margin-top: 50px;
+          margin-top: 30px;
           display: flex;
           justify-content: flex-end;
         }
@@ -305,9 +319,10 @@ export const generateQuotationPDF = (
         }
         .signature-line {
           border-bottom: 1px solid #333;
-          margin-top: 70px;
+          margin-top: 50px;
           margin-bottom: 5px;
         }
+        ${getTTEStyles()}
         .valid-thru {
           display: inline-block;
           background: #fff3cd;
@@ -454,6 +469,9 @@ export const generateQuotationPDF = (
             <p style="font-size: 9pt; color: #666;">Authorized Signature</p>
           </div>
         </div>
+
+        <!-- TTE Section with QR Code -->
+        ${tteSection}
 
         <!-- Footer -->
         <div class="footer">
