@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, XCircle, Clock, Send, MessageSquare, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { createNotification, notifyRoleUsers } from '@/lib/notificationHelper';
 import { id } from 'date-fns/locale';
 
 interface Quotation {
@@ -177,6 +178,30 @@ export function QuotationApprovalDialog({
           });
       }
 
+      // Notify COO and Admin about new submission
+      await notifyRoleUsers('coo', 
+        'Quotation Baru untuk Approval',
+        `Quotation "${quotation.project_name}" telah disubmit untuk approval.`,
+        {
+          type: 'info',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+          excludeUserId: user.id,
+        }
+      );
+      await notifyRoleUsers('admin', 
+        'Quotation Baru untuk Approval',
+        `Quotation "${quotation.project_name}" telah disubmit untuk approval.`,
+        {
+          type: 'info',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+          excludeUserId: user.id,
+        }
+      );
+
       toast({
         title: 'Berhasil',
         description: 'Quotation telah disubmit untuk approval',
@@ -222,6 +247,19 @@ export function QuotationApprovalDialog({
           user_id: user.id,
           comment: newComment.trim() ? `[Approved] ${newComment.trim()}` : '[Approved] Quotation disetujui',
         });
+
+      // Notify the submitter about approval
+      if (quotation.submitted_by) {
+        await createNotification({
+          userId: quotation.submitted_by,
+          title: 'Quotation Disetujui',
+          message: `Quotation "${quotation.project_name}" telah disetujui.`,
+          type: 'success',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+        });
+      }
 
       toast({
         title: 'Berhasil',
@@ -277,6 +315,19 @@ export function QuotationApprovalDialog({
           user_id: user.id,
           comment: `[Rejected] ${rejectionReason}`,
         });
+
+      // Notify the submitter about rejection
+      if (quotation.submitted_by) {
+        await createNotification({
+          userId: quotation.submitted_by,
+          title: 'Quotation Ditolak',
+          message: `Quotation "${quotation.project_name}" ditolak. Alasan: ${rejectionReason}`,
+          type: 'warning',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+        });
+      }
 
       toast({
         title: 'Berhasil',
