@@ -383,6 +383,7 @@ export type Database = {
           signer_position: string
           updated_at: string
           user_id: string
+          verification_id: string | null
         }
         Insert: {
           created_at?: string
@@ -398,6 +399,7 @@ export type Database = {
           signer_position: string
           updated_at?: string
           user_id: string
+          verification_id?: string | null
         }
         Update: {
           created_at?: string
@@ -413,6 +415,7 @@ export type Database = {
           signer_position?: string
           updated_at?: string
           user_id?: string
+          verification_id?: string | null
         }
         Relationships: []
       }
@@ -510,7 +513,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      document_verifications: {
+        Row: {
+          file_type: string | null
+          original_file_name: string | null
+          signed_at: string | null
+          signer_name: string | null
+          signer_position: string | null
+          verification_id: string | null
+        }
+        Insert: {
+          file_type?: string | null
+          original_file_name?: string | null
+          signed_at?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          verification_id?: string | null
+        }
+        Update: {
+          file_type?: string | null
+          original_file_name?: string | null
+          signed_at?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          verification_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_roles: {
