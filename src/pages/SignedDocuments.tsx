@@ -20,16 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { DeleteConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserTTE } from '@/hooks/useUserTTE';
@@ -51,7 +42,7 @@ import { id } from 'date-fns/locale';
 import { DocumentPreviewDialog } from '@/components/documents/DocumentPreviewDialog';
 import { BatchSigningDialog } from '@/components/documents/BatchSigningDialog';
 import { RegenerateTTEDialog } from '@/components/documents/RegenerateTTEDialog';
-import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
+import { generateSignedPDF, DocumentTTEData, QRSize } from '@/lib/documentTTEGenerator';
 
 interface SignedDocument {
   id: string;
@@ -89,6 +80,7 @@ export default function SignedDocuments() {
   // Upload form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [qrPosition, setQrPosition] = useState('bottom-right');
+  const [qrSize, setQrSize] = useState<QRSize>('medium');
   const [signerName, setSignerName] = useState('');
   const [signerPosition, setSignerPosition] = useState('');
 
@@ -169,6 +161,7 @@ export default function SignedDocuments() {
         signerPosition: signerPosition.trim(),
         signedAt,
         qrPosition,
+        qrSize,
       };
       
       const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(selectedFile, tteData, verifyUrl);
@@ -235,6 +228,7 @@ export default function SignedDocuments() {
   const resetForm = () => {
     setSelectedFile(null);
     setQrPosition('bottom-right');
+    setQrSize('medium');
     setPreviewDialogOpen(false);
     setUploadDialogOpen(false);
     if (tteSettings) {
@@ -712,6 +706,8 @@ export default function SignedDocuments() {
         file={selectedFile}
         qrPosition={qrPosition}
         onQrPositionChange={setQrPosition}
+        qrSize={qrSize}
+        onQrSizeChange={setQrSize}
         signerName={signerName}
         onSignerNameChange={setSignerName}
         signerPosition={signerPosition}
@@ -721,26 +717,13 @@ export default function SignedDocuments() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Dokumen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dokumen "{selectedDoc?.original_file_name}" akan dihapus secara permanen beserta
-              versi bertanda tangan. Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={selectedDoc?.original_file_name || ''}
+        itemType="Dokumen"
+        onConfirm={handleDelete}
+      />
 
       {/* Batch Signing Dialog */}
       <BatchSigningDialog
