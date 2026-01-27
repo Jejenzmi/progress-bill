@@ -5,10 +5,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Save, Target, TrendingUp, Loader2 } from 'lucide-react';
+import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText } from 'lucide-react';
 
 interface SettingsData {
   company_profile: {
@@ -263,13 +264,18 @@ export default function Settings() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bankInfo">Informasi Rekening</Label>
-              <Input
+              <Label htmlFor="bankInfo">Informasi Rekening Bank</Label>
+              <Textarea
                 id="bankInfo"
                 value={settings.company_profile.bank_info}
                 onChange={(e) => updateCompanyProfile('bank_info', e.target.value)}
                 disabled={!isAdmin}
+                rows={3}
+                placeholder="Bank BCA&#10;No. Rekening: 123-456-7890&#10;A.n. PT Zen Multimedia Indonesia"
               />
+              <p className="text-xs text-muted-foreground">
+                Info ini akan muncul di PDF Invoice sebagai informasi pembayaran
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -17,7 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
 import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users } from 'lucide-react';
+import { AddClientDialog } from '@/components/clients/AddClientDialog';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -30,10 +31,11 @@ const formatCurrencyLocal = (amount: number): string => {
 
 export default function Quotation() {
   const { toast } = useToast();
-  const { clients, loading: clientsLoading } = useClients();
+  const { clients, loading: clientsLoading, refetch: refetchClients } = useClients();
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [addClientOpen, setAddClientOpen] = useState(false);
   
   // Basic Info
   const [quotationNumber, setQuotationNumber] = useState('');
@@ -78,6 +80,13 @@ export default function Quotation() {
       setClientName(client.name);
       setClientAddress(client.address || '');
     }
+  };
+
+  const handleClientCreated = (newClient: { id: string; name: string; address: string | null }) => {
+    refetchClients();
+    setSelectedClientId(newClient.id);
+    setClientName(newClient.name);
+    setClientAddress(newClient.address || '');
   };
 
   const addItem = () => {
@@ -291,26 +300,38 @@ export default function Quotation() {
               </div>
               
               {/* Client Selection */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Pilih Klien dari Database
                   </Label>
-                  <Select value={selectedClientId} onValueChange={handleClientSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={clientsLoading ? "Memuat..." : "Pilih klien..."} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">-- Isi Manual --</SelectItem>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name} ({client.client_type})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setAddClientOpen(true)}
+                    className="h-7 text-xs"
+                  >
+                    <UserPlus className="h-3 w-3 mr-1" />
+                    Tambah Klien Baru
+                  </Button>
                 </div>
+                <Select value={selectedClientId} onValueChange={handleClientSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={clientsLoading ? "Memuat..." : "Pilih klien..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">-- Isi Manual --</SelectItem>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name} ({client.client_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="clientName">Nama Klien *</Label>
                   <Input
@@ -576,6 +597,13 @@ export default function Quotation() {
         html={previewHtml}
         title="Preview Quotation"
         description={`${quotationNumber} - ${projectName}`}
+      />
+
+      {/* Add Client Dialog */}
+      <AddClientDialog
+        open={addClientOpen}
+        onOpenChange={setAddClientOpen}
+        onClientCreated={handleClientCreated}
       />
     </AppLayout>
   );
