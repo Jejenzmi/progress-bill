@@ -802,7 +802,13 @@ export type Database = {
         | "whatsapp"
         | "note"
         | "follow_up"
-      app_role: "admin" | "marketing" | "finance" | "project_manager"
+      app_role:
+        | "admin"
+        | "marketing"
+        | "finance"
+        | "project_manager"
+        | "bdo"
+        | "coo"
       client_type: "Pemerintah" | "Swasta"
       evidence_type:
         | "BAST"
@@ -956,7 +962,14 @@ export const Constants = {
         "note",
         "follow_up",
       ],
-      app_role: ["admin", "marketing", "finance", "project_manager"],
+      app_role: [
+        "admin",
+        "marketing",
+        "finance",
+        "project_manager",
+        "bdo",
+        "coo",
+      ],
       client_type: ["Pemerintah", "Swasta"],
       evidence_type: [
         "BAST",
