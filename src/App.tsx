@@ -12,6 +12,7 @@ import Quotation from "./pages/Quotation";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
 import SignedDocuments from "./pages/SignedDocuments";
+import VerifyDocument from "./pages/VerifyDocument";
 import Cashflow from "./pages/Cashflow";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -176,6 +177,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Public verification page - no auth required */}
+      <Route path="/verify" element={<VerifyDocument />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
