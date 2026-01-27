@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -13,17 +14,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateQuotationHTML, openPrintWindow } from '@/lib/pdfGenerator';
-import { Plus, Trash2, Calculator, FileText, Download, Save, Loader2 } from 'lucide-react';
+import { generateQuotationPDF, openPrintWindow, formatCurrency, numberToWords, type QuotationItem } from '@/lib/quotationPdfGenerator';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator } from 'lucide-react';
 
-interface ManDaysEstimate {
-  role: string;
-  ratePerDay: number;
-  days: number;
-  total: number;
-}
-
-const formatCurrency = (amount: number): string => {
+const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -32,59 +26,83 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-const defaultRoles = [
-  { role: 'Project Manager', rate: 1500000 },
-  { role: 'Business Analyst', rate: 1200000 },
-  { role: 'UI/UX Designer', rate: 1000000 },
-  { role: 'Backend Developer', rate: 1200000 },
-  { role: 'Frontend Developer', rate: 1000000 },
-  { role: 'QA Engineer', rate: 800000 },
-  { role: 'DevOps Engineer', rate: 1300000 },
-];
-
 export default function Quotation() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  
+  // Basic Info
+  const [quotationNumber, setQuotationNumber] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [clientName, setClientName] = useState('');
-  const [manDays, setManDays] = useState<ManDaysEstimate[]>([
-    { role: 'Project Manager', ratePerDay: 1500000, days: 20, total: 30000000 },
-    { role: 'Backend Developer', ratePerDay: 1200000, days: 40, total: 48000000 },
-    { role: 'Frontend Developer', ratePerDay: 1000000, days: 30, total: 30000000 },
+  const [clientAddress, setClientAddress] = useState('');
+  
+  // Items
+  const [items, setItems] = useState<QuotationItem[]>([
+    { item: 'Sistem Berbasis Web', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 },
   ]);
-  const [hostingCost, setHostingCost] = useState(5000000);
-  const [maintenanceCost, setMaintenanceCost] = useState(3000000);
-  const [maintenancePeriod, setMaintenancePeriod] = useState<'Bulanan' | 'Tahunan'>('Tahunan');
+  
+  // Costs
+  const [ppnPercentage, setPpnPercentage] = useState(11);
+  const [estimatedDuration, setEstimatedDuration] = useState('1–30 hari kalender');
+  const [paymentTerms, setPaymentTerms] = useState<string[]>([
+    '50% – Down Payment',
+    '50% – Setelah progress 100%',
+  ]);
+  const [guaranteeTerms, setGuaranteeTerms] = useState<string[]>([
+    'Garansi bug fixing 60 hari',
+    'Support teknis selama masa garansi',
+    'Opsional maintenance bulanan tersedia jika diperlukan',
+  ]);
 
-  const addManDay = () => {
-    setManDays([
-      ...manDays,
-      { role: '', ratePerDay: 1000000, days: 1, total: 1000000 },
-    ]);
+  // Generate quotation number on mount
+  useEffect(() => {
+    const now = new Date();
+    const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+    const year = now.getFullYear();
+    const random = Math.floor(Math.random() * 900) + 100;
+    setQuotationNumber(`${random}/QUO-ZMI/${month}/${year}`);
+  }, []);
+
+  const addItem = () => {
+    setItems([...items, { item: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
   };
 
-  const removeManDay = (index: number) => {
-    setManDays(manDays.filter((_, i) => i !== index));
-  };
-
-  const updateManDay = (index: number, field: keyof ManDaysEstimate, value: string | number) => {
-    const updated = [...manDays];
-    if (field === 'role') {
-      const preset = defaultRoles.find((r) => r.role === value);
-      updated[index] = {
-        ...updated[index],
-        role: value as string,
-        ratePerDay: preset?.rate || updated[index].ratePerDay,
-      };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
     }
-    updated[index].total = updated[index].ratePerDay * updated[index].days;
-    setManDays(updated);
   };
 
-  const totalDevelopment = manDays.reduce((sum, m) => sum + m.total, 0);
-  const grandTotal = totalDevelopment + hostingCost + maintenanceCost;
+  const updateItem = (index: number, field: keyof QuotationItem, value: string | number) => {
+    const updated = [...items];
+    updated[index] = { ...updated[index], [field]: value };
+    
+    if (field === 'quantity' || field === 'unitPrice') {
+      updated[index].total = updated[index].quantity * updated[index].unitPrice;
+    }
+    
+    setItems(updated);
+  };
+
+  const addPaymentTerm = () => {
+    setPaymentTerms([...paymentTerms, '']);
+  };
+
+  const updatePaymentTerm = (index: number, value: string) => {
+    const updated = [...paymentTerms];
+    updated[index] = value;
+    setPaymentTerms(updated);
+  };
+
+  const removePaymentTerm = (index: number) => {
+    setPaymentTerms(paymentTerms.filter((_, i) => i !== index));
+  };
+
+  // Calculations
+  const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+  const ppnAmount = Math.round(subtotal * (ppnPercentage / 100));
+  const grandTotal = subtotal + ppnAmount;
 
   const handleSave = async () => {
     if (!projectName) {
@@ -103,11 +121,11 @@ export default function Quotation() {
 
       const { error } = await supabase.from('quotations').insert([{
         project_name: projectName,
-        man_days: manDays as any,
-        hosting_cost: hostingCost,
-        maintenance_cost: maintenanceCost,
-        maintenance_period: maintenancePeriod,
-        total_development: totalDevelopment,
+        man_days: items as any,
+        hosting_cost: 0,
+        maintenance_cost: 0,
+        maintenance_period: 'Tahunan',
+        total_development: subtotal,
         grand_total: grandTotal,
         valid_until: validUntil.toISOString().split('T')[0],
         status: 'Draft',
@@ -149,12 +167,12 @@ export default function Quotation() {
       .maybeSingle();
 
     const company = companyData?.value as any || {
-      name: 'PT Zen Multimedia Indonesia',
+      name: 'PT. ZEN MULTIMEDIA INDONESIA',
       npwp: '-',
-      address: '-',
-      phone: '-',
-      email: '-',
-      website: '-',
+      address: 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, Jawa Barat - Indonesia',
+      phone: '085121045798',
+      email: 'info@zenmultimedia.co.id',
+      website: 'www.zenmultimedia.co.id',
       bank_info: '-',
     };
 
@@ -162,70 +180,106 @@ export default function Quotation() {
     validUntil.setDate(validUntil.getDate() + 30);
 
     const quotationData = {
-      projectName,
-      clientName: clientName || 'Klien',
-      manDays,
-      hostingCost,
-      maintenanceCost,
-      maintenancePeriod,
-      totalDevelopment,
-      grandTotal,
+      quotationNumber,
+      quotationDate: new Date(),
       validUntil,
+      clientName: clientName || 'Klien',
+      clientAddress: clientAddress || '',
+      projectName,
+      projectDescription: projectDescription || undefined,
+      items,
+      subtotal,
+      ppnPercentage,
+      ppnAmount,
+      grandTotal,
+      paymentTerms: paymentTerms.filter(t => t.trim()),
+      estimatedDuration: estimatedDuration || undefined,
+      guaranteeTerms: guaranteeTerms.filter(t => t.trim()),
     };
 
-    const html = generateQuotationHTML(quotationData, company);
+    const html = generateQuotationPDF(quotationData, company);
     openPrintWindow(html);
   };
 
   return (
-    <AppLayout title="Quotation Builder" subtitle="Buat penawaran harga proyek dengan Man-days Calculator">
+    <AppLayout title="Quotation Builder" subtitle="Buat penawaran harga sesuai format PT Zen Multimedia Indonesia">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form Section */}
         <div className="lg:col-span-2 space-y-6">
           {/* Project Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Informasi Proyek</CardTitle>
+              <CardTitle>Informasi Quotation</CardTitle>
               <CardDescription>Detail dasar penawaran</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="quotationNumber">Nomor Quotation</Label>
+                  <Input
+                    id="quotationNumber"
+                    value={quotationNumber}
+                    onChange={(e) => setQuotationNumber(e.target.value)}
+                    placeholder="128/QUO-ZMI/XII/2025"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="projectName">Nama Proyek *</Label>
                   <Input
                     id="projectName"
-                    placeholder="Contoh: Dashboard Eksekutif"
+                    placeholder="Sistem Pengecekan Komponen Produksi"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="projectDescription">Deskripsi Proyek</Label>
+                <Textarea
+                  id="projectDescription"
+                  placeholder="Deskripsi singkat sistem yang akan dibuat..."
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="clientName">Nama Klien</Label>
+                  <Label htmlFor="clientName">Nama Klien *</Label>
                   <Input
                     id="clientName"
-                    placeholder="Contoh: Diskominfo Takalar"
+                    placeholder="PT. Harmonic Techindo Agung"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientAddress">Alamat Klien</Label>
+                  <Input
+                    id="clientAddress"
+                    placeholder="Alamat lengkap klien"
+                    value={clientAddress}
+                    onChange={(e) => setClientAddress(e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Man-days Calculator */}
+          {/* Items */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Calculator className="h-5 w-5" />
-                    Man-days Calculator
+                    Item Penawaran
                   </CardTitle>
-                  <CardDescription>Hitung estimasi biaya berdasarkan role dan durasi</CardDescription>
+                  <CardDescription>Daftar item yang ditawarkan</CardDescription>
                 </div>
-                <Button onClick={addManDay} size="sm">
+                <Button onClick={addItem} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Tambah Role
+                  Tambah Item
                 </Button>
               </div>
             </CardHeader>
@@ -233,60 +287,67 @@ export default function Quotation() {
               <div className="space-y-3">
                 {/* Header */}
                 <div className="grid grid-cols-12 gap-3 text-sm font-medium text-muted-foreground px-2">
-                  <div className="col-span-4">Role</div>
-                  <div className="col-span-3">Rate/Hari</div>
-                  <div className="col-span-2">Hari</div>
+                  <div className="col-span-4">Item</div>
+                  <div className="col-span-1">Jml</div>
+                  <div className="col-span-2">Satuan</div>
+                  <div className="col-span-2">Harga Satuan</div>
                   <div className="col-span-2 text-right">Total</div>
                   <div className="col-span-1"></div>
                 </div>
 
                 {/* Rows */}
-                {manDays.map((item, index) => (
+                {items.map((item, index) => (
                   <div key={index} className="grid grid-cols-12 gap-3 items-center">
                     <div className="col-span-4">
-                      <Select
-                        value={item.role}
-                        onValueChange={(value) => updateManDay(index, 'role', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {defaultRoles.map((role) => (
-                            <SelectItem key={role.role} value={role.role}>
-                              {role.role}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        value={item.item}
+                        onChange={(e) => updateItem(index, 'item', e.target.value)}
+                        placeholder="Nama item"
+                      />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-1">
                       <Input
                         type="number"
-                        value={item.ratePerDay}
-                        onChange={(e) =>
-                          updateManDay(index, 'ratePerDay', parseInt(e.target.value) || 0)
-                        }
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                        min={1}
                       />
+                    </div>
+                    <div className="col-span-2">
+                      <Select
+                        value={item.unit}
+                        onValueChange={(value) => updateItem(index, 'unit', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Package">Package</SelectItem>
+                          <SelectItem value="Unit">Unit</SelectItem>
+                          <SelectItem value="License">License</SelectItem>
+                          <SelectItem value="Modul">Modul</SelectItem>
+                          <SelectItem value="Tahun">Tahun</SelectItem>
+                          <SelectItem value="Bulan">Bulan</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="col-span-2">
                       <Input
                         type="number"
-                        value={item.days}
-                        onChange={(e) =>
-                          updateManDay(index, 'days', parseInt(e.target.value) || 0)
-                        }
+                        value={item.unitPrice}
+                        onChange={(e) => updateItem(index, 'unitPrice', parseInt(e.target.value) || 0)}
                       />
                     </div>
-                    <div className="col-span-2 text-right font-semibold">
-                      {formatCurrency(item.total)}
+                    <div className="col-span-2 text-right font-semibold text-sm">
+                      {formatCurrencyLocal(item.total)}
                     </div>
                     <div className="col-span-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
-                        onClick={() => removeManDay(index)}
+                        onClick={() => removeItem(index)}
+                        disabled={items.length === 1}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -294,57 +355,81 @@ export default function Quotation() {
                   </div>
                 ))}
 
-                {/* Subtotal */}
-                <div className="border-t pt-3 mt-3">
+                {/* Subtotal & PPN */}
+                <div className="border-t pt-4 mt-4 space-y-2">
                   <div className="flex justify-between items-center px-2">
-                    <span className="font-medium">Subtotal Development</span>
-                    <span className="text-lg font-bold">{formatCurrency(totalDevelopment)}</span>
+                    <span className="font-medium">Subtotal</span>
+                    <span className="text-lg font-semibold">{formatCurrencyLocal(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">PPN</span>
+                      <Input
+                        type="number"
+                        value={ppnPercentage}
+                        onChange={(e) => setPpnPercentage(parseInt(e.target.value) || 0)}
+                        className="w-16 h-8"
+                        min={0}
+                        max={100}
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
+                    <span className="text-muted-foreground">{formatCurrencyLocal(ppnAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2 pt-2 border-t">
+                    <span className="font-bold">Grand Total</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrencyLocal(grandTotal)}</span>
+                  </div>
+                  <div className="px-2 pt-2">
+                    <p className="text-sm text-muted-foreground italic">
+                      Terbilang: {numberToWords(grandTotal)}
+                    </p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Additional Costs */}
+          {/* Additional Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Biaya Tambahan</CardTitle>
-              <CardDescription>Hosting & Maintenance (berulang)</CardDescription>
+              <CardTitle>Ketentuan & Garansi</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hosting">Biaya Hosting (Tahunan)</Label>
-                  <Input
-                    id="hosting"
-                    type="number"
-                    value={hostingCost}
-                    onChange={(e) => setHostingCost(parseInt(e.target.value) || 0)}
-                  />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Estimasi Waktu Pengerjaan</Label>
+                <Input
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(e.target.value)}
+                  placeholder="1–30 hari kalender"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Ketentuan Pembayaran</Label>
+                  <Button variant="ghost" size="sm" onClick={addPaymentTerm}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Tambah
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maintenance">Biaya Maintenance</Label>
-                  <div className="flex gap-2">
+                {paymentTerms.map((term, index) => (
+                  <div key={index} className="flex gap-2">
                     <Input
-                      id="maintenance"
-                      type="number"
-                      value={maintenanceCost}
-                      onChange={(e) => setMaintenanceCost(parseInt(e.target.value) || 0)}
+                      value={term}
+                      onChange={(e) => updatePaymentTerm(index, e.target.value)}
+                      placeholder="50% – Down Payment"
                     />
-                    <Select
-                      value={maintenancePeriod}
-                      onValueChange={(value) => setMaintenancePeriod(value as 'Bulanan' | 'Tahunan')}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => removePaymentTerm(index)}
                     >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bulanan">Bulanan</SelectItem>
-                        <SelectItem value="Tahunan">Tahunan</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -360,6 +445,10 @@ export default function Quotation() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">No. Quotation</p>
+                <p className="font-medium">{quotationNumber}</p>
+              </div>
               {projectName && (
                 <div>
                   <p className="text-sm text-muted-foreground">Proyek</p>
@@ -375,16 +464,12 @@ export default function Quotation() {
 
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Development ({manDays.length} roles)</span>
-                  <span>{formatCurrency(totalDevelopment)}</span>
+                  <span>Subtotal ({items.length} item)</span>
+                  <span>{formatCurrencyLocal(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Hosting</span>
-                  <span>{formatCurrency(hostingCost)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Maintenance ({maintenancePeriod})</span>
-                  <span>{formatCurrency(maintenanceCost)}</span>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>PPN {ppnPercentage}%</span>
+                  <span>{formatCurrencyLocal(ppnAmount)}</span>
                 </div>
               </div>
 
@@ -392,7 +477,7 @@ export default function Quotation() {
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Grand Total</span>
                   <span className="text-2xl font-bold text-primary">
-                    {formatCurrency(grandTotal)}
+                    {formatCurrencyLocal(grandTotal)}
                   </span>
                 </div>
               </div>
