@@ -20,16 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserTTE } from '@/hooks/useUserTTE';
@@ -44,7 +35,8 @@ import {
   RefreshCw,
   FileDown,
   Files,
-  RotateCcw
+  RotateCcw,
+  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -77,7 +69,7 @@ export default function SignedDocuments() {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
-  
+  const [deleting, setDeleting] = useState(false);
   // Dialog states
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -310,6 +302,7 @@ export default function SignedDocuments() {
   const handleDelete = async () => {
     if (!selectedDoc) return;
 
+    setDeleting(true);
     try {
       // Delete files from storage
       const pathsToDelete = [selectedDoc.original_file_path];
@@ -348,6 +341,8 @@ export default function SignedDocuments() {
         description: 'Gagal menghapus dokumen',
         variant: 'destructive',
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -721,26 +716,13 @@ export default function SignedDocuments() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Dokumen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dokumen "{selectedDoc?.original_file_name}" akan dihapus secara permanen beserta
-              versi bertanda tangan. Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={selectedDoc?.original_file_name || 'Dokumen'}
+        onConfirm={handleDelete}
+        loading={deleting}
+      />
 
       {/* Batch Signing Dialog */}
       <BatchSigningDialog

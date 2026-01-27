@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition } from './QRPositionSelector';
+import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition, QRSize } from './QRPositionSelector';
 import { Loader2, FileSignature, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +66,16 @@ export function DocumentPreviewDialog({
     }
   }, [onQrPositionChange]);
 
+  // Get QR size class for preview
+  const getQrSizeClass = (): { size: string; text: string } => {
+    const parsed = parseQRPosition(qrPosition);
+    switch (parsed.size) {
+      case 'small': return { size: 'w-12 h-12', text: 'text-[6px]' };
+      case 'large': return { size: 'w-20 h-20', text: 'text-[10px]' };
+      default: return { size: 'w-16 h-16', text: 'text-[8px]' };
+    }
+  };
+
   // Calculate QR overlay style for preview
   const getQrOverlayStyle = useCallback(() => {
     const parsed = parseQRPosition(qrPosition);
@@ -93,6 +103,7 @@ export function DocumentPreviewDialog({
 
   const isImage = fileType.startsWith('image/');
   const isPdf = fileType === 'application/pdf';
+  const qrSizeClass = getQrSizeClass();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,7 +114,7 @@ export function DocumentPreviewDialog({
             Preview Dokumen & Posisi TTE
           </DialogTitle>
           <DialogDescription>
-            Lihat preview dokumen dan atur posisi QR Code TTE sebelum menandatangani
+            Lihat preview dokumen dan atur posisi serta ukuran QR Code TTE sebelum menandatangani
           </DialogDescription>
         </DialogHeader>
 
@@ -125,10 +136,13 @@ export function DocumentPreviewDialog({
                     />
                     {/* QR Overlay for images */}
                     <div
-                      className="w-16 h-16 border-2 border-dashed border-primary bg-primary/10 rounded flex items-center justify-center transition-all"
+                      className={cn(
+                        'border-2 border-dashed border-primary bg-primary/10 rounded flex items-center justify-center transition-all',
+                        qrSizeClass.size
+                      )}
                       style={getQrOverlayStyle()}
                     >
-                      <div className="text-[8px] font-bold text-primary text-center leading-tight">
+                      <div className={cn('font-bold text-primary text-center leading-tight', qrSizeClass.text)}>
                         QR<br/>TTE
                       </div>
                     </div>
@@ -142,10 +156,13 @@ export function DocumentPreviewDialog({
                     />
                     {/* QR Overlay indicator for PDF */}
                     <div
-                      className="w-16 h-16 border-2 border-dashed border-primary bg-primary/20 rounded flex items-center justify-center pointer-events-none"
+                      className={cn(
+                        'border-2 border-dashed border-primary bg-primary/20 rounded flex items-center justify-center pointer-events-none',
+                        qrSizeClass.size
+                      )}
                       style={getQrOverlayStyle()}
                     >
-                      <div className="text-[8px] font-bold text-primary text-center leading-tight">
+                      <div className={cn('font-bold text-primary text-center leading-tight', qrSizeClass.text)}>
                         QR<br/>TTE
                       </div>
                     </div>
@@ -164,7 +181,11 @@ export function DocumentPreviewDialog({
                         ))}
                       </div>
                       <div
-                        className="w-10 h-10 border-2 border-primary bg-primary/20 rounded flex items-center justify-center"
+                        className={cn(
+                          'border-2 border-primary bg-primary/20 rounded flex items-center justify-center',
+                          parseQRPosition(qrPosition).size === 'small' ? 'w-8 h-8' : 
+                          parseQRPosition(qrPosition).size === 'large' ? 'w-14 h-14' : 'w-10 h-10'
+                        )}
                         style={{
                           position: 'absolute',
                           ...(() => {
@@ -172,7 +193,7 @@ export function DocumentPreviewDialog({
                             if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
                               return { left: `${parsed.x}%`, top: `${parsed.y}%`, transform: 'translate(-50%, -50%)' };
                             }
-                            const presets: Record<string, any> = {
+                            const presets: Record<string, React.CSSProperties> = {
                               'top-left': { top: '0.5rem', left: '0.5rem' },
                               'top-right': { top: '0.5rem', right: '0.5rem' },
                               'bottom-left': { bottom: '0.5rem', left: '0.5rem' },
@@ -199,8 +220,12 @@ export function DocumentPreviewDialog({
           {/* Settings Panel */}
           <div className="space-y-4 overflow-y-auto">
             <div className="space-y-2">
-              <Label className="text-base font-semibold">Posisi QR Code TTE</Label>
-              <QRPositionSelector value={qrPosition} onChange={handleQrPositionChange} />
+              <Label className="text-base font-semibold">Posisi & Ukuran QR Code TTE</Label>
+              <QRPositionSelector 
+                value={qrPosition} 
+                onChange={handleQrPositionChange}
+                showSizeSelector={true}
+              />
             </div>
 
             <div className="border-t pt-4 space-y-4">
@@ -230,9 +255,9 @@ export function DocumentPreviewDialog({
               <h4 className="font-medium mb-2">Informasi TTE</h4>
               <ul className="space-y-1 text-muted-foreground text-xs">
                 <li>• QR Code akan ditempatkan di posisi yang dipilih</li>
-                <li>• Dokumen PDF akan di-generate dengan TTE ter-embed</li>
+                <li>• QR Code di-embed langsung ke dalam PDF asli</li>
+                <li>• Ukuran QR dapat disesuaikan (kecil/sedang/besar)</li>
                 <li>• Informasi penandatangan akan tercantum dalam QR</li>
-                <li>• Dokumen asli dan hasil TTE akan disimpan</li>
               </ul>
             </div>
           </div>
