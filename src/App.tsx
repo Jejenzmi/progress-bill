@@ -11,6 +11,7 @@ import Pipeline from "./pages/Pipeline";
 import PipelineKanban from "./pages/PipelineKanban";
 import SalesDashboard from "./pages/SalesDashboard";
 import SalesReport from "./pages/SalesReport";
+import CEODashboard from "./pages/CEODashboard";
 import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
 import Activities from "./pages/Activities";
@@ -93,6 +94,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PMDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ceo-dashboard"
+        element={
+          <ProtectedRoute>
+            <CEODashboard />
           </ProtectedRoute>
         }
       />

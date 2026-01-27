@@ -18,6 +18,7 @@ import {
   UserPlus,
   Activity,
   FileBarChart,
+  Crown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ import zenLogo from '@/assets/zen-logo.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'marketing', 'finance'] },
+  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: Crown, roles: ['admin'] },
   { name: 'Sales Dashboard', href: '/sales-dashboard', icon: BarChart3, roles: ['admin', 'marketing'] },
   { name: 'Sales Report', href: '/sales-report', icon: FileBarChart, roles: ['admin', 'marketing'] },
   { name: 'Dashboard PM', href: '/pm-dashboard', icon: Target, roles: ['admin', 'project_manager'] },

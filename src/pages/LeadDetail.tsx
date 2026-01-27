@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { LeadScoringCard } from '@/components/leads/LeadScoringCard';
 import {
   ArrowLeft,
   Phone,
@@ -222,10 +223,10 @@ export default function LeadDetail() {
                       <div 
                         className={cn(
                           "h-full rounded-full",
-                          lead.score >= 70 ? "bg-red-500" :
-                          lead.score >= 40 ? "bg-yellow-500" : "bg-blue-500"
+                          lead.score >= 70 ? "bg-destructive" :
+                          lead.score >= 40 ? "bg-warning" : "bg-primary"
                         )}
-                        style={{ width: `${lead.score}%` }}
+                        style={{ width: `${Math.min(lead.score, 100)}%` }}
                       />
                     </div>
                     <span className="text-sm font-bold">{lead.score}</span>
@@ -288,6 +289,9 @@ export default function LeadDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Lead Scoring Card */}
+          <LeadScoringCard lead={lead} onScoreUpdate={(score) => setLead({ ...lead, score })} />
 
           {/* Notes Card */}
           {lead.notes && (
