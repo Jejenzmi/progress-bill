@@ -18,6 +18,7 @@ import { useClients } from '@/hooks/useClients';
 import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
+import { useUserTTE } from '@/hooks/useUserTTE';
 import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
@@ -33,6 +34,7 @@ const formatCurrencyLocal = (amount: number): string => {
 export default function Quotation() {
   const { toast } = useToast();
   const { clients, loading: clientsLoading, refetch: refetchClients } = useClients();
+  const { fetchTTEForPDF } = useUserTTE();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const editId = searchParams.get('edit');
@@ -209,21 +211,7 @@ export default function Quotation() {
     };
   };
 
-  const getTTESettings = async (): Promise<TTESettings> => {
-    const { data: tteData } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'tte_settings')
-      .maybeSingle();
-
-    const value = tteData?.value as Record<string, unknown> | null;
-    
-    return {
-      signer_name: (value?.signer_name as string) || '',
-      signer_position: (value?.signer_position as string) || 'Direktur',
-      enabled: value?.enabled !== false,
-    };
-  };
+  // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const buildQuotationData = () => {
     const validUntil = new Date();
@@ -325,7 +313,7 @@ export default function Quotation() {
     }
 
     const company = await getCompanyProfile();
-    const tteSettings = await getTTESettings();
+    const tteSettings = await fetchTTEForPDF();
     const quotationData = buildQuotationData();
     const html = await generateQuotationPDF(quotationData, company, tteSettings);
     setPreviewHtml(html);
@@ -343,7 +331,7 @@ export default function Quotation() {
     }
 
     const company = await getCompanyProfile();
-    const tteSettings = await getTTESettings();
+    const tteSettings = await fetchTTEForPDF();
     const quotationData = buildQuotationData();
     const html = await generateQuotationPDF(quotationData, company, tteSettings);
     

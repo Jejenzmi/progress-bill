@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useUserTTE } from '@/hooks/useUserTTE';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -85,6 +86,7 @@ interface InvoiceData {
 export default function Invoices() {
   const { hasRole } = useAuth();
   const { toast } = useToast();
+  const { fetchTTEForPDF } = useUserTTE();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
@@ -182,21 +184,7 @@ export default function Invoices() {
     };
   };
 
-  const getTTESettings = async (): Promise<TTESettings> => {
-    const { data: tteData } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'tte_settings')
-      .maybeSingle();
-
-    const value = tteData?.value as Record<string, unknown> | null;
-    
-    return {
-      signer_name: (value?.signer_name as string) || '',
-      signer_position: (value?.signer_position as string) || 'Direktur',
-      enabled: value?.enabled !== false,
-    };
-  };
+  // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const buildInvoicePDFData = (invoice: InvoiceData) => {
     const items: InvoiceItem[] = [{
@@ -225,7 +213,7 @@ export default function Invoices() {
 
   const handlePreviewPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
-    const tteSettings = await getTTESettings();
+    const tteSettings = await fetchTTEForPDF();
     const invoiceData = buildInvoicePDFData(invoice);
     const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     setPreviewHtml(html);
@@ -234,7 +222,7 @@ export default function Invoices() {
 
   const handleDownloadPDF = async (invoice: InvoiceData) => {
     const company = await getCompanyProfile();
-    const tteSettings = await getTTESettings();
+    const tteSettings = await fetchTTEForPDF();
     const invoiceData = buildInvoicePDFData(invoice);
     const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     
