@@ -8,6 +8,7 @@ export interface CompanyProfile {
   email: string;
   website: string;
   bank_info: string;
+  logo_url?: string;
 }
 
 export interface InvoiceItem {
@@ -313,6 +314,7 @@ export const generateInvoicePDF = (
         <!-- Header -->
         <div class="header">
           <div class="logo-section">
+            ${company.logo_url ? `<img src="${company.logo_url}" alt="Company Logo" style="height: 50px; width: auto; object-fit: contain;" />` : ''}
             <div>
               <div class="company-name">${company.name}</div>
               <div style="font-size: 9pt; color: #666;">NPWP: ${company.npwp}</div>

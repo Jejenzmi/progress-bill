@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText } from 'lucide-react';
+import { LogoUpload } from '@/components/settings/LogoUpload';
 
 interface SettingsData {
   company_profile: {
@@ -20,6 +21,7 @@ interface SettingsData {
     email: string;
     website: string;
     bank_info: string;
+    logo_url: string;
   };
   invoice_settings: {
     prefix: string;
@@ -55,6 +57,7 @@ export default function Settings() {
       email: '',
       website: '',
       bank_info: '',
+      logo_url: '',
     },
     invoice_settings: {
       prefix: 'INV/ZEN',
@@ -277,6 +280,15 @@ export default function Settings() {
                 Info ini akan muncul di PDF Invoice sebagai informasi pembayaran
               </p>
             </div>
+
+            <Separator className="my-4" />
+
+            {/* Logo Upload */}
+            <LogoUpload
+              currentLogoUrl={settings.company_profile.logo_url}
+              onLogoChange={(url) => updateCompanyProfile('logo_url', url)}
+              disabled={!isAdmin}
+            />
           </CardContent>
         </Card>
 

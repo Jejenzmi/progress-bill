@@ -24,7 +24,7 @@ const navigation = [
   { name: 'Proyek', href: '/projects', icon: Briefcase, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
   { name: 'Klien', href: '/clients', icon: Users, roles: ['admin', 'marketing'] },
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp, roles: ['admin', 'marketing'] },
-  { name: 'Quotation', href: '/quotation', icon: Calculator, roles: ['admin', 'marketing'] },
+  { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing'] },
   { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance'] },
   { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager'] },
   { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance'] },
