@@ -1,7 +1,5 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
-
-export type QRSize = 'small' | 'medium' | 'large';
 
 export interface DocumentTTEData {
   documentName: string;
@@ -9,16 +7,8 @@ export interface DocumentTTEData {
   signerPosition: string;
   signedAt: Date;
   qrPosition: string;
-  qrSize?: QRSize;
   verificationId?: string;
 }
-
-// QR Size configurations in mm (will be converted to points)
-const QR_SIZES: Record<QRSize, { qrSize: number; boxWidth: number; boxHeight: number; fontSize: number }> = {
-  small: { qrSize: 25, boxWidth: 65, boxHeight: 35, fontSize: 5 },
-  medium: { qrSize: 35, boxWidth: 85, boxHeight: 50, fontSize: 6 },
-  large: { qrSize: 50, boxWidth: 110, boxHeight: 65, fontSize: 7 },
-};
 
 /**
  * Generate a unique verification ID for the document
@@ -58,12 +48,12 @@ export const generateTTEVerificationData = (data: DocumentTTEData, verifyUrl: st
 };
 
 /**
- * Generate QR Code as PNG bytes
+ * Generate QR Code as base64 data URL
  */
-export const generateQRCodeBytes = async (data: string, size: number = 150): Promise<Uint8Array> => {
+export const generateQRCodeForTTE = async (data: string): Promise<string> => {
   try {
-    const dataUrl = await QRCode.toDataURL(data, {
-      width: size,
+    return await QRCode.toDataURL(data, {
+      width: 150,
       margin: 1,
       color: {
         dark: '#1a5f7a',
@@ -71,18 +61,9 @@ export const generateQRCodeBytes = async (data: string, size: number = 150): Pro
       },
       errorCorrectionLevel: 'M',
     });
-    
-    // Convert data URL to bytes
-    const base64 = dataUrl.split(',')[1];
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
   } catch (error) {
     console.error('Error generating QR code:', error);
-    throw error;
+    return '';
   }
 };
 
@@ -110,318 +91,231 @@ const parseCustomPosition = (position: string): { x: number; y: number } | null 
 
 /**
  * Calculate QR position coordinates based on position string
- * Returns coordinates in PDF points (bottom-left origin)
+ * Supports both preset positions and custom positions (format: "custom-X-Y")
  */
 const getQRPositionCoords = (
   position: string,
   pageWidth: number,
   pageHeight: number,
-  boxWidth: number,
-  boxHeight: number,
-  margin: number = 20
+  qrSize: number,
+  margin: number = 15
 ): QRPositionCoords => {
   // Check for custom position first
   const customPos = parseCustomPosition(position);
   if (customPos) {
     // Convert percentage to actual coordinates
-    // Note: PDF coordinates are from bottom-left, but our percentages are from top-left
-    const x = (customPos.x / 100) * pageWidth - boxWidth / 2;
-    const y = pageHeight - (customPos.y / 100) * pageHeight - boxHeight / 2;
+    // Center the QR box on the clicked position
+    const x = (customPos.x / 100) * pageWidth - qrSize / 2;
+    const y = (customPos.y / 100) * pageHeight - qrSize / 2;
     
     // Clamp to page bounds
     return {
-      x: Math.max(margin, Math.min(pageWidth - boxWidth - margin, x)),
-      y: Math.max(margin, Math.min(pageHeight - boxHeight - margin, y)),
+      x: Math.max(margin, Math.min(pageWidth - qrSize - margin, x)),
+      y: Math.max(margin, Math.min(pageHeight - qrSize - margin - 20, y)),
     };
   }
 
-  // Preset positions (PDF coordinates are from bottom-left)
+  // Preset positions
   switch (position) {
     case 'top-left':
-      return { x: margin, y: pageHeight - boxHeight - margin };
-    case 'top-right':
-      return { x: pageWidth - boxWidth - margin, y: pageHeight - boxHeight - margin };
-    case 'bottom-left':
       return { x: margin, y: margin };
+    case 'top-right':
+      return { x: pageWidth - qrSize - margin, y: margin };
+    case 'bottom-left':
+      return { x: margin, y: pageHeight - qrSize - margin - 30 };
     case 'bottom-right':
-      return { x: pageWidth - boxWidth - margin, y: margin };
+      return { x: pageWidth - qrSize - margin, y: pageHeight - qrSize - margin - 30 };
     case 'center':
       return { 
-        x: (pageWidth - boxWidth) / 2, 
-        y: (pageHeight - boxHeight) / 2 
+        x: (pageWidth - qrSize) / 2, 
+        y: (pageHeight - qrSize) / 2 
       };
     default:
-      return { x: pageWidth - boxWidth - margin, y: margin };
+      return { x: pageWidth - qrSize - margin, y: pageHeight - qrSize - margin - 30 };
   }
 };
 
 /**
- * Add TTE QR Code directly to an existing PDF using pdf-lib
+ * Generate a PDF with TTE QR Code from an image file
  */
-export const embedTTEIntoPDF = async (
-  pdfBytes: ArrayBuffer,
+export const generatePDFWithTTEFromImage = async (
+  imageDataUrl: string,
   data: DocumentTTEData,
-  verifyUrl: string = '',
-  targetPage: number = 0 // 0 = last page, positive = specific page (1-indexed)
-): Promise<Uint8Array> => {
-  const pdfDoc = await PDFDocument.load(pdfBytes);
-  const pages = pdfDoc.getPages();
+  verifyUrl: string = ''
+): Promise<Blob> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // Add image to PDF
+  const img = new Image();
+  img.src = imageDataUrl;
   
-  // Determine which page to add TTE
-  let pageIndex = pages.length - 1; // default to last page
-  if (targetPage > 0 && targetPage <= pages.length) {
-    pageIndex = targetPage - 1;
+  await new Promise((resolve) => {
+    img.onload = resolve;
+  });
+
+  // Calculate image dimensions to fit page
+  const imgRatio = img.width / img.height;
+  const pageRatio = pageWidth / pageHeight;
+  
+  let imgWidth: number;
+  let imgHeight: number;
+  let imgX: number;
+  let imgY: number;
+
+  if (imgRatio > pageRatio) {
+    imgWidth = pageWidth - 20;
+    imgHeight = imgWidth / imgRatio;
+    imgX = 10;
+    imgY = (pageHeight - imgHeight) / 2;
+  } else {
+    imgHeight = pageHeight - 60;
+    imgWidth = imgHeight * imgRatio;
+    imgX = (pageWidth - imgWidth) / 2;
+    imgY = 10;
   }
+
+  pdf.addImage(imageDataUrl, 'JPEG', imgX, imgY, imgWidth, imgHeight);
+
+  // Generate and add QR Code
+  await addTTEQRCodeToPDF(pdf, data, verifyUrl);
+
+  return pdf.output('blob');
+};
+
+/**
+ * Generate a new PDF document with TTE for non-PDF files
+ */
+export const generatePDFWithTTEForDocument = async (
+  fileName: string,
+  data: DocumentTTEData,
+  verifyUrl: string = ''
+): Promise<Blob> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // Add document info header
+  pdf.setFontSize(10);
+  pdf.setTextColor(100);
+  pdf.text('DOKUMEN BERTANDA TANGAN ELEKTRONIK', pageWidth / 2, 15, { align: 'center' });
   
-  const page = pages[pageIndex];
-  const { width: pageWidth, height: pageHeight } = page.getSize();
-  
-  // Get size configuration
-  const sizeConfig = QR_SIZES[data.qrSize || 'medium'];
-  const mmToPoints = 2.83465; // 1mm = 2.83465 points
-  
-  const qrSize = sizeConfig.qrSize * mmToPoints;
-  const boxWidth = sizeConfig.boxWidth * mmToPoints;
-  const boxHeight = sizeConfig.boxHeight * mmToPoints;
-  const boxPadding = 5 * mmToPoints;
-  
+  // Draw decorative line
+  pdf.setDrawColor(26, 95, 122);
+  pdf.setLineWidth(0.5);
+  pdf.line(20, 20, pageWidth - 20, 20);
+
+  // Document name
+  pdf.setFontSize(14);
+  pdf.setTextColor(0);
+  pdf.text('Nama Dokumen:', 20, 35);
+  pdf.setFontSize(12);
+  pdf.text(fileName, 20, 42);
+
+  // Signer info
+  pdf.setFontSize(14);
+  pdf.text('Ditandatangani oleh:', 20, 60);
+  pdf.setFontSize(12);
+  pdf.text(`${data.signerName}`, 20, 67);
+  pdf.setFontSize(10);
+  pdf.setTextColor(100);
+  pdf.text(`${data.signerPosition}`, 20, 73);
+
+  // Date info
+  pdf.setFontSize(14);
+  pdf.setTextColor(0);
+  pdf.text('Tanggal Tanda Tangan:', 20, 90);
+  pdf.setFontSize(12);
+  pdf.text(
+    new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(data.signedAt) + ' WIB',
+    20,
+    97
+  );
+
+  // Add note
+  pdf.setFontSize(9);
+  pdf.setTextColor(100);
+  const noteY = pageHeight - 60;
+  pdf.text('Catatan:', 20, noteY);
+  pdf.text('Dokumen ini telah ditandatangani secara elektronik.', 20, noteY + 5);
+  pdf.text('Scan QR Code untuk memverifikasi keaslian dokumen.', 20, noteY + 10);
+  pdf.text('Dokumen asli tersimpan dalam sistem.', 20, noteY + 15);
+
+  // Generate and add QR Code
+  await addTTEQRCodeToPDF(pdf, data, verifyUrl);
+
+  return pdf.output('blob');
+};
+
+/**
+ * Add TTE QR Code to existing PDF
+ */
+export const addTTEQRCodeToPDF = async (
+  pdf: jsPDF,
+  data: DocumentTTEData,
+  verifyUrl: string = ''
+): Promise<void> => {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const qrSize = 35;
+  const boxPadding = 5;
+  const boxWidth = qrSize + 50;
+  const boxHeight = qrSize + 15;
+
   // Get QR position
-  const coords = getQRPositionCoords(data.qrPosition, pageWidth, pageHeight, boxWidth, boxHeight);
-  
+  const coords = getQRPositionCoords(data.qrPosition, pageWidth, pageHeight, boxWidth);
+
   // Draw TTE box background
-  page.drawRectangle({
-    x: coords.x,
-    y: coords.y,
-    width: boxWidth,
-    height: boxHeight,
-    color: rgb(0.97, 1, 0.996), // Light teal background
-    borderColor: rgb(0.102, 0.373, 0.478), // Teal border
-    borderWidth: 1,
-  });
-  
-  // Generate and embed QR Code
+  pdf.setFillColor(248, 255, 254);
+  pdf.setDrawColor(26, 95, 122);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(coords.x, coords.y, boxWidth, boxHeight, 2, 2, 'FD');
+
+  // Generate QR Code
   const verificationData = generateTTEVerificationData(data, verifyUrl);
-  const qrBytes = await generateQRCodeBytes(verificationData, 200);
-  const qrImage = await pdfDoc.embedPng(qrBytes);
+  const qrDataUrl = await generateQRCodeForTTE(verificationData);
+
+  if (qrDataUrl) {
+    // Add QR Code image
+    pdf.addImage(qrDataUrl, 'PNG', coords.x + boxPadding, coords.y + boxPadding, qrSize, qrSize);
+  }
+
+  // Add TTE text info
+  const textX = coords.x + qrSize + boxPadding + 3;
+  const textStartY = coords.y + 8;
+
+  pdf.setFontSize(7);
+  pdf.setTextColor(26, 95, 122);
+  pdf.text('Tanda Tangan Elektronik', textX, textStartY);
+
+  pdf.setFontSize(6);
+  pdf.setTextColor(80);
+  pdf.text(`Oleh: ${data.signerName}`, textX, textStartY + 5);
+  pdf.text(`${data.signerPosition}`, textX, textStartY + 9);
   
-  page.drawImage(qrImage, {
-    x: coords.x + boxPadding,
-    y: coords.y + boxHeight - qrSize - boxPadding,
-    width: qrSize,
-    height: qrSize,
-  });
-  
-  // Add text info
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const fontSize = sizeConfig.fontSize;
-  const textX = coords.x + qrSize + boxPadding * 2;
-  let textY = coords.y + boxHeight - boxPadding - fontSize;
-  
-  const tealColor = rgb(0.102, 0.373, 0.478);
-  const grayColor = rgb(0.314, 0.314, 0.314);
-  
-  // Title
-  page.drawText('Tanda Tangan Elektronik', {
-    x: textX,
-    y: textY,
-    size: fontSize + 1,
-    font: boldFont,
-    color: tealColor,
-  });
-  
-  textY -= fontSize * 1.8;
-  
-  // Signer name
-  const truncatedName = data.signerName.length > 20 
-    ? data.signerName.substring(0, 20) + '...' 
-    : data.signerName;
-  page.drawText(`Oleh: ${truncatedName}`, {
-    x: textX,
-    y: textY,
-    size: fontSize,
-    font: font,
-    color: grayColor,
-  });
-  
-  textY -= fontSize * 1.5;
-  
-  // Position
-  const truncatedPosition = data.signerPosition.length > 25 
-    ? data.signerPosition.substring(0, 25) + '...' 
-    : data.signerPosition;
-  page.drawText(truncatedPosition, {
-    x: textX,
-    y: textY,
-    size: fontSize - 0.5,
-    font: font,
-    color: grayColor,
-  });
-  
-  textY -= fontSize * 1.8;
-  
-  // Date
   const dateStr = new Intl.DateTimeFormat('id-ID', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(data.signedAt);
-  page.drawText(`Tgl: ${dateStr}`, {
-    x: textX,
-    y: textY,
-    size: fontSize,
-    font: font,
-    color: grayColor,
-  });
-  
-  textY -= fontSize * 1.8;
-  
+  pdf.text(`Tgl: ${dateStr}`, textX, textStartY + 15);
+
   // Verification ID
-  page.drawText(`ID: ${data.verificationId}`, {
-    x: textX,
-    y: textY,
-    size: fontSize - 1,
-    font: font,
-    color: tealColor,
-  });
+  const hash = btoa(data.documentName + data.signedAt.toISOString())
+    .replace(/=/g, '')
+    .substring(0, 12)
+    .toUpperCase();
   
-  return pdfDoc.save();
-};
-
-/**
- * Convert image to PDF with TTE embedded
- */
-export const imageToSignedPDF = async (
-  imageBytes: ArrayBuffer,
-  imageType: 'png' | 'jpg',
-  data: DocumentTTEData,
-  verifyUrl: string = ''
-): Promise<Uint8Array> => {
-  const pdfDoc = await PDFDocument.create();
-  
-  // Embed image
-  let image;
-  if (imageType === 'png') {
-    image = await pdfDoc.embedPng(imageBytes);
-  } else {
-    image = await pdfDoc.embedJpg(imageBytes);
-  }
-  
-  // Calculate page size to fit image (A4 max)
-  const a4Width = 595.28; // A4 width in points
-  const a4Height = 841.89; // A4 height in points
-  const margin = 40;
-  
-  const imgWidth = image.width;
-  const imgHeight = image.height;
-  const imgRatio = imgWidth / imgHeight;
-  
-  let pageWidth = a4Width;
-  let pageHeight = a4Height;
-  let drawWidth = a4Width - margin * 2;
-  let drawHeight = drawWidth / imgRatio;
-  
-  if (drawHeight > a4Height - margin * 2) {
-    drawHeight = a4Height - margin * 2;
-    drawWidth = drawHeight * imgRatio;
-  }
-  
-  const page = pdfDoc.addPage([pageWidth, pageHeight]);
-  
-  // Center image on page
-  const x = (pageWidth - drawWidth) / 2;
-  const y = (pageHeight - drawHeight) / 2;
-  
-  page.drawImage(image, {
-    x,
-    y,
-    width: drawWidth,
-    height: drawHeight,
-  });
-  
-  // Get PDF bytes and add TTE
-  const pdfBytes = await pdfDoc.save();
-  const pdfBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-  return embedTTEIntoPDF(pdfBuffer as ArrayBuffer, data, verifyUrl);
-};
-
-/**
- * Create a certificate PDF for non-image/non-PDF files
- */
-export const createCertificatePDF = async (
-  fileName: string,
-  data: DocumentTTEData,
-  verifyUrl: string = ''
-): Promise<Uint8Array> => {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4
-  
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  
-  const { width, height } = page.getSize();
-  const tealColor = rgb(0.102, 0.373, 0.478);
-  const grayColor = rgb(0.4, 0.4, 0.4);
-  const blackColor = rgb(0, 0, 0);
-  
-  // Header
-  page.drawText('DOKUMEN BERTANDA TANGAN ELEKTRONIK', {
-    x: width / 2 - 140,
-    y: height - 60,
-    size: 14,
-    font: boldFont,
-    color: tealColor,
-  });
-  
-  // Decorative line
-  page.drawLine({
-    start: { x: 50, y: height - 80 },
-    end: { x: width - 50, y: height - 80 },
-    thickness: 1,
-    color: tealColor,
-  });
-  
-  let yPos = height - 130;
-  
-  // Document name
-  page.drawText('Nama Dokumen:', { x: 50, y: yPos, size: 12, font: boldFont, color: blackColor });
-  yPos -= 20;
-  page.drawText(fileName, { x: 50, y: yPos, size: 11, font: font, color: grayColor });
-  
-  yPos -= 50;
-  
-  // Signer info
-  page.drawText('Ditandatangani oleh:', { x: 50, y: yPos, size: 12, font: boldFont, color: blackColor });
-  yPos -= 20;
-  page.drawText(data.signerName, { x: 50, y: yPos, size: 11, font: font, color: blackColor });
-  yPos -= 15;
-  page.drawText(data.signerPosition, { x: 50, y: yPos, size: 10, font: font, color: grayColor });
-  
-  yPos -= 50;
-  
-  // Date info
-  page.drawText('Tanggal Tanda Tangan:', { x: 50, y: yPos, size: 12, font: boldFont, color: blackColor });
-  yPos -= 20;
-  const fullDate = new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(data.signedAt) + ' WIB';
-  page.drawText(fullDate, { x: 50, y: yPos, size: 11, font: font, color: grayColor });
-  
-  // Notes at bottom
-  const noteY = 100;
-  page.drawText('Catatan:', { x: 50, y: noteY, size: 9, font: boldFont, color: grayColor });
-  page.drawText('• Dokumen ini telah ditandatangani secara elektronik.', { x: 50, y: noteY - 15, size: 8, font: font, color: grayColor });
-  page.drawText('• Scan QR Code untuk memverifikasi keaslian dokumen.', { x: 50, y: noteY - 27, size: 8, font: font, color: grayColor });
-  page.drawText('• Dokumen asli tersimpan dalam sistem.', { x: 50, y: noteY - 39, size: 8, font: font, color: grayColor });
-  
-  // Get PDF bytes and add TTE
-  const pdfBytes = await pdfDoc.save();
-  const pdfBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-  return embedTTEIntoPDF(pdfBuffer as ArrayBuffer, data, verifyUrl);
+  pdf.setFontSize(5);
+  pdf.setTextColor(26, 95, 122);
+  pdf.text(`ID: ${hash}`, textX, textStartY + 25);
 };
 
 /**
@@ -434,7 +328,6 @@ export interface SignedPDFResult {
 
 /**
  * Main function to generate signed PDF from any file
- * Now embeds TTE directly into original PDF using pdf-lib
  */
 export const generateSignedPDF = async (
   file: File,
@@ -446,35 +339,33 @@ export const generateSignedPDF = async (
   // Generate verification ID if not provided
   const verificationId = tteData.verificationId || generateVerificationId(tteData);
   const dataWithId = { ...tteData, verificationId };
-  
-  let pdfBytes: Uint8Array;
-  
-  if (fileType === 'application/pdf') {
-    // For PDF files, embed TTE directly into the original PDF
-    const arrayBuffer = await file.arrayBuffer();
-    pdfBytes = await embedTTEIntoPDF(arrayBuffer, dataWithId, verifyUrl);
-  } else if (fileType.startsWith('image/')) {
-    // For image files, create PDF with image and TTE
-    const arrayBuffer = await file.arrayBuffer();
-    const imageType = fileType.includes('png') ? 'png' : 'jpg';
-    pdfBytes = await imageToSignedPDF(arrayBuffer, imageType, dataWithId, verifyUrl);
+
+  let blob: Blob;
+
+  if (fileType.startsWith('image/')) {
+    // Handle image files
+    const imageDataUrl = await readFileAsDataURL(file);
+    blob = await generatePDFWithTTEFromImage(imageDataUrl, dataWithId, verifyUrl);
+  } else if (fileType === 'application/pdf') {
+    // For PDF files, we'll create a cover page with TTE
+    // (Full PDF manipulation would require pdf-lib which is more complex)
+    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
   } else {
     // For other document types, create a certificate page
-    pdfBytes = await createCertificatePDF(file.name, dataWithId, verifyUrl);
+    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
   }
-  
-  const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+
   return { blob, verificationId };
 };
 
 /**
- * Helper to read file as ArrayBuffer
+ * Helper to read file as data URL
  */
-export const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
+const readFileAsDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
+    reader.readAsDataURL(file);
   });
 };
