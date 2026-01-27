@@ -1,7 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Move, Grid3X3 } from 'lucide-react';
+import { Move, Grid3X3, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+
+export type QRSize = 'small' | 'medium' | 'large';
 
 export interface QRPositionValue {
   type: 'preset' | 'custom';
@@ -13,6 +16,9 @@ export interface QRPositionValue {
 interface QRPositionSelectorProps {
   value: string | QRPositionValue;
   onChange: (value: string | QRPositionValue) => void;
+  size?: QRSize;
+  onSizeChange?: (size: QRSize) => void;
+  showSizeSelector?: boolean;
 }
 
 const presets = [
@@ -21,6 +27,12 @@ const presets = [
   { id: 'center', label: 'Tengah', row: 1, col: 1 },
   { id: 'bottom-left', label: 'Kiri Bawah', row: 2, col: 0 },
   { id: 'bottom-right', label: 'Kanan Bawah', row: 2, col: 2 },
+];
+
+const sizeOptions: { value: QRSize; label: string; scale: number }[] = [
+  { value: 'small', label: 'Kecil', scale: 0.7 },
+  { value: 'medium', label: 'Sedang', scale: 1 },
+  { value: 'large', label: 'Besar', scale: 1.4 },
 ];
 
 export function parseQRPosition(value: string | QRPositionValue): QRPositionValue {
@@ -47,7 +59,13 @@ export function stringifyQRPosition(value: QRPositionValue): string {
   return value.preset || 'bottom-right';
 }
 
-export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps) {
+export function QRPositionSelector({ 
+  value, 
+  onChange, 
+  size = 'medium',
+  onSizeChange,
+  showSizeSelector = true 
+}: QRPositionSelectorProps) {
   const [mode, setMode] = useState<'preset' | 'custom'>(() => {
     const parsed = parseQRPosition(value);
     return parsed.type;
@@ -55,48 +73,23 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
   
   const parsed = parseQRPosition(value);
   const containerRef = useRef<HTMLDivElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const handlePresetClick = (presetId: string) => {
     setMode('preset');
     onChange({ type: 'preset', preset: presetId });
   };
 
-  const handleCustomClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (mode !== 'custom') return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
-    // Clamp values to keep QR inside bounds (considering QR size ~15%)
-    const clampedX = Math.max(8, Math.min(92, x));
-    const clampedY = Math.max(8, Math.min(92, y));
-    
-    onChange({ type: 'custom', x: clampedX, y: clampedY });
-  }, [mode, onChange]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || mode !== 'custom') return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
-    const clampedX = Math.max(8, Math.min(92, x));
-    const clampedY = Math.max(8, Math.min(92, y));
-    
-    onChange({ type: 'custom', x: clampedX, y: clampedY });
-  }, [isDragging, mode, onChange]);
-
   const getPresetPosition = (presetId: string): { x: number; y: number } => {
     switch (presetId) {
-      case 'top-left': return { x: 12, y: 12 };
-      case 'top-right': return { x: 88, y: 12 };
+      case 'top-left': return { x: 15, y: 12 };
+      case 'top-right': return { x: 85, y: 12 };
       case 'center': return { x: 50, y: 50 };
-      case 'bottom-left': return { x: 12, y: 85 };
-      case 'bottom-right': return { x: 88, y: 85 };
-      default: return { x: 88, y: 85 };
+      case 'bottom-left': return { x: 15, y: 88 };
+      case 'bottom-right': return { x: 85, y: 88 };
+      default: return { x: 85, y: 88 };
     }
   };
 
@@ -104,12 +97,104 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
     ? { x: parsed.x, y: parsed.y }
     : getPresetPosition(parsed.preset || 'bottom-right');
 
+  // Mouse/Touch event handlers for drag
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (mode !== 'custom') return;
+    e.preventDefault();
+    
+    const container = containerRef.current;
+    const qr = qrRef.current;
+    if (!container || !qr) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const qrRect = qr.getBoundingClientRect();
+    
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    setDragOffset({
+      x: clientX - qrRect.left - qrRect.width / 2,
+      y: clientY - qrRect.top - qrRect.height / 2,
+    });
+    setIsDragging(true);
+  }, [mode]);
+
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging || mode !== 'custom') return;
+    e.preventDefault();
+    
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    
+    const clampedX = Math.max(10, Math.min(90, x));
+    const clampedY = Math.max(10, Math.min(90, y));
+    
+    onChange({ type: 'custom', x: clampedX, y: clampedY });
+  }, [isDragging, mode, onChange]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Global event listeners for drag
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove, { passive: false });
+      window.addEventListener('touchend', handleDragEnd);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleDragMove);
+        window.removeEventListener('mouseup', handleDragEnd);
+        window.removeEventListener('touchmove', handleDragMove);
+        window.removeEventListener('touchend', handleDragEnd);
+      };
+    }
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  // Click to place in custom mode
+  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (mode !== 'custom' || isDragging) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    const clampedX = Math.max(10, Math.min(90, x));
+    const clampedY = Math.max(10, Math.min(90, y));
+    
+    onChange({ type: 'custom', x: clampedX, y: clampedY });
+  }, [mode, isDragging, onChange]);
+
   const getPositionLabel = (): string => {
     if (parsed.type === 'custom') {
       return `Kustom (${parsed.x?.toFixed(0)}%, ${parsed.y?.toFixed(0)}%)`;
     }
     return presets.find((p) => p.id === parsed.preset)?.label || 'Kanan Bawah';
   };
+
+  const currentSizeConfig = sizeOptions.find(s => s.value === size) || sizeOptions[1];
 
   return (
     <div className="space-y-3">
@@ -147,19 +232,49 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
         </Button>
       </div>
 
+      {/* Size Selector */}
+      {showSizeSelector && onSizeChange && (
+        <div className="space-y-2">
+          <Label className="text-sm">Ukuran QR Code</Label>
+          <div className="flex gap-2">
+            {sizeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onSizeChange(option.value)}
+                className={cn(
+                  'flex-1 px-3 py-2 text-xs rounded-lg border transition-all flex flex-col items-center gap-1',
+                  size === option.value
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background hover:bg-muted border-input'
+                )}
+              >
+                <div 
+                  className={cn(
+                    'border-2 border-current rounded flex items-center justify-center',
+                    option.value === 'small' && 'w-4 h-4 text-[6px]',
+                    option.value === 'medium' && 'w-5 h-5 text-[7px]',
+                    option.value === 'large' && 'w-6 h-6 text-[8px]'
+                  )}
+                >
+                  QR
+                </div>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="border rounded-lg p-4 bg-muted/30">
         {/* Document Preview */}
         <div 
           ref={containerRef}
           className={cn(
-            "relative aspect-[210/297] bg-background border rounded shadow-sm mx-auto max-w-[200px]",
+            "relative aspect-[210/297] bg-background border rounded shadow-sm mx-auto max-w-[200px] select-none",
             mode === 'custom' && "cursor-crosshair"
           )}
-          onClick={handleCustomClick}
-          onMouseMove={handleMouseMove}
-          onMouseDown={() => mode === 'custom' && setIsDragging(true)}
-          onMouseUp={() => setIsDragging(false)}
-          onMouseLeave={() => setIsDragging(false)}
+          onClick={handleContainerClick}
         >
           {/* Document lines decoration */}
           <div className="absolute inset-4 pointer-events-none">
@@ -206,10 +321,13 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
                     >
                       <div 
                         className={cn(
-                          'w-6 h-6 rounded border-2 border-dashed flex items-center justify-center text-[8px] font-bold',
+                          'rounded border-2 border-dashed flex items-center justify-center font-bold transition-all',
                           isSelected 
                             ? 'border-primary-foreground' 
-                            : 'border-muted-foreground'
+                            : 'border-muted-foreground',
+                          currentSizeConfig.value === 'small' && 'w-5 h-5 text-[6px]',
+                          currentSizeConfig.value === 'medium' && 'w-6 h-6 text-[7px]',
+                          currentSizeConfig.value === 'large' && 'w-8 h-8 text-[8px]'
                         )}
                       >
                         QR
@@ -221,41 +339,58 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
             </div>
           ) : (
             /* Free placement mode - draggable QR indicator */
-            <div 
-              className="absolute pointer-events-none"
-              style={{
-                left: `${currentPosition.x}%`,
-                top: `${currentPosition.y}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
+            <>
               <div 
+                ref={qrRef}
                 className={cn(
-                  'w-8 h-8 rounded border-2 border-dashed flex items-center justify-center text-[8px] font-bold transition-all',
-                  'bg-primary text-primary-foreground border-primary-foreground',
+                  'absolute cursor-grab active:cursor-grabbing z-10 group',
                   isDragging && 'scale-110'
                 )}
+                style={{
+                  left: `${currentPosition.x}%`,
+                  top: `${currentPosition.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                onMouseDown={handleDragStart}
+                onTouchStart={handleDragStart}
               >
-                QR
+                {/* Drag handle indicator */}
+                <div 
+                  className={cn(
+                    'rounded border-2 flex items-center justify-center font-bold transition-all relative',
+                    'bg-primary text-primary-foreground border-primary-foreground shadow-lg',
+                    isDragging && 'ring-4 ring-primary/30',
+                    currentSizeConfig.value === 'small' && 'w-6 h-6 text-[7px]',
+                    currentSizeConfig.value === 'medium' && 'w-8 h-8 text-[8px]',
+                    currentSizeConfig.value === 'large' && 'w-10 h-10 text-[10px]'
+                  )}
+                >
+                  QR
+                  {/* Drag grip icon */}
+                  <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5 shadow opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-2 h-2 text-primary-foreground" />
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Click hint for custom mode */}
-          {mode === 'custom' && !isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-[10px] text-muted-foreground">
-                Klik untuk pindahkan
-              </div>
-            </div>
+              
+              {/* Drop zone hint */}
+              {!isDragging && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[10px] text-muted-foreground shadow-sm border">
+                    Drag atau klik untuk pindahkan
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
         
         {/* Selected position label */}
         <p className="text-center text-sm text-muted-foreground mt-3">
-          Posisi terpilih: <span className="font-medium text-foreground">
-            {getPositionLabel()}
-          </span>
+          Posisi: <span className="font-medium text-foreground">{getPositionLabel()}</span>
+          {showSizeSelector && (
+            <span className="ml-2">• Ukuran: <span className="font-medium text-foreground">{currentSizeConfig.label}</span></span>
+          )}
         </p>
       </div>
       
@@ -278,13 +413,6 @@ export function QRPositionSelector({ value, onChange }: QRPositionSelectorProps)
             </button>
           ))}
         </div>
-      )}
-
-      {/* Custom position info */}
-      {mode === 'custom' && (
-        <p className="text-xs text-muted-foreground text-center">
-          Klik atau drag pada preview dokumen untuk memindahkan posisi QR Code
-        </p>
       )}
     </div>
   );
