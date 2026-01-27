@@ -1,10 +1,33 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const DEFAULT_ALLOWED_HEADERS =
+  "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-authorization";
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "*";
+  const requestedHeaders = req.headers.get("Access-Control-Request-Headers");
+  const requestedMethod = req.headers.get("Access-Control-Request-Method");
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    Vary: "Origin",
+    "Access-Control-Allow-Headers": requestedHeaders ?? DEFAULT_ALLOWED_HEADERS,
+    "Access-Control-Allow-Methods": requestedMethod
+      ? `OPTIONS, ${requestedMethod}`
+      : "POST, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+function jsonResponse(req: Request, body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...getCorsHeaders(req),
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 interface CreateUserRequest {
   email: string;
@@ -23,7 +46,16 @@ Deno.serve(async (req) => {
   
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    console.log("CORS preflight:", {
+      origin: req.headers.get("Origin"),
+      requestMethod: req.headers.get("Access-Control-Request-Method"),
+      requestHeaders: req.headers.get("Access-Control-Request-Headers"),
+    });
+    return new Response(null, { headers: getCorsHeaders(req) });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(req, { error: "Method not allowed" }, 405);
   }
 
   try {
@@ -35,10 +67,7 @@ Deno.serve(async (req) => {
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error("Missing environment variables");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Server configuration error" }, 500);
     }
 
     // Create admin client with service role
@@ -58,10 +87,7 @@ Deno.serve(async (req) => {
     console.log("Auth header present:", !!authHeader);
     
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Missing authorization header" }, 401);
     }
 
     const supabaseClient = createClient(
@@ -76,10 +102,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
       console.error("Auth error:", authError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Unauthorized" }, 401);
     }
 
     // Check if user has admin role
@@ -90,18 +113,12 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error("Role check error:", roleError);
-      return new Response(
-        JSON.stringify({ error: "Failed to verify permissions" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Failed to verify permissions" }, 500);
     }
 
     const isAdmin = userRoles?.some((r) => r.role === "admin");
     if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "Only admins can create users" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Only admins can create users" }, 403);
     }
 
     // Parse request body
@@ -112,17 +129,11 @@ Deno.serve(async (req) => {
 
     // Validate input
     if (!email || !password || !full_name) {
-      return new Response(
-        JSON.stringify({ error: "Email, password, and full name are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Email, password, and full name are required" }, 400);
     }
 
     if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "Password must be at least 6 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: "Password must be at least 6 characters" }, 400);
     }
 
     // Create user with admin API
@@ -137,10 +148,7 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error("Create user error:", createError);
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse(req, { error: createError.message }, 400);
     }
 
     const newUserId = newUser.user.id;
@@ -188,19 +196,17 @@ Deno.serve(async (req) => {
 
     console.log("User setup complete:", newUserId);
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      req,
+      {
         success: true,
         user_id: newUserId,
         message: `User ${full_name} created successfully`,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      },
+      200
     );
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse(req, { error: "Internal server error" }, 500);
   }
 });
