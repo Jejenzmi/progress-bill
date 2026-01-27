@@ -137,7 +137,7 @@ export default function SignedDocuments() {
     }
   };
 
-  const handleUploadAndSign = async () => {
+  const handleUploadAndSign = async (pageNumber?: number) => {
     if (!selectedFile || !user) return;
 
     if (!signerName.trim() || !signerPosition.trim()) {
@@ -161,6 +161,7 @@ export default function SignedDocuments() {
         signerPosition: signerPosition.trim(),
         signedAt,
         qrPosition,
+        pageNumber: pageNumber || 1, // Use selected page or default to 1
       };
       
       const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(selectedFile, tteData, verifyUrl);
