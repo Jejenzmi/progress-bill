@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          assigned_to: string | null
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_completed: boolean
+          lead_id: string | null
+          project_id: string | null
+          reminder_at: string | null
+          reminder_sent: boolean
+          scheduled_at: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          project_id?: string | null
+          reminder_at?: string | null
+          reminder_sent?: boolean
+          scheduled_at?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          project_id?: string | null
+          reminder_at?: string | null
+          reminder_sent?: boolean
+          scheduled_at?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -149,6 +228,119 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          company_name: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          estimated_value: number | null
+          id: string
+          last_contacted_at: string | null
+          name: string
+          next_follow_up_at: string | null
+          notes: string | null
+          phone: string | null
+          score: number
+          source: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          id?: string
+          last_contacted_at?: string | null
+          name: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          score?: number
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          id?: string
+          last_contacted_at?: string | null
+          name?: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          score?: number
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          related_id: string | null
+          related_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          related_id?: string | null
+          related_type?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          related_id?: string | null
+          related_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_terms: {
         Row: {
           amount: number
@@ -238,6 +430,7 @@ export type Database = {
           end_date: string | null
           id: string
           pipeline_stage: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability: number | null
           project_name: string
           spk_file_path: string | null
           start_date: string
@@ -253,6 +446,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability?: number | null
           project_name: string
           spk_file_path?: string | null
           start_date?: string
@@ -268,6 +462,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability?: number | null
           project_name?: string
           spk_file_path?: string | null
           start_date?: string
@@ -343,6 +538,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          target_amount: number
+          target_period: string
+          target_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          target_amount?: number
+          target_period: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          target_amount?: number
+          target_period?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       settings: {
         Row: {
@@ -555,6 +786,13 @@ export type Database = {
       }
     }
     Enums: {
+      activity_type:
+        | "meeting"
+        | "call"
+        | "email"
+        | "whatsapp"
+        | "note"
+        | "follow_up"
       app_role: "admin" | "marketing" | "finance" | "project_manager"
       client_type: "Pemerintah" | "Swasta"
       evidence_type:
@@ -565,6 +803,7 @@ export type Database = {
         | "SPK"
         | "Lainnya"
       invoice_status: "Draft" | "Sent" | "Paid" | "Overdue"
+      lead_status: "cold" | "warm" | "hot"
       pipeline_stage: "Meeting" | "Proposal" | "Negosiasi" | "Closing"
       project_status: "Pipeline" | "Won" | "Lost" | "Completed"
       term_trigger:
@@ -700,6 +939,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_type: [
+        "meeting",
+        "call",
+        "email",
+        "whatsapp",
+        "note",
+        "follow_up",
+      ],
       app_role: ["admin", "marketing", "finance", "project_manager"],
       client_type: ["Pemerintah", "Swasta"],
       evidence_type: [
@@ -711,6 +958,7 @@ export const Constants = {
         "Lainnya",
       ],
       invoice_status: ["Draft", "Sent", "Paid", "Overdue"],
+      lead_status: ["cold", "warm", "hot"],
       pipeline_stage: ["Meeting", "Proposal", "Negosiasi", "Closing"],
       project_status: ["Pipeline", "Won", "Lost", "Completed"],
       term_trigger: [
