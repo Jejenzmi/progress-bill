@@ -12,6 +12,7 @@ import PipelineKanban from "./pages/PipelineKanban";
 import SalesDashboard from "./pages/SalesDashboard";
 import SalesReport from "./pages/SalesReport";
 import Leads from "./pages/Leads";
+import LeadDetail from "./pages/LeadDetail";
 import Activities from "./pages/Activities";
 import Quotation from "./pages/Quotation";
 import Invoices from "./pages/Invoices";
@@ -132,6 +133,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Leads />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/leads/:id"
+        element={
+          <ProtectedRoute>
+            <LeadDetail />
           </ProtectedRoute>
         }
       />
