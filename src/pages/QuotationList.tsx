@@ -80,6 +80,7 @@ export default function QuotationList() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -188,6 +189,99 @@ export default function QuotationList() {
       });
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const handleDownload = async (quotation: Quotation) => {
+    setDownloadLoading(quotation.id);
+    try {
+      const company = await getCompanyProfile();
+      const tteSettings = await fetchTTEForPDF();
+      
+      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const ppnAmount = Math.round(subtotal * 0.11);
+      const grandTotal = subtotal + ppnAmount;
+
+      const validUntil = quotation.valid_until 
+        ? new Date(quotation.valid_until) 
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      const quotationNumber = `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
+      
+      const quotationData = {
+        quotationNumber,
+        quotationDate: new Date(quotation.created_at),
+        validUntil,
+        clientName: quotation.clients?.name || 'Klien',
+        clientAddress: quotation.clients?.address || '',
+        projectName: quotation.project_name,
+        items,
+        subtotal,
+        ppnPercentage: 11,
+        ppnAmount,
+        grandTotal,
+      };
+
+      const html = await generateQuotationPDF(quotationData, company, tteSettings);
+      
+      // Generate verification ID (same as in PDF generator)
+      const verificationId = btoa(quotationNumber).substring(0, 16).toUpperCase();
+      
+      // Save to signed_documents if TTE is enabled
+      if (tteSettings?.enabled !== false && tteSettings?.signer_name) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          // Check if this quotation was already signed
+          const { data: existing } = await supabase
+            .from('signed_documents')
+            .select('id')
+            .eq('verification_id', verificationId)
+            .maybeSingle();
+          
+          if (!existing) {
+            const { error: dbError } = await supabase
+              .from('signed_documents')
+              .insert({
+                user_id: currentUser.id,
+                original_file_name: `Quotation-${quotationNumber}.pdf`,
+                original_file_path: `quotations/${quotationNumber}`,
+                signed_file_path: null,
+                file_type: 'application/pdf',
+                file_size: null,
+                qr_position: 'bottom-left',
+                signer_name: tteSettings.signer_name,
+                signer_position: tteSettings.signer_position || '',
+                signed_at: new Date().toISOString(),
+                verification_id: verificationId,
+              });
+            
+            if (dbError) {
+              console.error('Error saving to signed_documents:', dbError);
+            } else {
+              toast({
+                title: 'TTE Tersimpan',
+                description: 'Dokumen telah ditandatangani dan tercatat dalam sistem',
+              });
+            }
+          }
+        }
+      }
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal membuat PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadLoading(null);
     }
   };
 
@@ -370,6 +464,16 @@ export default function QuotationList() {
                           disabled={previewLoading}
                         >
                           {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDownload(quotation)}
+                          title="Download PDF dengan TTE"
+                          disabled={downloadLoading === quotation.id}
+                        >
+                          {downloadLoading === quotation.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         </Button>
                         
                         {/* Submit for approval button - for BDO/Marketing on draft quotations */}
