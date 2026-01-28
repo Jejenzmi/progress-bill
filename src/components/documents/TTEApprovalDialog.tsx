@@ -39,7 +39,7 @@ import { id as idLocale } from 'date-fns/locale';
 const VERIFICATION_BASE_URL = 'https://crm.zefin.id/verify';
 
 // QR Position Indicator Component
-function QRPositionIndicator({ qrPosition }: { qrPosition: string }) {
+function QRPositionIndicator({ qrPosition, qrPage, isPdf }: { qrPosition: string; qrPage?: number; isPdf?: boolean }) {
   const parsed = parseQRPosition(qrPosition);
   
   // Get position style
@@ -112,6 +112,13 @@ function QRPositionIndicator({ qrPosition }: { qrPosition: string }) {
       {/* Position Info Badge */}
       <div className="absolute bottom-2 left-2 bg-background/95 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium z-20 border shadow-sm flex items-center gap-2">
         <QrCode className="h-3 w-3 text-primary" />
+        {isPdf && qrPage && (
+          <>
+            <span className="text-muted-foreground">Halaman:</span>
+            <span className="font-semibold">{qrPage}</span>
+            <span className="text-muted-foreground">|</span>
+          </>
+        )}
         <span className="text-muted-foreground">Posisi:</span>
         <span className="font-semibold">{getPositionLabel()}</span>
         <span className="text-muted-foreground">|</span>
@@ -502,7 +509,7 @@ export function TTEApprovalDialog({
                     title="PDF Preview"
                   />
                   {/* QR Position Indicator Overlay for PDF */}
-                  <QRPositionIndicator qrPosition={document.qr_position} />
+                  <QRPositionIndicator qrPosition={document.qr_position} qrPage={document.qr_page} isPdf={true} />
                 </div>
               ) : isImage ? (
                 <div className="w-full h-full min-h-[400px] flex items-center justify-center p-4 relative">
@@ -583,6 +590,17 @@ export function TTEApprovalDialog({
                     <p className="text-sm text-muted-foreground">{document.signer_position}</p>
                   </div>
                 </div>
+
+                {/* QR Code Placement Info */}
+                {isPdf && document.qr_page && (
+                  <div className="flex items-start gap-3 pt-3 border-t">
+                    <QrCode className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Penempatan QR Code TTE</p>
+                      <p className="font-medium">Halaman {document.qr_page}</p>
+                    </div>
+                  </div>
+                )}
 
                 {document.submitted_at && (
                   <div className="flex items-start gap-3">
