@@ -19,22 +19,22 @@ export interface QRSizeConfig {
 
 export const QR_SIZES: Record<QRSize, QRSizeConfig> = {
   small: {
-    qrSize: 25,
-    boxWidth: 60,
-    boxHeight: 35,
-    fontSize: { title: 5, body: 4, small: 3 },
-  },
-  medium: {
-    qrSize: 35,
-    boxWidth: 85,
-    boxHeight: 50,
-    fontSize: { title: 7, body: 6, small: 5 },
-  },
-  large: {
     qrSize: 50,
     boxWidth: 120,
-    boxHeight: 70,
-    fontSize: { title: 9, body: 7, small: 6 },
+    boxHeight: 65,
+    fontSize: { title: 7, body: 6, small: 5 },
+  },
+  medium: {
+    qrSize: 60,
+    boxWidth: 150,
+    boxHeight: 75,
+    fontSize: { title: 8, body: 7, small: 6 },
+  },
+  large: {
+    qrSize: 70,
+    boxWidth: 180,
+    boxHeight: 85,
+    fontSize: { title: 9, body: 8, small: 7 },
   },
 };
 
