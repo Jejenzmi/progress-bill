@@ -191,6 +191,9 @@ export type Database = {
           quotation_id: string | null
           signed_at: string | null
           signed_by: string | null
+          signed_contract_path: string | null
+          signed_contract_uploaded_at: string | null
+          signed_contract_uploaded_by: string | null
           signer_name: string | null
           signer_position: string | null
           signer_type: string
@@ -224,6 +227,9 @@ export type Database = {
           quotation_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_contract_path?: string | null
+          signed_contract_uploaded_at?: string | null
+          signed_contract_uploaded_by?: string | null
           signer_name?: string | null
           signer_position?: string | null
           signer_type?: string
@@ -257,6 +263,9 @@ export type Database = {
           quotation_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_contract_path?: string | null
+          signed_contract_uploaded_at?: string | null
+          signed_contract_uploaded_by?: string | null
           signer_name?: string | null
           signer_position?: string | null
           signer_type?: string
