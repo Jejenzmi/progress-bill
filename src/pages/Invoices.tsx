@@ -32,6 +32,8 @@ import { generateInvoicePDF, type CompanyProfile, type InvoiceItem, type TTESett
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -94,6 +96,13 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  
+  // PPN Dialog state
+  const [ppnDialogOpen, setPpnDialogOpen] = useState(false);
+  const [ppnMode, setPpnMode] = useState<'exclude' | 'include' | 'none'>('none');
+  const [ppnPercentage, setPpnPercentage] = useState(11);
+  const [pendingAction, setPendingAction] = useState<'preview' | 'download' | null>(null);
+  const [pendingInvoice, setPendingInvoice] = useState<InvoiceData | null>(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -186,13 +195,35 @@ export default function Invoices() {
 
   // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
-  const buildInvoicePDFData = (invoice: InvoiceData) => {
+  const buildInvoicePDFData = (invoice: InvoiceData, mode: 'exclude' | 'include' | 'none', ppn: number) => {
+    const baseAmount = invoice.amount;
+    let subtotal: number;
+    let ppnAmount: number;
+    let grandTotal: number;
+
+    if (mode === 'exclude') {
+      // PPN ditambahkan di atas harga
+      subtotal = baseAmount;
+      ppnAmount = Math.round(baseAmount * (ppn / 100));
+      grandTotal = subtotal + ppnAmount;
+    } else if (mode === 'include') {
+      // Harga sudah termasuk PPN, ekstrak PPN
+      grandTotal = baseAmount;
+      subtotal = Math.round(baseAmount / (1 + ppn / 100));
+      ppnAmount = grandTotal - subtotal;
+    } else {
+      // Tanpa PPN
+      subtotal = baseAmount;
+      ppnAmount = 0;
+      grandTotal = baseAmount;
+    }
+
     const items: InvoiceItem[] = [{
       description: `${invoice.project_name} - ${invoice.term_name} (${invoice.percentage}%)`,
       quantity: 1,
       unit: 'Paket',
-      unitPrice: invoice.amount,
-      total: invoice.amount,
+      unitPrice: mode === 'include' ? subtotal : baseAmount,
+      total: mode === 'include' ? subtotal : baseAmount,
     }];
 
     return {
@@ -204,33 +235,51 @@ export default function Invoices() {
       projectName: invoice.project_name,
       termName: invoice.term_name,
       items,
-      subtotal: invoice.amount,
-      ppnPercentage: 0,
-      ppnAmount: 0,
-      grandTotal: invoice.amount,
+      subtotal,
+      ppnPercentage: mode === 'none' ? 0 : ppn,
+      ppnAmount,
+      grandTotal,
     };
   };
 
-  const handlePreviewPDF = async (invoice: InvoiceData) => {
-    const company = await getCompanyProfile();
-    const tteSettings = await fetchTTEForPDF();
-    const invoiceData = buildInvoicePDFData(invoice);
-    const html = await generateInvoicePDF(invoiceData, company, tteSettings);
-    setPreviewHtml(html);
-    setPreviewOpen(true);
+  // Open PPN dialog before preview/download
+  const openPpnDialog = (invoice: InvoiceData, action: 'preview' | 'download') => {
+    setPendingInvoice(invoice);
+    setPendingAction(action);
+    setPpnDialogOpen(true);
   };
 
-  const handleDownloadPDF = async (invoice: InvoiceData) => {
+  const handlePpnConfirm = async () => {
+    if (!pendingInvoice || !pendingAction) return;
+    
+    setPpnDialogOpen(false);
+    
     const company = await getCompanyProfile();
     const tteSettings = await fetchTTEForPDF();
-    const invoiceData = buildInvoicePDFData(invoice);
+    const invoiceData = buildInvoicePDFData(pendingInvoice, ppnMode, ppnPercentage);
     const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
+    if (pendingAction === 'preview') {
+      setPreviewHtml(html);
+      setPreviewOpen(true);
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
     }
+    
+    setPendingInvoice(null);
+    setPendingAction(null);
+  };
+
+  const handlePreviewPDF = (invoice: InvoiceData) => {
+    openPpnDialog(invoice, 'preview');
+  };
+
+  const handleDownloadPDF = (invoice: InvoiceData) => {
+    openPpnDialog(invoice, 'download');
   };
 
   const updateInvoiceStatus = async (invoiceId: string, newStatus: InvoiceStatus) => {
@@ -500,6 +549,81 @@ export default function Invoices() {
         title="Preview Invoice"
         description="Preview invoice sebelum download atau cetak"
       />
+
+      {/* PPN Selection Dialog */}
+      <Dialog open={ppnDialogOpen} onOpenChange={setPpnDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pengaturan PPN Invoice</DialogTitle>
+            <DialogDescription>
+              Pilih mode perhitungan PPN untuk invoice ini
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <RadioGroup
+              value={ppnMode}
+              onValueChange={(value) => setPpnMode(value as 'exclude' | 'include' | 'none')}
+              className="space-y-3"
+            >
+              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                <RadioGroupItem value="none" id="ppn-none" />
+                <Label htmlFor="ppn-none" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Tanpa PPN</div>
+                  <div className="text-sm text-muted-foreground">
+                    Nilai invoice tanpa perhitungan pajak
+                  </div>
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                <RadioGroupItem value="exclude" id="ppn-exclude" />
+                <Label htmlFor="ppn-exclude" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Exclude PPN (+ 11%)</div>
+                  <div className="text-sm text-muted-foreground">
+                    PPN ditambahkan di atas nilai invoice
+                  </div>
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                <RadioGroupItem value="include" id="ppn-include" />
+                <Label htmlFor="ppn-include" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Include PPN (11%)</div>
+                  <div className="text-sm text-muted-foreground">
+                    Nilai sudah termasuk PPN, akan diekstrak
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {ppnMode !== 'none' && (
+              <div className="flex items-center gap-3 pt-2 border-t">
+                <Label htmlFor="ppn-rate" className="text-sm">Persentase PPN:</Label>
+                <Input
+                  id="ppn-rate"
+                  type="number"
+                  value={ppnPercentage}
+                  onChange={(e) => setPpnPercentage(parseInt(e.target.value) || 0)}
+                  className="w-20"
+                  min={0}
+                  max={100}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setPpnDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handlePpnConfirm}>
+              {pendingAction === 'preview' ? 'Preview PDF' : 'Download PDF'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
