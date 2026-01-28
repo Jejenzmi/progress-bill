@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -21,11 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FolderPlus, AlertCircle } from 'lucide-react';
+import { Loader2, FolderPlus, AlertCircle, ListChecks } from 'lucide-react';
 import { formatCurrency } from '@/data/mockData';
 import { Database } from '@/integrations/supabase/types';
 
 type PipelineStage = Database['public']['Enums']['pipeline_stage'];
+type TermTrigger = Database['public']['Enums']['term_trigger'];
 
 interface QuotationData {
   id: string;
@@ -41,6 +43,35 @@ interface CreateProjectFromQuotationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+
+interface PaymentTermTemplate {
+  term_name: string;
+  percentage: number;
+  trigger_condition: TermTrigger;
+  trigger_description: string;
+}
+
+// Default payment terms template
+const DEFAULT_PAYMENT_TERMS: PaymentTermTemplate[] = [
+  {
+    term_name: 'Termin 1 (DP)',
+    percentage: 30,
+    trigger_condition: 'SPK_SIGNED',
+    trigger_description: 'Setelah SPK ditandatangani',
+  },
+  {
+    term_name: 'Termin 2 (Progress)',
+    percentage: 40,
+    trigger_condition: 'PROGRESS_REPORT',
+    trigger_description: 'Setelah progress 50% selesai',
+  },
+  {
+    term_name: 'Termin 3 (Final)',
+    percentage: 30,
+    trigger_condition: 'BAST',
+    trigger_description: 'Setelah BAST ditandatangani',
+  },
+];
 
 const PIPELINE_STAGE_OPTIONS: { value: PipelineStage; label: string }[] = [
   { value: 'Meeting', label: 'Meeting' },
@@ -65,6 +96,7 @@ export function CreateProjectFromQuotationDialog({
   const [totalValue, setTotalValue] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('Proposal');
+  const [autoGenerateTerms, setAutoGenerateTerms] = useState(true);
 
   // Reset form when quotation changes
   useState(() => {
@@ -111,7 +143,7 @@ export function CreateProjectFromQuotationDialog({
         : pipelineStage === 'Negosiasi' ? 60 
         : 90;
 
-      const { data, error } = await supabase
+      const { data: project, error } = await supabase
         .from('projects')
         .insert({
           project_name: projectName.trim(),
@@ -130,9 +162,39 @@ export function CreateProjectFromQuotationDialog({
 
       if (error) throw error;
 
+      // Auto-generate payment terms if enabled
+      if (autoGenerateTerms && project) {
+        const termsToInsert = DEFAULT_PAYMENT_TERMS.map((term, index) => ({
+          project_id: project.id,
+          term_name: term.term_name,
+          percentage: term.percentage,
+          amount: (projectValue * term.percentage) / 100,
+          trigger_condition: term.trigger_condition,
+          trigger_description: term.trigger_description,
+          term_order: index + 1,
+          is_locked: index === 0 ? false : true, // First term unlocked (for SPK)
+        }));
+
+        const { error: termsError } = await supabase
+          .from('payment_terms')
+          .insert(termsToInsert);
+
+        if (termsError) {
+          console.error('Error creating payment terms:', termsError);
+          // Don't throw, project is already created
+          toast({
+            title: 'Peringatan',
+            description: 'Proyek berhasil dibuat, tetapi gagal membuat termin pembayaran',
+            variant: 'destructive',
+          });
+        }
+      }
+
       toast({
         title: 'Berhasil',
-        description: `Proyek "${projectName}" berhasil dibuat dari quotation`,
+        description: autoGenerateTerms 
+          ? `Proyek "${projectName}" berhasil dibuat dengan ${DEFAULT_PAYMENT_TERMS.length} termin pembayaran`
+          : `Proyek "${projectName}" berhasil dibuat dari quotation`,
       });
 
       onOpenChange(false);
@@ -157,6 +219,7 @@ export function CreateProjectFromQuotationDialog({
       setDescription('');
       setStartDate(new Date().toISOString().split('T')[0]);
       setPipelineStage('Proposal');
+      setAutoGenerateTerms(true);
     }
     onOpenChange(newOpen);
   };
@@ -256,6 +319,40 @@ export function CreateProjectFromQuotationDialog({
                 placeholder="Deskripsi proyek (opsional)"
                 rows={2}
               />
+            </div>
+
+            {/* Auto-generate payment terms option */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="autoGenerateTerms"
+                  checked={autoGenerateTerms}
+                  onCheckedChange={(checked) => setAutoGenerateTerms(checked === true)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="autoGenerateTerms" className="flex items-center gap-2 cursor-pointer">
+                    <ListChecks className="h-4 w-4" />
+                    Auto-generate Termin Pembayaran
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Buat termin pembayaran standar secara otomatis (30% DP, 40% Progress, 30% Final)
+                  </p>
+                </div>
+              </div>
+
+              {autoGenerateTerms && parseFloat(totalValue) > 0 && (
+                <div className="ml-6 space-y-1 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Preview Termin:</p>
+                  {DEFAULT_PAYMENT_TERMS.map((term, index) => (
+                    <div key={index} className="flex justify-between text-xs">
+                      <span>{term.term_name} ({term.percentage}%)</span>
+                      <span className="font-medium">
+                        {formatCurrency((parseFloat(totalValue) * term.percentage) / 100)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
