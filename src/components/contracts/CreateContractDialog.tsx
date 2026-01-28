@@ -330,6 +330,8 @@ export function CreateContractDialog({
         additional_costs: additionalCosts.filter(c => c.description && c.amount > 0) as unknown as any,
         additional_notes: additionalNotes || null,
         custom_clauses: customClauses.filter(c => c.title && c.content) as unknown as any,
+        party1_obligations: party1Obligations.filter(o => o.text.trim()) as unknown as any,
+        party2_obligations: party2Obligations.filter(o => o.text.trim()) as unknown as any,
         company_settings: settings?.value || null,
         signer_type: signerType,
         signer_name: signerInfo.name,
@@ -529,6 +531,70 @@ export function CreateContractDialog({
                     ))}
                     <Button variant="outline" size="sm" onClick={handleAddPaymentTerm}>
                       <Plus className="h-4 w-4 mr-1" /> Tambah Termin
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Party 1 Obligations - Hak dan Kewajiban Pihak 1 */}
+              <AccordionItem value="party1-obligations">
+                <AccordionTrigger>
+                  <span>Hak & Kewajiban Pihak Pertama (ZMI)</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Kewajiban yang harus dipenuhi oleh PT Zen Multimedia Indonesia
+                    </p>
+                    {party1Obligations.map((obligation, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <span className="text-sm font-medium mt-2 min-w-[24px]">{index + 1}.</span>
+                        <Textarea
+                          placeholder="Masukkan kewajiban..."
+                          value={obligation.text}
+                          onChange={(e) => handleParty1ObligationChange(index, e.target.value)}
+                          rows={2}
+                          className="flex-1"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveParty1Obligation(index)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={handleAddParty1Obligation}>
+                      <Plus className="h-4 w-4 mr-1" /> Tambah Kewajiban
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Party 2 Obligations - Hak dan Kewajiban Pihak 2 */}
+              <AccordionItem value="party2-obligations">
+                <AccordionTrigger>
+                  <span>Hak & Kewajiban Pihak Kedua (Klien)</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Kewajiban yang harus dipenuhi oleh klien
+                    </p>
+                    {party2Obligations.map((obligation, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <span className="text-sm font-medium mt-2 min-w-[24px]">{index + 1}.</span>
+                        <Textarea
+                          placeholder="Masukkan kewajiban..."
+                          value={obligation.text}
+                          onChange={(e) => handleParty2ObligationChange(index, e.target.value)}
+                          rows={2}
+                          className="flex-1"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveParty2Obligation(index)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={handleAddParty2Obligation}>
+                      <Plus className="h-4 w-4 mr-1" /> Tambah Kewajiban
                     </Button>
                   </div>
                 </AccordionContent>

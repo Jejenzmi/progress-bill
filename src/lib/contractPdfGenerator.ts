@@ -66,6 +66,8 @@ export interface ContractData {
   free_server_months?: number;
   free_domain_months?: number;
   max_payment_days?: number;
+  party1_obligations?: { text: string }[];
+  party2_obligations?: { text: string }[];
 }
 
 const formatDateLong = (date: Date): string => {
@@ -106,6 +108,41 @@ export const generateContractPDF = async (
       <p>${clause.content}</p>
     </div>
   `).join('');
+
+  // Generate party obligations HTML - use custom if provided, otherwise default
+  const defaultParty1Obligations = [
+    'Menyediakan tenaga ahli yang kompeten dan berpengalaman untuk pelaksanaan proyek.',
+    'Menyelesaikan proyek sesuai dengan jadwal yang telah disepakati dalam perjanjian ini.',
+    'Memberikan dukungan teknis dan pemeliharaan setelah sistem selesai dibangun sesuai ketentuan pada Pasal 5.',
+    'Menyediakan dokumentasi sistem dan memberikan pelatihan kepada pengguna.',
+  ];
+  
+  const defaultParty2Obligations = [
+    'Menyediakan data dan informasi yang dibutuhkan oleh PIHAK PERTAMA untuk menyelesaikan proyek.',
+    'Melakukan review terhadap hasil kerja PIHAK PERTAMA sesuai dengan jadwal yang disepakati.',
+    'Membayar biaya proyek sesuai dengan jadwal pembayaran yang disepakati.',
+    'Menyediakan akses untuk pengujian sistem di lingkungan PIHAK KEDUA.',
+  ];
+
+  const party1ObligationsList = contract.party1_obligations && contract.party1_obligations.length > 0
+    ? contract.party1_obligations.map(o => o.text)
+    : defaultParty1Obligations;
+
+  const party2ObligationsList = contract.party2_obligations && contract.party2_obligations.length > 0
+    ? contract.party2_obligations.map(o => o.text)
+    : defaultParty2Obligations;
+
+  // Add server and domain info to party 1 obligations if provided
+  const party1WithExtras = [...party1ObligationsList];
+  if (contract.free_server_months) {
+    party1WithExtras.push(`Menyediakan Cloud Server selama ${contract.free_server_months} Bulan terhitung sejak digunakannya aplikasi.`);
+  }
+  if (contract.free_domain_months) {
+    party1WithExtras.push(`Menyediakan Domain Free selama ${contract.free_domain_months} Bulan.`);
+  }
+
+  const party1ObligationsHTML = party1WithExtras.map(text => `<li>${text}</li>`).join('');
+  const party2ObligationsHTML = party2ObligationsList.map(text => `<li>${text}</li>`).join('');
 
   // Helper to convert image to data URL
   const toDataUrl = async (url?: string): Promise<string | null> => {
@@ -456,22 +493,14 @@ export const generateContractPDF = async (
           <div class="subsection">
             <p class="subsection-title">PIHAK PERTAMA:</p>
             <ol>
-              <li>Menyediakan tenaga ahli yang kompeten dan berpengalaman untuk pelaksanaan proyek.</li>
-              <li>Menyelesaikan proyek sesuai dengan jadwal yang telah disepakati dalam perjanjian ini.</li>
-              <li>Memberikan dukungan teknis dan pemeliharaan setelah sistem selesai dibangun sesuai ketentuan pada Pasal 5.</li>
-              <li>Menyediakan dokumentasi sistem dan memberikan pelatihan kepada pengguna.</li>
-              ${contract.free_server_months ? `<li>Menyediakan Cloud Server selama ${contract.free_server_months} Bulan terhitung sejak digunakannya aplikasi.</li>` : ''}
-              ${contract.free_domain_months ? `<li>Menyediakan Domain Free selama ${contract.free_domain_months} Bulan.</li>` : ''}
+              ${party1ObligationsHTML}
             </ol>
           </div>
           
           <div class="subsection">
             <p class="subsection-title">PIHAK KEDUA:</p>
             <ol>
-              <li>Menyediakan data dan informasi yang dibutuhkan oleh PIHAK PERTAMA untuk menyelesaikan proyek.</li>
-              <li>Melakukan review terhadap hasil kerja PIHAK PERTAMA sesuai dengan jadwal yang disepakati.</li>
-              <li>Membayar biaya proyek sesuai dengan jadwal pembayaran yang disepakati.</li>
-              <li>Menyediakan akses untuk pengujian sistem di lingkungan PIHAK KEDUA.</li>
+              ${party2ObligationsHTML}
             </ol>
           </div>
         </div>
