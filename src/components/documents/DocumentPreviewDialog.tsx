@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition, QRSize } from './QRPositionSelector';
+import { TTEBoxOverlay } from './TTEBoxOverlay';
 import { PDFPageSelector } from './PDFPageSelector';
 import { Loader2, FileSignature, Eye, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -127,17 +128,7 @@ export function DocumentPreviewDialog({
     }
   }, [onQrPositionChange]);
 
-  // Get QR size class for preview
-  const getQrSizeClass = (): { size: string; text: string } => {
-    const parsed = parseQRPosition(qrPosition);
-    switch (parsed.size) {
-      case 'small': return { size: 'w-12 h-12', text: 'text-[6px]' };
-      case 'large': return { size: 'w-20 h-20', text: 'text-[10px]' };
-      default: return { size: 'w-16 h-16', text: 'text-[8px]' };
-    }
-  };
-
-  // Calculate QR overlay style for preview
+  // Calculate QR overlay style for preview (for non-A4 preview containers)
   const getQrOverlayStyle = useCallback(() => {
     const parsed = parseQRPosition(qrPosition);
     
@@ -150,7 +141,7 @@ export function DocumentPreviewDialog({
       };
     }
     
-    // Preset positions
+    // Preset positions using getPresetBoxCenter would be ideal but for simplicity fallback
     const presetStyles: Record<string, React.CSSProperties> = {
       'top-left': { position: 'absolute', top: '1rem', left: '1rem' },
       'top-right': { position: 'absolute', top: '1rem', right: '1rem' },
@@ -164,7 +155,6 @@ export function DocumentPreviewDialog({
 
   const isImage = fileType.startsWith('image/');
   const isPdf = fileType === 'application/pdf';
-  const qrSizeClass = getQrSizeClass();
 
   // Check if self option is available (user has TTE settings)
   const selfAvailable = !!userTTEName && !!userTTEPosition;
@@ -198,18 +188,8 @@ export function DocumentPreviewDialog({
                       alt="Document preview"
                       className="max-w-full max-h-full object-contain rounded shadow-lg"
                     />
-                    {/* QR Overlay for images */}
-                    <div
-                      className={cn(
-                        'border-2 border-dashed border-primary bg-primary/10 rounded flex items-center justify-center transition-all',
-                        qrSizeClass.size
-                      )}
-                      style={getQrOverlayStyle()}
-                    >
-                      <div className={cn('font-bold text-primary text-center leading-tight', qrSizeClass.text)}>
-                        QR<br/>TTE
-                      </div>
-                    </div>
+                    {/* TTE Box Overlay for images */}
+                    <TTEBoxOverlay qrPosition={qrPosition} showInfoBadge={false} />
                   </div>
                 ) : isPdf ? (
                   <div className="relative w-full h-full">
@@ -218,18 +198,8 @@ export function DocumentPreviewDialog({
                       className="w-full h-full border-0 rounded"
                       title="PDF Preview"
                     />
-                    {/* QR Overlay indicator for PDF */}
-                    <div
-                      className={cn(
-                        'border-2 border-dashed border-primary bg-primary/20 rounded flex items-center justify-center pointer-events-none',
-                        qrSizeClass.size
-                      )}
-                      style={getQrOverlayStyle()}
-                    >
-                      <div className={cn('font-bold text-primary text-center leading-tight', qrSizeClass.text)}>
-                        QR<br/>TTE
-                      </div>
-                    </div>
+                    {/* TTE Box Overlay for PDF */}
+                    <TTEBoxOverlay qrPosition={qrPosition} qrPage={selectedPage} isPdf={true} showInfoBadge={true} />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -237,39 +207,14 @@ export function DocumentPreviewDialog({
                     <p className="text-sm font-medium">{file?.name}</p>
                     <p className="text-xs mt-1">Preview tidak tersedia untuk tipe file ini</p>
                     
-                    {/* QR Position indicator */}
-                    <div className="mt-6 w-48 h-64 border-2 border-dashed rounded-lg relative bg-background/50">
+                    {/* Mini document preview with TTE Box */}
+                    <div className="mt-6 w-48 h-64 border-2 border-dashed rounded-lg relative bg-background/50 aspect-[210/297]">
                       <div className="absolute inset-4 flex flex-col gap-2">
                         {[...Array(5)].map((_, i) => (
-                          <div key={i} className="h-2 bg-muted rounded" style={{ width: `${60 + Math.random() * 40}%` }} />
+                          <div key={i} className="h-2 bg-muted rounded" style={{ width: `${60 + (i * 5)}%` }} />
                         ))}
                       </div>
-                      <div
-                        className={cn(
-                          'border-2 border-primary bg-primary/20 rounded flex items-center justify-center',
-                          parseQRPosition(qrPosition).size === 'small' ? 'w-8 h-8' : 
-                          parseQRPosition(qrPosition).size === 'large' ? 'w-14 h-14' : 'w-10 h-10'
-                        )}
-                        style={{
-                          position: 'absolute',
-                          ...(() => {
-                            const parsed = parseQRPosition(qrPosition);
-                            if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
-                              return { left: `${parsed.x}%`, top: `${parsed.y}%`, transform: 'translate(-50%, -50%)' };
-                            }
-                            const presets: Record<string, React.CSSProperties> = {
-                              'top-left': { top: '0.5rem', left: '0.5rem' },
-                              'top-right': { top: '0.5rem', right: '0.5rem' },
-                              'bottom-left': { bottom: '0.5rem', left: '0.5rem' },
-                              'bottom-right': { bottom: '0.5rem', right: '0.5rem' },
-                              'center': { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                            };
-                            return presets[parsed.preset || 'bottom-right'] || presets['bottom-right'];
-                          })()
-                        }}
-                      >
-                        <span className="text-[6px] font-bold text-primary">QR</span>
-                      </div>
+                      <TTEBoxOverlay qrPosition={qrPosition} showInfoBadge={false} />
                     </div>
                   </div>
                 )}
