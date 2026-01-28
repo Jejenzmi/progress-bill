@@ -638,3 +638,19 @@ export const printContractPDF = async (
     };
   }
 };
+
+/**
+ * Generate contract PDF as Blob for uploading to storage
+ */
+export const generateContractPDFBlob = async (
+  contract: ContractData,
+  company: ContractCompanyInfo,
+  client: ContractClientInfo,
+  signerName?: string,
+  signerPosition?: string
+): Promise<Blob> => {
+  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition);
+  
+  // Create a Blob from the HTML content
+  return new Blob([htmlContent], { type: 'text/html' });
+};

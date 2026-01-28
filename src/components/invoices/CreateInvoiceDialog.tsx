@@ -26,6 +26,8 @@ interface Project {
   project_name: string;
   status: string;
   client_name: string;
+  contract_id: string | null;
+  contract_status: string | null;
 }
 
 interface PaymentTerm {
@@ -78,7 +80,9 @@ export function CreateInvoiceDialog({ open, onOpenChange, onSuccess }: CreateInv
           id,
           project_name,
           status,
-          client:clients(name)
+          contract_id,
+          client:clients(name),
+          contract:contracts(status)
         `)
         .eq('status', 'Won')
         .order('project_name');
@@ -91,6 +95,8 @@ export function CreateInvoiceDialog({ open, onOpenChange, onSuccess }: CreateInv
           project_name: p.project_name,
           status: p.status,
           client_name: p.client?.name || 'Unknown',
+          contract_id: p.contract_id || null,
+          contract_status: p.contract?.status || null,
         }))
       );
     } catch (error) {
@@ -151,11 +157,15 @@ export function CreateInvoiceDialog({ open, onOpenChange, onSuccess }: CreateInv
     }
   };
 
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const selectedTerm = terms.find((t) => t.id === selectedTermId);
-  const canCreate = selectedTerm && !selectedTerm.has_invoice && !selectedTerm.is_locked && selectedTerm.evidences_count > 0;
+  
+  // Contract must be signed before invoice can be created
+  const contractSigned = selectedProject?.contract_status === 'signed';
+  const canCreate = selectedTerm && !selectedTerm.has_invoice && !selectedTerm.is_locked && selectedTerm.evidences_count > 0 && contractSigned;
 
   const handleCreate = async () => {
-    if (!selectedProjectId || !selectedTermId || !selectedTerm) return;
+    if (!selectedProjectId || !selectedTermId || !selectedTerm || !contractSigned) return;
 
     setCreating(true);
     try {
@@ -296,12 +306,12 @@ export function CreateInvoiceDialog({ open, onOpenChange, onSuccess }: CreateInv
                               </Badge>
                             )}
                             {term.is_locked && (
-                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">
+                              <Badge variant="outline" className="text-xs">
                                 Terkunci
                               </Badge>
                             )}
                             {!term.has_invoice && !term.is_locked && term.evidences_count === 0 && (
-                              <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
+                              <Badge variant="destructive" className="text-xs">
                                 Butuh Dokumen
                               </Badge>
                             )}
@@ -332,33 +342,53 @@ export function CreateInvoiceDialog({ open, onOpenChange, onSuccess }: CreateInv
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Dokumen:</span>
                   {selectedTerm.evidences_count > 0 ? (
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge variant="default">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       {selectedTerm.evidences_count} file
                     </Badge>
                   ) : (
-                    <Badge className="bg-red-100 text-red-800">
+                    <Badge variant="destructive">
                       <AlertCircle className="h-3 w-3 mr-1" />
                       Belum ada
                     </Badge>
                   )}
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Kontrak:</span>
+                  {contractSigned ? (
+                    <Badge variant="default">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Ditandatangani
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Belum Tanda Tangan
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Validation Messages */}
+                {!contractSigned && (
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-2 rounded">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Kontrak harus ditandatangani terlebih dahulu sebelum membuat invoice</span>
+                  </div>
+                )}
                 {selectedTerm.has_invoice && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-2 rounded">
                     <AlertCircle className="h-4 w-4" />
                     <span>Termin ini sudah memiliki invoice</span>
                   </div>
                 )}
                 {selectedTerm.is_locked && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-2 rounded">
                     <AlertCircle className="h-4 w-4" />
                     <span>Termin ini terkunci, upload dokumen terlebih dahulu</span>
                   </div>
                 )}
                 {!selectedTerm.has_invoice && !selectedTerm.is_locked && selectedTerm.evidences_count === 0 && (
-                  <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-2 rounded">
                     <AlertCircle className="h-4 w-4" />
                     <span>Upload dokumen bukti terlebih dahulu sebelum membuat invoice</span>
                   </div>

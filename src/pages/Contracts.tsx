@@ -23,6 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Select,
@@ -38,8 +39,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Search, FileText, MoreVertical, Download, Eye, CheckCircle, Printer } from 'lucide-react';
+import { Loader2, Search, FileText, MoreVertical, Download, Eye, CheckCircle, Printer, Pen, Upload } from 'lucide-react';
 import { printContractPDF, ContractData, ContractCompanyInfo, ContractClientInfo } from '@/lib/contractPdfGenerator';
+import { ContractSigningDialog } from '@/components/contracts/ContractSigningDialog';
 
 export default function Contracts() {
   const { contracts, loading, refetch } = useContracts();
@@ -50,6 +52,7 @@ export default function Contracts() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedContract, setSelectedContract] = useState<ContractWithDetails | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [signingOpen, setSigningOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
 
   const canManage = hasRole('admin') || hasRole('marketing') || hasRole('bdo') || hasRole('coo');
@@ -65,12 +68,15 @@ export default function Contracts() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, tteStatus?: string | null) => {
+    if (tteStatus === 'pending') {
+      return <Badge variant="outline" className="border-primary text-primary">Menunggu TTE</Badge>;
+    }
     switch (status) {
       case 'draft':
         return <Badge variant="secondary">Draft</Badge>;
       case 'signed':
-        return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Ditandatangani</Badge>;
+        return <Badge variant="default">Ditandatangani</Badge>;
       case 'archived':
         return <Badge variant="outline">Arsip</Badge>;
       default:
@@ -279,7 +285,7 @@ export default function Contracts() {
                     <TableCell>
                       {format(new Date(contract.start_date), 'dd MMM yyyy', { locale: idLocale })} - {format(new Date(contract.end_date), 'dd MMM yyyy', { locale: idLocale })}
                     </TableCell>
-                    <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                    <TableCell>{getStatusBadge(contract.status, contract.tte_status)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -299,6 +305,18 @@ export default function Contracts() {
                             <Printer className="h-4 w-4 mr-2" />
                             Cetak PDF
                           </DropdownMenuItem>
+                          {canManage && contract.status === 'draft' && !contract.tte_status && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedContract(contract);
+                                setSigningOpen(true);
+                              }}>
+                                <Pen className="h-4 w-4 mr-2" />
+                                Tanda Tangan
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           {canManage && contract.status === 'draft' && (
                             <DropdownMenuItem onClick={() => handleMarkSigned(contract)}>
                               <CheckCircle className="h-4 w-4 mr-2" />
@@ -381,6 +399,14 @@ export default function Contracts() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Signing Dialog */}
+      <ContractSigningDialog
+        contract={selectedContract}
+        open={signingOpen}
+        onOpenChange={setSigningOpen}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
