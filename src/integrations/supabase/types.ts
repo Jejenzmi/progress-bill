@@ -168,6 +168,137 @@ export type Database = {
         }
         Relationships: []
       }
+      contracts: {
+        Row: {
+          additional_costs: Json | null
+          additional_notes: string | null
+          client_id: string
+          client_signer_name: string | null
+          client_signer_nik: string | null
+          client_signer_position: string | null
+          company_settings: Json | null
+          contract_number: string
+          created_at: string
+          created_by: string | null
+          custom_clauses: Json | null
+          duration_months: number
+          end_date: string
+          id: string
+          payment_terms_snapshot: Json
+          project_description: string | null
+          project_id: string | null
+          project_name: string
+          quotation_id: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signer_name: string | null
+          signer_position: string | null
+          signer_type: string
+          start_date: string
+          status: string
+          total_value: number
+          tte_document_id: string | null
+          tte_enabled: boolean | null
+          tte_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_costs?: Json | null
+          additional_notes?: string | null
+          client_id: string
+          client_signer_name?: string | null
+          client_signer_nik?: string | null
+          client_signer_position?: string | null
+          company_settings?: Json | null
+          contract_number: string
+          created_at?: string
+          created_by?: string | null
+          custom_clauses?: Json | null
+          duration_months?: number
+          end_date: string
+          id?: string
+          payment_terms_snapshot?: Json
+          project_description?: string | null
+          project_id?: string | null
+          project_name: string
+          quotation_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          signer_type?: string
+          start_date: string
+          status?: string
+          total_value?: number
+          tte_document_id?: string | null
+          tte_enabled?: boolean | null
+          tte_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_costs?: Json | null
+          additional_notes?: string | null
+          client_id?: string
+          client_signer_name?: string | null
+          client_signer_nik?: string | null
+          client_signer_position?: string | null
+          company_settings?: Json | null
+          contract_number?: string
+          created_at?: string
+          created_by?: string | null
+          custom_clauses?: Json | null
+          duration_months?: number
+          end_date?: string
+          id?: string
+          payment_terms_snapshot?: Json
+          project_description?: string | null
+          project_id?: string | null
+          project_name?: string
+          quotation_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          signer_type?: string
+          start_date?: string
+          status?: string
+          total_value?: number
+          tte_document_id?: string | null
+          tte_enabled?: boolean | null
+          tte_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_tte_document_id_fkey"
+            columns: ["tte_document_id"]
+            isOneToOne: false
+            referencedRelation: "signed_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_notifications: {
         Row: {
           id: string
@@ -656,6 +787,7 @@ export type Database = {
       projects: {
         Row: {
           client_id: string
+          contract_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -673,6 +805,7 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -690,6 +823,7 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -711,6 +845,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
           {

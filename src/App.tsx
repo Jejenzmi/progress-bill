@@ -33,6 +33,7 @@ import Guide from "./pages/Guide";
 import FinanceDashboard from "./pages/FinanceDashboard";
 import NegotiationHistory from "./pages/NegotiationHistory";
 import TeamBonus from "./pages/TeamBonus";
+import Contracts from "./pages/Contracts";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -292,6 +293,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <TeamBonus />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contracts"
+        element={
+          <ProtectedRoute>
+            <Contracts />
           </ProtectedRoute>
         }
       />
