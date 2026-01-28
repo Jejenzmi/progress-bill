@@ -100,6 +100,8 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          npwp_badan: string | null
+          npwp_pribadi: string | null
           pic_email: string | null
           pic_name: string | null
           pic_phone: string | null
@@ -111,6 +113,8 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          npwp_badan?: string | null
+          npwp_pribadi?: string | null
           pic_email?: string | null
           pic_name?: string | null
           pic_phone?: string | null
@@ -122,6 +126,8 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          npwp_badan?: string | null
+          npwp_pribadi?: string | null
           pic_email?: string | null
           pic_name?: string | null
           pic_phone?: string | null
