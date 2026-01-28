@@ -80,6 +80,10 @@ interface CustomClause {
   content: string;
 }
 
+interface ObligationItem {
+  text: string;
+}
+
 export function CreateContractDialog({
   quotation,
   open,
@@ -110,6 +114,10 @@ export function CreateContractDialog({
   
   // Custom clauses
   const [customClauses, setCustomClauses] = useState<CustomClause[]>([]);
+  
+  // Rights and Obligations - Hak dan Kewajiban
+  const [party1Obligations, setParty1Obligations] = useState<ObligationItem[]>([]);
+  const [party2Obligations, setParty2Obligations] = useState<ObligationItem[]>([]);
   
   // Optional settings
   const [maintenancePeriod, setMaintenancePeriod] = useState(6);
@@ -164,6 +172,22 @@ export function CreateContractDialog({
         { term_name: 'Termin 3 (Final)', percentage: 40, description: 'setelah pengujian dan penerimaan sistem (User Acceptance Test) serta sistem go-live' },
       ]);
     }
+    
+    // Set default obligations for PIHAK PERTAMA
+    setParty1Obligations([
+      { text: 'Menyediakan tenaga ahli yang kompeten dan berpengalaman untuk pelaksanaan proyek.' },
+      { text: 'Menyelesaikan proyek sesuai dengan jadwal yang telah disepakati dalam perjanjian ini.' },
+      { text: 'Memberikan dukungan teknis dan pemeliharaan setelah sistem selesai dibangun sesuai ketentuan pada Pasal 5.' },
+      { text: 'Menyediakan dokumentasi sistem dan memberikan pelatihan kepada pengguna.' },
+    ]);
+    
+    // Set default obligations for PIHAK KEDUA
+    setParty2Obligations([
+      { text: 'Menyediakan data dan informasi yang dibutuhkan oleh PIHAK PERTAMA untuk menyelesaikan proyek.' },
+      { text: 'Melakukan review terhadap hasil kerja PIHAK PERTAMA sesuai dengan jadwal yang disepakati.' },
+      { text: 'Membayar biaya proyek sesuai dengan jadwal pembayaran yang disepakati.' },
+      { text: 'Menyediakan akses untuk pengujian sistem di lingkungan PIHAK KEDUA.' },
+    ]);
   };
 
   const handleAddPaymentTerm = () => {
@@ -206,6 +230,36 @@ export function CreateContractDialog({
     const updated = [...customClauses];
     updated[index] = { ...updated[index], [field]: value };
     setCustomClauses(updated);
+  };
+
+  // Handlers for Party 1 Obligations
+  const handleAddParty1Obligation = () => {
+    setParty1Obligations([...party1Obligations, { text: '' }]);
+  };
+
+  const handleRemoveParty1Obligation = (index: number) => {
+    setParty1Obligations(party1Obligations.filter((_, i) => i !== index));
+  };
+
+  const handleParty1ObligationChange = (index: number, value: string) => {
+    const updated = [...party1Obligations];
+    updated[index] = { text: value };
+    setParty1Obligations(updated);
+  };
+
+  // Handlers for Party 2 Obligations
+  const handleAddParty2Obligation = () => {
+    setParty2Obligations([...party2Obligations, { text: '' }]);
+  };
+
+  const handleRemoveParty2Obligation = (index: number) => {
+    setParty2Obligations(party2Obligations.filter((_, i) => i !== index));
+  };
+
+  const handleParty2ObligationChange = (index: number, value: string) => {
+    const updated = [...party2Obligations];
+    updated[index] = { text: value };
+    setParty2Obligations(updated);
   };
 
   const calculateDuration = () => {
