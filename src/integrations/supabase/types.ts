@@ -93,6 +93,39 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -168,6 +201,7 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          bank_account_id: string | null
           created_at: string
           created_by: string | null
           due_date: string
@@ -179,12 +213,14 @@ export type Database = {
           payment_proof_file: string | null
           project_id: string
           status: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued: boolean | null
           tax_invoice_number: string | null
           term_id: string
           updated_at: string
         }
         Insert: {
           amount: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date: string
@@ -196,12 +232,14 @@ export type Database = {
           payment_proof_file?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued?: boolean | null
           tax_invoice_number?: string | null
           term_id: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string
@@ -213,11 +251,19 @@ export type Database = {
           payment_proof_file?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued?: boolean | null
           tax_invoice_number?: string | null
           term_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_project_id_fkey"
             columns: ["project_id"]

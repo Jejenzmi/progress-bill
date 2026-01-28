@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrCode } from 'lucide-react';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { SalesTargetManager } from '@/components/settings/SalesTargetManager';
+import { BankAccountManager } from '@/components/settings/BankAccountManager';
 
 interface SettingsData {
   company_profile: {
@@ -385,6 +386,11 @@ export default function Settings() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Bank Accounts */}
+        {isAdmin && (
+          <BankAccountManager />
+        )}
 
         {/* Sales Targets */}
         {isAdmin && (

@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { generateInvoicePDF, type CompanyProfile, type InvoiceItem, type TTESettings } from '@/lib/invoicePdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
-import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2, CreditCard, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -69,6 +69,14 @@ const statusStyles: Record<string, { bg: string; text: string; icon: any }> = {
   Overdue: { bg: 'bg-destructive/10', text: 'text-destructive', icon: AlertTriangle },
 };
 
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  is_default: boolean;
+}
+
 interface InvoiceData {
   id: string;
   invoice_number: string;
@@ -83,6 +91,9 @@ interface InvoiceData {
   project_name: string;
   client_name: string;
   client_address: string;
+  tax_invoice_number: string | null;
+  tax_invoice_issued: boolean;
+  bank_account_id: string | null;
 }
 
 export default function Invoices() {
@@ -108,13 +119,46 @@ export default function Invoices() {
   const [showPph, setShowPph] = useState(false);
   const [pphPercentage, setPphPercentage] = useState(2);
   
+  // Bank account state
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>('');
+  
   // Track if preferences loaded
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  
+  // Tax invoice management
+  const [taxInvoiceDialogOpen, setTaxInvoiceDialogOpen] = useState(false);
+  const [taxInvoiceNumber, setTaxInvoiceNumber] = useState('');
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvoices();
     loadTaxPreferences();
+    fetchBankAccounts();
   }, []);
+
+  const fetchBankAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setBankAccounts(data || []);
+      
+      // Set default bank account
+      const defaultAccount = data?.find(acc => acc.is_default);
+      if (defaultAccount) {
+        setSelectedBankAccountId(defaultAccount.id);
+      } else if (data && data.length > 0) {
+        setSelectedBankAccountId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error);
+    }
+  };
 
   // Load saved tax preferences from settings
   const loadTaxPreferences = async () => {
@@ -186,6 +230,9 @@ export default function Invoices() {
           status,
           term_id,
           project_id,
+          tax_invoice_number,
+          tax_invoice_issued,
+          bank_account_id,
           term:payment_terms!inner(
             term_name,
             percentage,
@@ -214,6 +261,9 @@ export default function Invoices() {
           project_name: (inv.term as any).project.project_name,
           client_name: (inv.term as any).project.client.name,
           client_address: (inv.term as any).project.client.address || '',
+          tax_invoice_number: inv.tax_invoice_number,
+          tax_invoice_issued: inv.tax_invoice_issued || false,
+          bank_account_id: inv.bank_account_id,
         }))
       );
     } catch (error) {
@@ -237,7 +287,7 @@ export default function Invoices() {
     return matchesSearch && matchesStatus;
   });
 
-  const getCompanyProfile = async (): Promise<CompanyProfile> => {
+  const getCompanyProfile = async (bankAccountId?: string): Promise<CompanyProfile> => {
     const { data: companyData } = await supabase
       .from('settings')
       .select('value')
@@ -246,6 +296,15 @@ export default function Invoices() {
 
     const value = companyData?.value as Record<string, unknown> | null;
     
+    // Get bank info from selected account
+    let bankInfo = (value?.bank_info as string) || '-';
+    if (bankAccountId) {
+      const account = bankAccounts.find(acc => acc.id === bankAccountId);
+      if (account) {
+        bankInfo = `${account.bank_name}\nNo. Rekening: ${account.account_number}\nA.n. ${account.account_name}`;
+      }
+    }
+    
     return {
       name: (value?.name as string) || 'PT. ZEN MULTIMEDIA INDONESIA',
       npwp: (value?.npwp as string) || '-',
@@ -253,7 +312,7 @@ export default function Invoices() {
       phone: (value?.phone as string) || '085121045798',
       email: (value?.email as string) || 'info@zenmultimedia.co.id',
       website: (value?.website as string) || 'www.zenmultimedia.co.id',
-      bank_info: (value?.bank_info as string) || '-',
+      bank_info: bankInfo,
       logo_url: (value?.logo_url as string) || undefined,
     };
   };
@@ -337,9 +396,15 @@ export default function Invoices() {
     // Save preferences to database
     await saveTaxPreferences();
     
-    const company = await getCompanyProfile();
+    const company = await getCompanyProfile(selectedBankAccountId);
     const tteSettings = await fetchTTEForPDF();
     const invoiceData = buildInvoicePDFData(pendingInvoice, ppnMode, ppnPercentage, showPph, pphPercentage);
+    
+    // Add tax invoice number if issued
+    if (pendingInvoice.tax_invoice_number) {
+      (invoiceData as any).taxInvoiceNumber = pendingInvoice.tax_invoice_number;
+    }
+    
     const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     
     if (pendingAction === 'preview') {
@@ -358,11 +423,60 @@ export default function Invoices() {
   };
 
   const handlePreviewPDF = (invoice: InvoiceData) => {
+    // Set selected bank account from invoice if exists
+    if (invoice.bank_account_id) {
+      setSelectedBankAccountId(invoice.bank_account_id);
+    }
     openPpnDialog(invoice, 'preview');
   };
 
   const handleDownloadPDF = (invoice: InvoiceData) => {
+    // Set selected bank account from invoice if exists
+    if (invoice.bank_account_id) {
+      setSelectedBankAccountId(invoice.bank_account_id);
+    }
     openPpnDialog(invoice, 'download');
+  };
+
+  // Handle tax invoice management
+  const openTaxInvoiceDialog = (invoice: InvoiceData) => {
+    setEditingInvoiceId(invoice.id);
+    setTaxInvoiceNumber(invoice.tax_invoice_number || '');
+    setTaxInvoiceDialogOpen(true);
+  };
+
+  const handleSaveTaxInvoice = async () => {
+    if (!editingInvoiceId) return;
+
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update({
+          tax_invoice_number: taxInvoiceNumber || null,
+          tax_invoice_issued: !!taxInvoiceNumber,
+        })
+        .eq('id', editingInvoiceId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: taxInvoiceNumber 
+          ? 'Nomor Faktur Pajak berhasil disimpan' 
+          : 'Status Faktur Pajak dihapus',
+      });
+
+      setTaxInvoiceDialogOpen(false);
+      setEditingInvoiceId(null);
+      setTaxInvoiceNumber('');
+      fetchInvoices();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const updateInvoiceStatus = async (invoiceId: string, newStatus: InvoiceStatus) => {
@@ -484,10 +598,10 @@ export default function Invoices() {
                 <TableHead>Proyek / Klien</TableHead>
                 <TableHead>Termin</TableHead>
                 <TableHead>Tanggal</TableHead>
-                <TableHead>Jatuh Tempo</TableHead>
                 <TableHead className="text-right">Nilai</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead>Faktur Pajak</TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -511,9 +625,6 @@ export default function Invoices() {
                     <TableCell className="text-sm">
                       {formatDate(invoice.invoice_date)}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(invoice.due_date)}
-                    </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatCurrency(invoice.amount)}
                     </TableCell>
@@ -536,6 +647,31 @@ export default function Invoices() {
                       </span>
                     </TableCell>
                     <TableCell>
+                      {invoice.tax_invoice_issued ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-1 text-success hover:text-success"
+                          onClick={() => canManage && openTaxInvoiceDialog(invoice)}
+                          title={invoice.tax_invoice_number || 'Sudah terbit'}
+                        >
+                          <FileCheck className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-mono">{invoice.tax_invoice_number || 'Terbit'}</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                          onClick={() => canManage && openTaxInvoiceDialog(invoice)}
+                          disabled={!canManage}
+                          title="Belum terbit Faktur Pajak"
+                        >
+                          <span className="text-xs">Belum Terbit</span>
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -554,6 +690,15 @@ export default function Invoices() {
                           title="Download PDF"
                         >
                           <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setSelectedInvoice(invoice)}
+                          title="Detail Invoice"
+                        >
+                          <FileText className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -635,50 +780,86 @@ export default function Invoices() {
 
       {/* PPN Selection Dialog */}
       <Dialog open={ppnDialogOpen} onOpenChange={setPpnDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Pengaturan PPN Invoice</DialogTitle>
+            <DialogTitle>Pengaturan Invoice PDF</DialogTitle>
             <DialogDescription>
-              Pilih mode perhitungan PPN untuk invoice ini
+              Pilih rekening bank dan mode perhitungan pajak untuk invoice ini
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <RadioGroup
-              value={ppnMode}
-              onValueChange={(value) => setPpnMode(value as 'exclude' | 'include' | 'none')}
-              className="space-y-3"
-            >
-              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="none" id="ppn-none" />
-                <Label htmlFor="ppn-none" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Tanpa PPN</div>
-                  <div className="text-sm text-muted-foreground">
-                    Nilai invoice tanpa perhitungan pajak
-                  </div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="exclude" id="ppn-exclude" />
-                <Label htmlFor="ppn-exclude" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Exclude PPN (+ 11%)</div>
-                  <div className="text-sm text-muted-foreground">
-                    PPN ditambahkan di atas nilai invoice
-                  </div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="include" id="ppn-include" />
-                <Label htmlFor="ppn-include" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Include PPN (11%)</div>
-                  <div className="text-sm text-muted-foreground">
-                    Nilai sudah termasuk PPN, akan diekstrak
-                  </div>
-                </Label>
-              </div>
-            </RadioGroup>
+            {/* Bank Account Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Rekening Bank
+              </Label>
+              <Select
+                value={selectedBankAccountId}
+                onValueChange={setSelectedBankAccountId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih rekening bank" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{account.bank_name} - {account.account_number}</span>
+                        {account.is_default && (
+                          <span className="text-xs text-muted-foreground">(Default)</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {bankAccounts.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Belum ada rekening bank. Tambahkan di menu Pengaturan.
+                </p>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <Label className="mb-2 block">Mode Perhitungan PPN</Label>
+              <RadioGroup
+                value={ppnMode}
+                onValueChange={(value) => setPpnMode(value as 'exclude' | 'include' | 'none')}
+                className="space-y-3"
+              >
+                <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="none" id="ppn-none" />
+                  <Label htmlFor="ppn-none" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Tanpa PPN</div>
+                    <div className="text-sm text-muted-foreground">
+                      Nilai invoice tanpa perhitungan pajak
+                    </div>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="exclude" id="ppn-exclude" />
+                  <Label htmlFor="ppn-exclude" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Exclude PPN (+ 11%)</div>
+                    <div className="text-sm text-muted-foreground">
+                      PPN ditambahkan di atas nilai invoice
+                    </div>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="include" id="ppn-include" />
+                  <Label htmlFor="ppn-include" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Include PPN (11%)</div>
+                    <div className="text-sm text-muted-foreground">
+                      Nilai sudah termasuk PPN, akan diekstrak
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             {ppnMode !== 'none' && (
               <div className="flex items-center gap-3 pt-2 border-t">
@@ -741,6 +922,42 @@ export default function Invoices() {
             </Button>
             <Button onClick={handlePpnConfirm}>
               {pendingAction === 'preview' ? 'Preview PDF' : 'Download PDF'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tax Invoice Dialog */}
+      <Dialog open={taxInvoiceDialogOpen} onOpenChange={setTaxInvoiceDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Faktur Pajak</DialogTitle>
+            <DialogDescription>
+              Masukkan nomor Faktur Pajak jika sudah diterbitkan
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="tax-invoice-number">Nomor Faktur Pajak</Label>
+              <Input
+                id="tax-invoice-number"
+                value={taxInvoiceNumber}
+                onChange={(e) => setTaxInvoiceNumber(e.target.value)}
+                placeholder="Contoh: 010.000-24.12345678"
+              />
+              <p className="text-xs text-muted-foreground">
+                Kosongkan jika belum terbit Faktur Pajak
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setTaxInvoiceDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleSaveTaxInvoice}>
+              {taxInvoiceNumber ? 'Simpan Nomor' : 'Hapus Status'}
             </Button>
           </div>
         </DialogContent>
