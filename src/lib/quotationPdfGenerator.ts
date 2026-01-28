@@ -1,6 +1,6 @@
 // Quotation PDF Generator untuk format PT Zen Multimedia Indonesia
 
-import { generateTTESection, getTTEStyles, TTEData } from './qrCodeGenerator';
+import { generateTTESection, getTTEStyles, TTEData, generateQRCodeDataURL } from './qrCodeGenerator';
 
 export interface TTESettings {
   signer_name: string;
@@ -109,24 +109,42 @@ export const generateQuotationPDF = async (
   };
   
   const tteEnabled = tteSettings?.enabled !== false;
-  const tteSection = tteEnabled ? await generateTTESection(tteData) : '';
-  const itemRows = quotation.items.map((item, index) => `
+  const signedAt = new Date();
+  const verificationId = btoa(quotation.quotationNumber).substring(0, 16).toUpperCase();
+  
+  // Generate QR Code for TTE
+  let qrCodeDataURL = '';
+  if (tteEnabled) {
+    const qrData = JSON.stringify({
+      verify: `${typeof window !== 'undefined' ? window.location.origin : ''}/verify?id=${verificationId}`,
+      id: verificationId,
+      doc: quotation.quotationNumber,
+      company: company.name,
+      valid: true
+    });
+    qrCodeDataURL = await generateQRCodeDataURL(qrData);
+  }
+  
+  const itemRows = quotation.items.map((item) => `
     <tr>
-      <td style="padding: 12px; border: 1px solid #e0e0e0;">${item.item}</td>
-      <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: center;">${item.quantity}</td>
-      <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: center;">${item.unit}</td>
-      <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: right;">Rp. ${formatCurrencyPlain(item.unitPrice)}</td>
-      <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: right;">Rp. ${formatCurrencyPlain(item.total)},-</td>
+      <td class="item-cell">${item.item}</td>
+      <td class="center-cell">${item.quantity}</td>
+      <td class="center-cell">${item.unit}</td>
+      <td class="right-cell">Rp. ${formatCurrencyPlain(item.unitPrice)}</td>
+      <td class="right-cell">Rp. ${formatCurrencyPlain(item.total)},-</td>
     </tr>
   `).join('');
 
-  const paymentTermsHTML = quotation.paymentTerms?.map((term, i) => `
-    <li style="margin-bottom: 4px;">${term}</li>
+  const paymentTermsHTML = quotation.paymentTerms?.map((term) => `
+    <li>${term}</li>
   `).join('') || '';
 
-  const guaranteeHTML = quotation.guaranteeTerms?.map((term, i) => `
-    <li style="margin-bottom: 4px;">${term}</li>
+  const guaranteeHTML = quotation.guaranteeTerms?.map((term) => `
+    <li>${term}</li>
   `).join('') || '';
+
+  // Use embedded logo or fallback
+  const logoSrc = company.logo_url || '/zen-logo-quotation.png';
 
   return `
     <!DOCTYPE html>
@@ -145,125 +163,128 @@ export const generateQuotationPDF = async (
           box-sizing: border-box; 
         }
         body { 
-          font-family: 'Segoe UI', 'Arial', sans-serif; 
+          font-family: 'Segoe UI', Arial, sans-serif; 
           color: #333; 
-          font-size: 11pt;
-          line-height: 1.5;
+          font-size: 9pt;
+          line-height: 1.4;
         }
         .page {
           width: 210mm;
-          min-height: 297mm;
+          height: 297mm;
           padding: 0;
           margin: 0 auto;
           background: white;
           position: relative;
-        }
-        
-        /* Header with halftone pattern */
-        .header-container {
-          position: relative;
-          height: 110px;
-          margin-bottom: 15px;
           overflow: hidden;
         }
-        .header-pattern {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 320px;
-          height: 110px;
-          background: 
-            radial-gradient(circle at center, #3d5a80 2px, transparent 2px);
-          background-size: 10px 10px;
-          mask-image: 
-            linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, transparent 100%),
-            linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.2) 80%, transparent 100%);
-          mask-composite: intersect;
-          -webkit-mask-image: 
-            linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, transparent 100%);
+        
+        /* Header */
+        .header {
+          display: flex;
+          align-items: center;
+          padding: 15mm 15mm 10mm 15mm;
+          gap: 15px;
         }
-        .header-logo {
-          position: absolute;
-          top: 25px;
-          right: 20mm;
+        .header-pattern {
+          width: 80px;
+          height: 80px;
+          background: radial-gradient(circle, #3d5a80 1.5px, transparent 1.5px);
+          background-size: 8px 8px;
+          mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0.5) 50%, transparent 70%);
+          -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0.5) 50%, transparent 70%);
+          flex-shrink: 0;
+        }
+        .header-info {
+          flex: 1;
           display: flex;
           align-items: center;
           gap: 12px;
         }
-        .header-logo img {
-          height: 60px;
+        .header-logo {
+          height: 50px;
           width: auto;
         }
-        .company-text {
-          text-align: left;
-        }
         .company-name {
-          font-size: 15pt;
+          font-size: 14pt;
           font-weight: bold;
           color: #3d5a80;
           letter-spacing: 0.5px;
         }
         
-        /* Content area */
-        .content-area {
-          padding: 0 20mm 140px 20mm;
+        /* Content */
+        .content {
+          padding: 0 15mm;
         }
         .title {
           text-align: center;
-          font-size: 18pt;
+          font-size: 16pt;
           font-weight: bold;
           color: #3d5a80;
-          margin: 15px 0;
-          letter-spacing: 2px;
+          margin: 10px 0 15px;
+          letter-spacing: 3px;
         }
+        
+        /* Meta Grid */
         .meta-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 30px;
-          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 12px;
         }
-        .meta-box {
-          font-size: 10pt;
+        .meta-left {
+          font-size: 9pt;
         }
         .meta-row {
           display: flex;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         .meta-label {
-          width: 100px;
+          width: 70px;
           color: #666;
         }
         .meta-value {
           font-weight: 500;
         }
+        .valid-badge {
+          background: #fff3cd;
+          color: #856404;
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-size: 8pt;
+          font-weight: 500;
+          align-self: flex-start;
+        }
+        
+        /* Section */
         .section-title {
-          font-size: 11pt;
+          font-size: 10pt;
           font-weight: bold;
           color: #3d5a80;
-          margin: 20px 0 10px;
-          padding-bottom: 5px;
+          margin: 12px 0 6px;
+          padding-bottom: 3px;
           border-bottom: 2px solid #3d5a80;
         }
         .project-title {
-          font-size: 12pt;
+          font-size: 11pt;
           font-weight: bold;
           color: #333;
-          margin-bottom: 12px;
           text-align: center;
           background: #e8f0f5;
-          padding: 10px;
+          padding: 8px;
           border-radius: 4px;
+          margin: 10px 0;
         }
+        
+        /* Table */
         .table {
           width: 100%;
           border-collapse: collapse;
-          margin: 12px 0;
-          font-size: 9pt;
+          font-size: 8pt;
+          margin: 8px 0;
         }
         .table th {
           background: #3d5a80;
           color: white;
-          padding: 10px;
+          padding: 6px 8px;
           text-align: left;
           font-weight: 600;
           border: 1px solid #3d5a80;
@@ -271,22 +292,28 @@ export const generateQuotationPDF = async (
         .table th.center { text-align: center; }
         .table th.right { text-align: right; }
         .table td {
-          padding: 8px 10px;
+          padding: 5px 8px;
           border: 1px solid #ddd;
+          vertical-align: top;
         }
-        .totals-section {
-          margin-top: 15px;
+        .item-cell { width: 38%; }
+        .center-cell { text-align: center; }
+        .right-cell { text-align: right; }
+        
+        /* Totals */
+        .totals-wrapper {
           display: flex;
           justify-content: flex-end;
+          margin-top: 8px;
         }
         .totals-box {
-          width: 320px;
+          width: 280px;
         }
         .total-row {
           display: flex;
           justify-content: space-between;
-          padding: 6px 10px;
-          font-size: 10pt;
+          padding: 4px 8px;
+          font-size: 9pt;
         }
         .total-row.subtotal {
           border-bottom: 1px solid #e0e0e0;
@@ -298,28 +325,32 @@ export const generateQuotationPDF = async (
           background: #3d5a80;
           color: white;
           font-weight: bold;
-          font-size: 11pt;
           border-radius: 4px;
-          margin-top: 5px;
+          margin-top: 4px;
         }
+        
+        /* Terbilang */
         .terbilang {
           background: #f5f8fa;
-          padding: 10px 12px;
-          margin-top: 12px;
+          padding: 6px 10px;
+          margin-top: 8px;
           border-radius: 4px;
           font-style: italic;
-          border-left: 4px solid #3d5a80;
-          font-size: 10pt;
+          border-left: 3px solid #3d5a80;
+          font-size: 8pt;
         }
+        
+        /* Terms */
         .terms-list {
           list-style: none;
           padding-left: 0;
-          font-size: 10pt;
+          font-size: 8pt;
+          margin: 4px 0;
         }
         .terms-list li {
-          padding-left: 18px;
+          padding-left: 12px;
           position: relative;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         .terms-list li::before {
           content: "•";
@@ -329,88 +360,141 @@ export const generateQuotationPDF = async (
           left: 0;
         }
         
-        /* Footer with curved design */
-        .footer-container {
+        /* Signature Section - TTE integrated */
+        .signature-section {
+          margin-top: 15px;
+          display: flex;
+          justify-content: flex-end;
+        }
+        .signature-box {
+          text-align: center;
+          width: 200px;
+        }
+        .signature-box p {
+          font-size: 9pt;
+        }
+        .signer-name {
+          font-weight: bold;
+          margin-top: 40px;
+          padding-top: 5px;
+          border-top: 1px solid #333;
+        }
+        .signer-position {
+          font-size: 8pt;
+          color: #666;
+        }
+        
+        /* TTE Section */
+        .tte-section {
+          margin-top: 15px;
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 10px 12px;
+          background: linear-gradient(135deg, #f8fffe 0%, #f0f9ff 100%);
+          border: 1px solid #3d5a8040;
+          border-radius: 6px;
+        }
+        .tte-qr {
+          flex-shrink: 0;
+        }
+        .tte-qr img {
+          width: 70px;
+          height: 70px;
+          border: 1px solid #3d5a80;
+          border-radius: 4px;
+          padding: 2px;
+          background: white;
+        }
+        .tte-info {
+          flex: 1;
+        }
+        .tte-title {
+          font-size: 9pt;
+          font-weight: 600;
+          color: #3d5a80;
+          margin-bottom: 4px;
+          padding-bottom: 3px;
+          border-bottom: 1px solid #3d5a8040;
+        }
+        .tte-detail {
+          font-size: 8pt;
+          margin-bottom: 2px;
+          display: flex;
+          gap: 6px;
+        }
+        .tte-label {
+          color: #666;
+          min-width: 80px;
+        }
+        .tte-hash {
+          margin-top: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 7pt;
+          color: #3d5a80;
+          background: #3d5a8015;
+          padding: 2px 6px;
+          border-radius: 3px;
+          display: inline-block;
+        }
+        
+        /* Footer */
+        .footer {
           position: absolute;
           bottom: 0;
           left: 0;
           right: 0;
-          height: 120px;
-          overflow: hidden;
+          height: 80px;
         }
         .footer-curve {
           position: absolute;
           bottom: 0;
           right: 0;
-          width: 250px;
-          height: 200px;
+          width: 180px;
+          height: 140px;
           background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
           border-radius: 100% 0 0 0;
-          transform: translate(30px, 60px);
+          transform: translate(20px, 40px);
         }
-        .footer-pattern {
+        .footer-dots {
           position: absolute;
           bottom: 0;
           right: 0;
-          width: 200px;
-          height: 150px;
-          background: radial-gradient(circle at center, rgba(255,255,255,0.3) 1.5px, transparent 1.5px);
-          background-size: 8px 8px;
-          mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.6) 0%, transparent 70%);
-          -webkit-mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.6) 0%, transparent 70%);
+          width: 140px;
+          height: 100px;
+          background: radial-gradient(circle, rgba(255,255,255,0.25) 1px, transparent 1px);
+          background-size: 6px 6px;
+          mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.5) 0%, transparent 70%);
+          -webkit-mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.5) 0%, transparent 70%);
         }
         .footer-bar {
           position: absolute;
           bottom: 0;
           left: 0;
           right: 0;
-          height: 8px;
+          height: 6px;
           background: #2c3e50;
         }
         .footer-contact {
           position: absolute;
-          bottom: 20px;
-          left: 20mm;
-          font-size: 9pt;
+          bottom: 15px;
+          left: 15mm;
+          font-size: 7pt;
           color: #333;
         }
-        .footer-contact-row {
+        .footer-row {
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 4px;
+          gap: 6px;
+          margin-bottom: 2px;
         }
-        .footer-contact-row svg {
-          width: 14px;
-          height: 14px;
+        .footer-row svg {
+          width: 10px;
+          height: 10px;
           fill: #3d5a80;
           flex-shrink: 0;
         }
         
-        .signature-section {
-          margin-top: 25px;
-          display: flex;
-          justify-content: flex-end;
-        }
-        .signature-box {
-          text-align: center;
-          width: 180px;
-        }
-        .signature-line {
-          border-bottom: 1px solid #333;
-          margin-top: 45px;
-          margin-bottom: 5px;
-        }
-        .valid-thru {
-          display: inline-block;
-          background: #fff3cd;
-          color: #856404;
-          padding: 4px 12px;
-          border-radius: 4px;
-          font-size: 9pt;
-          margin-top: 8px;
-        }
-        ${getTTEStyles()}
         @media print {
           body { 
             -webkit-print-color-adjust: exact !important;
@@ -419,32 +503,30 @@ export const generateQuotationPDF = async (
           .page { 
             margin: 0; 
             padding: 0;
+            page-break-after: avoid;
           }
-          .no-print { display: none; }
+          .no-print { display: none !important; }
         }
       </style>
     </head>
     <body>
       <div class="page">
-        <!-- Header with halftone pattern -->
-        <div class="header-container">
+        <!-- Header -->
+        <div class="header">
           <div class="header-pattern"></div>
-          <div class="header-logo">
-            ${company.logo_url ? `<img src="${company.logo_url}" alt="Company Logo" />` : ''}
-            <div class="company-text">
-              <div class="company-name">${company.name.toUpperCase()}</div>
-            </div>
+          <div class="header-info">
+            <img src="${logoSrc}" alt="Logo" class="header-logo" onerror="this.style.display='none'" />
+            <div class="company-name">${company.name.toUpperCase()}</div>
           </div>
         </div>
 
-        <!-- Content Area -->
-        <div class="content-area">
-          <!-- Title -->
+        <!-- Content -->
+        <div class="content">
           <h1 class="title">QUOTATION</h1>
 
-          <!-- Meta Information -->
+          <!-- Meta Info -->
           <div class="meta-grid">
-            <div class="meta-box">
+            <div class="meta-left">
               <div class="meta-row">
                 <span class="meta-label">Tanggal</span>
                 <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
@@ -454,14 +536,12 @@ export const generateQuotationPDF = async (
                 <span class="meta-value">: ${quotation.quotationNumber}</span>
               </div>
             </div>
-            <div class="meta-box" style="text-align: right;">
-              <span class="valid-thru">Valid Thru: ${formatDate(quotation.validUntil)}</span>
-            </div>
+            <div class="valid-badge">Valid Thru: ${formatDate(quotation.validUntil)}</div>
           </div>
 
           <!-- Client Info -->
           <div class="section-title">Dibuat Untuk</div>
-          <div class="meta-box">
+          <div class="meta-left">
             <div class="meta-row">
               <span class="meta-label">Nama Klien</span>
               <span class="meta-value">: ${quotation.clientName}</span>
@@ -475,18 +555,16 @@ export const generateQuotationPDF = async (
           <!-- Project Name -->
           <div class="project-title">${quotation.projectName}</div>
 
-          ${quotation.projectDescription ? `
-          <p style="font-size: 10pt; color: #666; margin-bottom: 12px;">${quotation.projectDescription}</p>
-          ` : ''}
+          ${quotation.projectDescription ? `<p style="font-size: 8pt; color: #666; margin-bottom: 8px;">${quotation.projectDescription}</p>` : ''}
 
           <!-- Items Table -->
           <table class="table">
             <thead>
               <tr>
-                <th style="width: 40%;">ITEM</th>
-                <th class="center" style="width: 10%;">JML</th>
-                <th class="center" style="width: 15%;">SATUAN</th>
-                <th class="right" style="width: 17%;">HARGA SATUAN</th>
+                <th>ITEM</th>
+                <th class="center" style="width: 8%;">JML</th>
+                <th class="center" style="width: 12%;">SATUAN</th>
+                <th class="right" style="width: 18%;">HARGA SATUAN</th>
                 <th class="right" style="width: 18%;">TOTAL HARGA</th>
               </tr>
             </thead>
@@ -496,7 +574,7 @@ export const generateQuotationPDF = async (
           </table>
 
           <!-- Totals -->
-          <div class="totals-section">
+          <div class="totals-wrapper">
             <div class="totals-box">
               <div class="total-row subtotal">
                 <span>JUMLAH BIAYA</span>
@@ -520,51 +598,81 @@ export const generateQuotationPDF = async (
 
           ${quotation.estimatedDuration ? `
           <div class="section-title">Estimasi Waktu Pengerjaan</div>
-          <p style="font-size: 10pt;">${quotation.estimatedDuration}</p>
+          <p style="font-size: 8pt;">${quotation.estimatedDuration}</p>
           ` : ''}
 
           ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
           <div class="section-title">Ketentuan Pembayaran</div>
-          <ul class="terms-list">
-            ${paymentTermsHTML}
-          </ul>
+          <ul class="terms-list">${paymentTermsHTML}</ul>
           ` : ''}
 
           ${quotation.guaranteeTerms && quotation.guaranteeTerms.length > 0 ? `
           <div class="section-title">Garansi & Support</div>
-          <ul class="terms-list">
-            ${guaranteeHTML}
-          </ul>
+          <ul class="terms-list">${guaranteeHTML}</ul>
           ` : ''}
 
-          <!-- Signature -->
+          <!-- Signature with TTE -->
           <div class="signature-section">
             <div class="signature-box">
               <p>Hormat kami,</p>
-              <p style="font-weight: bold; margin-top: 5px;">${company.name}</p>
-              <div class="signature-line"></div>
-              <p style="font-size: 9pt; color: #666;">Authorized Signature</p>
+              <p style="font-weight: bold;">${company.name}</p>
+              ${tteEnabled && tteSettings?.signer_name ? `
+                <p class="signer-name">${tteSettings.signer_name}</p>
+                <p class="signer-position">${tteSettings.signer_position || ''}</p>
+              ` : `
+                <div style="margin-top: 40px; border-top: 1px solid #333; padding-top: 5px;">
+                  <p style="font-size: 8pt; color: #666;">Authorized Signature</p>
+                </div>
+              `}
             </div>
           </div>
 
-          <!-- TTE Section with QR Code -->
-          ${tteSection}
+          <!-- TTE Section -->
+          ${tteEnabled ? `
+          <div class="tte-section">
+            <div class="tte-qr">
+              ${qrCodeDataURL ? `<img src="${qrCodeDataURL}" alt="QR TTE" />` : ''}
+            </div>
+            <div class="tte-info">
+              <div class="tte-title">Tanda Tangan Elektronik</div>
+              <div class="tte-detail">
+                <span class="tte-label">Dokumen:</span>
+                <span>${quotation.quotationNumber}</span>
+              </div>
+              <div class="tte-detail">
+                <span class="tte-label">Ditandatangani:</span>
+                <span>${new Intl.DateTimeFormat('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(signedAt)} WIB</span>
+              </div>
+              <div class="tte-detail">
+                <span class="tte-label">Oleh:</span>
+                <span>${tteSettings?.signer_name || company.name}${tteSettings?.signer_position ? ` (${tteSettings.signer_position})` : ''}</span>
+              </div>
+              <div class="tte-hash">ID: ${verificationId}</div>
+            </div>
+          </div>
+          ` : ''}
         </div>
 
-        <!-- Footer with curved design -->
-        <div class="footer-container">
+        <!-- Footer -->
+        <div class="footer">
           <div class="footer-curve"></div>
-          <div class="footer-pattern"></div>
+          <div class="footer-dots"></div>
           <div class="footer-contact">
-            <div class="footer-contact-row">
+            <div class="footer-row">
               <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
               <span>${company.address}</span>
             </div>
-            <div class="footer-contact-row">
+            <div class="footer-row">
               <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
               <span>${company.email}</span>
             </div>
-            <div class="footer-contact-row">
+            <div class="footer-row">
               <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
               <span>${company.phone}</span>
             </div>
@@ -574,8 +682,8 @@ export const generateQuotationPDF = async (
       </div>
 
       <!-- Print Button -->
-      <div class="no-print" style="text-align: center; padding: 30px; background: #f5f5f5;">
-        <button onclick="window.print()" style="padding: 12px 40px; background: #3d5a80; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14pt; font-weight: 600;">
+      <div class="no-print" style="text-align: center; padding: 20px; background: #f5f5f5;">
+        <button onclick="window.print()" style="padding: 10px 30px; background: #3d5a80; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12pt; font-weight: 600;">
           Cetak / Download PDF
         </button>
       </div>
