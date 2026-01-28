@@ -48,6 +48,13 @@ export function DocumentPreviewDialog({
   const [fileType, setFileType] = useState<string>('');
   const [selectedPage, setSelectedPage] = useState<number>(1);
 
+  // Reset selectedPage to 1 when dialog opens with a new file
+  useEffect(() => {
+    if (open && file) {
+      setSelectedPage(1);
+    }
+  }, [open, file]);
+
   useEffect(() => {
     if (file) {
       const url = URL.createObjectURL(file);

@@ -6,6 +6,7 @@ import { PipelineOverview } from '@/components/dashboard/PipelineOverview';
 import { UpcomingTerms } from '@/components/dashboard/UpcomingTerms';
 import { MonthlyRevenueChart } from '@/components/dashboard/MonthlyRevenueChart';
 import { ProjectStatusChart } from '@/components/dashboard/ProjectStatusChart';
+import { CalendarWidget } from '@/components/dashboard/CalendarWidget';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Briefcase, Receipt, TrendingUp, AlertCircle, Target, Loader2 } from 'lucide-react';
@@ -220,8 +221,9 @@ export default function Dashboard() {
           {showFinanceData && <RecentInvoices />}
         </div>
 
-        {/* Right Column - Upcoming Terms */}
+        {/* Right Column - Calendar & Upcoming Terms */}
         <div className="space-y-6">
+          <CalendarWidget />
           <UpcomingTerms />
         </div>
       </div>
