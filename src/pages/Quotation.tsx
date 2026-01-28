@@ -357,6 +357,49 @@ export default function Quotation() {
       const quotationData = buildQuotationData();
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
       
+      // Generate verification ID (same as in PDF generator)
+      const verificationId = btoa(quotationData.quotationNumber).substring(0, 16).toUpperCase();
+      
+      // Save to signed_documents if TTE is enabled
+      if (tteSettings?.enabled !== false && tteSettings?.signer_name) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Check if this quotation was already signed
+          const { data: existing } = await supabase
+            .from('signed_documents')
+            .select('id')
+            .eq('verification_id', verificationId)
+            .maybeSingle();
+          
+          if (!existing) {
+            const { error: dbError } = await supabase
+              .from('signed_documents')
+              .insert({
+                user_id: user.id,
+                original_file_name: `Quotation-${quotationData.quotationNumber}.pdf`,
+                original_file_path: `quotations/${quotationData.quotationNumber}`,
+                signed_file_path: null,
+                file_type: 'application/pdf',
+                file_size: null,
+                qr_position: 'bottom-left',
+                signer_name: tteSettings.signer_name,
+                signer_position: tteSettings.signer_position || '',
+                signed_at: new Date().toISOString(),
+                verification_id: verificationId,
+              });
+            
+            if (dbError) {
+              console.error('Error saving to signed_documents:', dbError);
+            } else {
+              toast({
+                title: 'TTE Tersimpan',
+                description: 'Dokumen telah ditandatangani dan tercatat dalam sistem',
+              });
+            }
+          }
+        }
+      }
+      
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(html);
