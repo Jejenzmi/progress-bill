@@ -15,12 +15,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
-import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
+import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
+import type { TTESettings } from '@/hooks/useUserTTE';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, Stamp } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+
+// Predefined TTE signers
+const TTE_SIGNERS = [
+  { id: 'self', label: 'Marketing (Saya Sendiri)', name: '', position: '' },
+  { id: 'coo', label: 'COO - Indra Apriana, S.Kom', name: 'Indra Apriana, S.Kom', position: 'Chief Operational Officer' },
+  { id: 'ceo', label: 'CEO - Jejen Jaenudin, SM., M.Kom', name: 'Jejen Jaenudin, SM., M.Kom', position: 'Chief Executive Officer' },
+];
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -34,7 +43,8 @@ const formatCurrencyLocal = (amount: number): string => {
 export default function Quotation() {
   const { toast } = useToast();
   const { clients, loading: clientsLoading, refetch: refetchClients } = useClients();
-  const { fetchTTEForPDF } = useUserTTE();
+  const { fetchTTEForPDF, tteSettings: userTTESettings } = useUserTTE();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const editId = searchParams.get('edit');
@@ -47,6 +57,9 @@ export default function Quotation() {
   const [previewHtml, setPreviewHtml] = useState('');
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
+  
+  // TTE Signer selection
+  const [selectedTTESigner, setSelectedTTESigner] = useState('self');
   
   // Basic Info
   const [quotationNumber, setQuotationNumber] = useState('');
@@ -219,7 +232,28 @@ export default function Quotation() {
     };
   };
 
-  // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
+  // Get TTE settings based on selected signer
+  const getSelectedTTESettings = async (): Promise<TTESettings> => {
+    const selected = TTE_SIGNERS.find(s => s.id === selectedTTESigner);
+    
+    if (selectedTTESigner === 'self') {
+      // Use user's own TTE settings
+      const userTTE = await fetchTTEForPDF();
+      return userTTE;
+    }
+    
+    // Use predefined signer settings
+    if (selected) {
+      return {
+        signer_name: selected.name,
+        signer_position: selected.position,
+        enabled: true,
+      };
+    }
+    
+    // Fallback to user's TTE settings
+    return await fetchTTEForPDF();
+  };
 
   const buildQuotationData = () => {
     const validUntil = new Date();
@@ -323,7 +357,7 @@ export default function Quotation() {
     setLoadingPreview(true);
     try {
       const company = await getCompanyProfile();
-      const tteSettings = await fetchTTEForPDF();
+      const tteSettings = await getSelectedTTESettings();
       const quotationData = buildQuotationData();
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
       setPreviewHtml(html);
@@ -353,7 +387,7 @@ export default function Quotation() {
     setLoadingDownload(true);
     try {
       const company = await getCompanyProfile();
-      const tteSettings = await fetchTTEForPDF();
+      const tteSettings = await getSelectedTTESettings();
       const quotationData = buildQuotationData();
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
       
@@ -739,6 +773,32 @@ export default function Quotation() {
                     {formatCurrencyLocal(grandTotal)}
                   </span>
                 </div>
+              </div>
+
+              {/* TTE Signer Selection */}
+              <div className="border-t pt-4 space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Stamp className="h-4 w-4" />
+                  Penandatangan TTE
+                </Label>
+                <Select value={selectedTTESigner} onValueChange={setSelectedTTESigner}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih penandatangan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTE_SIGNERS.map((signer) => (
+                      <SelectItem key={signer.id} value={signer.id}>
+                        {signer.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedTTESigner === 'self' 
+                    ? `TTE menggunakan data: ${userTTESettings?.signer_name || 'Nama belum diatur'}`
+                    : `TTE: ${TTE_SIGNERS.find(s => s.id === selectedTTESigner)?.name || '-'}`
+                  }
+                </p>
               </div>
 
               <div className="space-y-2 pt-4">
