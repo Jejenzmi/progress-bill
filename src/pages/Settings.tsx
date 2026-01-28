@@ -16,6 +16,7 @@ import { BankAccountManager } from '@/components/settings/BankAccountManager';
 import { PaymentTermTemplateManager } from '@/components/settings/PaymentTermTemplateManager';
 import { ProductCatalogManager } from '@/components/settings/ProductCatalogManager';
 import { MarginSettingsCard } from '@/components/settings/MarginSettingsCard';
+import { SettingsBackupRestore } from '@/components/settings/SettingsBackupRestore';
 
 interface SettingsData {
   company_profile: {
@@ -546,6 +547,11 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Backup & Restore */}
+        {isAdmin && (
+          <SettingsBackupRestore />
+        )}
 
         {isAdmin && (
           <div className="flex justify-end gap-3">
