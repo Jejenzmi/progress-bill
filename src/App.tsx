@@ -21,6 +21,7 @@ import Quotation from "./pages/Quotation";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
 import SignedDocuments from "./pages/SignedDocuments";
+import TTEReviewDashboard from "./pages/TTEReviewDashboard";
 import VerifyDocument from "./pages/VerifyDocument";
 import Cashflow from "./pages/Cashflow";
 import Settings from "./pages/Settings";
@@ -224,6 +225,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SignedDocuments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tte-review"
+        element={
+          <ProtectedRoute>
+            <TTEReviewDashboard />
           </ProtectedRoute>
         }
       />
