@@ -764,6 +764,8 @@ export default function QuotationList() {
           project_name: quotationForContract.project_name,
           client_id: quotationForContract.client_id,
           grand_total: quotationForContract.grand_total,
+          negotiated_price: quotationForContract.negotiated_price,
+          negotiation_status: quotationForContract.negotiation_status,
           man_days: quotationForContract.man_days,
           created_at: quotationForContract.created_at,
           clients: quotationForContract.clients ? {
