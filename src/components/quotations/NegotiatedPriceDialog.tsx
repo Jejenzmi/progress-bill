@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, TrendingDown, Percent } from 'lucide-react';
+import { notifyRoleUsers } from '@/lib/notificationHelper';
 
 interface NegotiatedPriceDialogProps {
   quotation: {
@@ -88,6 +89,18 @@ export function NegotiatedPriceDialog({
         .eq('id', quotation.id);
 
       if (error) throw error;
+
+      // Notify Finance users about the negotiation
+      await notifyRoleUsers('finance', 
+        'Harga Negosiasi Baru',
+        `Quotation "${quotation.project_name}" telah mendapatkan harga negosiasi: ${formatCurrency(priceValue)}`,
+        {
+          type: 'info',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+        }
+      );
 
       toast({
         title: 'Berhasil',
