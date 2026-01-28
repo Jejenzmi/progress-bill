@@ -140,14 +140,27 @@ export const generateQuotationPDF = async (
     <li>${term}</li>
   `).join('') || '';
 
-  // Use logo from settings if available. Fallback to the logo in the current app origin
-  // so it works both in Preview and after Publish.
-  const appBaseUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'https://progress-bill.lovable.app';
-
-  const logoSrc = company.logo_url || `${appBaseUrl}/zen-logo-quotation.png`;
+  // Fetch logo and convert to base64 to avoid CORS issues in print windows
+  let logoSrc = company.logo_url || '';
+  
+  // If no custom logo, try to fetch the default logo and convert to base64
+  if (!logoSrc) {
+    try {
+      const response = await fetch('/zen-logo-quotation.png');
+      if (response.ok) {
+        const blob = await response.blob();
+        logoSrc = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch logo:', error);
+      // Fallback: use a simple text logo
+      logoSrc = '';
+    }
+  }
 
   return `
     <!DOCTYPE html>
