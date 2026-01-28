@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,18 @@ import {
 } from '@/components/ui/select';
 import { Calendar, TrendingDown, Percent, FileText, Filter, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Line,
+  ComposedChart,
+  Legend,
+} from 'recharts';
 
 interface NegotiationRecord {
   id: string;
@@ -158,6 +170,52 @@ export default function NegotiationHistory() {
   const totalDiscount = totalOriginal - totalNegotiated;
   const avgDiscountPct = totalOriginal > 0 ? (totalDiscount / totalOriginal) * 100 : 0;
 
+  // Group data by month for chart
+  const monthlyChartData = useMemo(() => {
+    const monthlyMap = new Map<string, { 
+      month: string; 
+      totalOriginal: number; 
+      totalNegotiated: number; 
+      count: number;
+      totalDiscount: number;
+    }>();
+
+    records.forEach(r => {
+      if (!r.negotiated_at) return;
+      const monthKey = format(new Date(r.negotiated_at), 'yyyy-MM');
+      const monthLabel = format(new Date(r.negotiated_at), 'MMM yyyy', { locale: idLocale });
+      
+      const existing = monthlyMap.get(monthKey) || {
+        month: monthLabel,
+        totalOriginal: 0,
+        totalNegotiated: 0,
+        count: 0,
+        totalDiscount: 0,
+      };
+
+      const original = r.grand_total || 0;
+      const negotiated = r.negotiated_price || 0;
+      
+      existing.totalOriginal += original;
+      existing.totalNegotiated += negotiated;
+      existing.totalDiscount += (original - negotiated);
+      existing.count += 1;
+
+      monthlyMap.set(monthKey, existing);
+    });
+
+    return Array.from(monthlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, data]) => ({
+        ...data,
+        avgDiscountPct: data.totalOriginal > 0 
+          ? ((data.totalDiscount / data.totalOriginal) * 100)
+          : 0,
+        totalOriginalM: data.totalOriginal / 1000000,
+        totalNegotiatedM: data.totalNegotiated / 1000000,
+      }));
+  }, [records]);
+
   const exportToCSV = () => {
     const headers = ['Tanggal Negosiasi', 'Proyek', 'Klien', 'Harga Awal', 'Harga Deal', 'Diskon', 'Diskon %', 'Margin %', 'Negosiator', 'Catatan'];
     const rows = records.map(r => {
@@ -241,6 +299,81 @@ export default function NegotiationHistory() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Monthly Trend Chart */}
+      {monthlyChartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingDown className="h-5 w-5" />
+              Tren Diskon Negosiasi per Bulan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12 }}
+                    className="text-muted-foreground"
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `${value}jt`}
+                    className="text-muted-foreground"
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `${value}%`}
+                    className="text-muted-foreground"
+                  />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => {
+                      if (name === 'avgDiscountPct') return [`${value.toFixed(1)}%`, 'Rata-rata Diskon'];
+                      return [`Rp ${(value * 1000000).toLocaleString('id-ID')}`, name === 'totalOriginalM' ? 'Harga Awal' : 'Harga Deal'];
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="totalOriginalM" 
+                    name="Harga Awal (jt)" 
+                    fill="hsl(var(--muted-foreground))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="totalNegotiatedM" 
+                    name="Harga Deal (jt)" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="avgDiscountPct" 
+                    name="Rata-rata Diskon (%)" 
+                    stroke="hsl(var(--destructive))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--destructive))' }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
