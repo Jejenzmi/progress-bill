@@ -7,31 +7,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
   Search,
-  MoreHorizontal,
   ArrowRight,
   Calendar,
   Building2,
   GripVertical,
   TrendingUp,
   Loader2,
+  FileCheck2,
+  FileX2,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LinkQuotationDialog } from '@/components/projects/LinkQuotationDialog';
 
 type PipelineStage = 'Meeting' | 'Proposal' | 'Negosiasi' | 'Closing';
 
 interface PipelineProject {
   id: string;
   project_name: string;
+  client_id: string;
   client_name: string;
   total_value: number;
   pipeline_stage: PipelineStage;
@@ -70,6 +73,8 @@ export default function PipelineKanban() {
   const [searchQuery, setSearchQuery] = useState('');
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [selectedProjectForLink, setSelectedProjectForLink] = useState<PipelineProject | null>(null);
 
   // Filter pipeline projects
   const pipelineProjects: PipelineProject[] = projects
@@ -77,6 +82,7 @@ export default function PipelineKanban() {
     .map(p => ({
       id: p.id,
       project_name: p.project_name,
+      client_id: p.client_id,
       client_name: p.client?.name || 'Unknown',
       total_value: Number(p.total_value) || 0,
       pipeline_stage: (p.pipeline_stage as PipelineStage) || 'Meeting',
@@ -311,9 +317,39 @@ export default function PipelineKanban() {
                     <div className="flex items-start gap-2">
                       <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm line-clamp-2">
-                          {project.project_name}
-                        </h4>
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="font-medium text-sm line-clamp-2">
+                            {project.project_name}
+                          </h4>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                {project.quotation_id ? (
+                                  <div className="flex-shrink-0">
+                                    <FileCheck2 className="h-4 w-4 text-success" />
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedProjectForLink(project);
+                                      setLinkDialogOpen(true);
+                                    }}
+                                    className="flex-shrink-0 hover:scale-110 transition-transform"
+                                  >
+                                    <FileX2 className="h-4 w-4 text-warning" />
+                                  </button>
+                                )}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {project.quotation_id 
+                                  ? 'Quotation terhubung' 
+                                  : 'Belum ada quotation - Klik untuk menghubungkan'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
 
                         <div className="space-y-1 mt-2">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -330,9 +366,26 @@ export default function PipelineKanban() {
                           <p className="text-sm font-semibold text-primary">
                             {formatCurrency(project.total_value)}
                           </p>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <TrendingUp className="h-3 w-3" />
-                            <span>{project.probability}%</span>
+                          <div className="flex items-center gap-2">
+                            {!project.quotation_id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProjectForLink(project);
+                                  setLinkDialogOpen(true);
+                                }}
+                              >
+                                <Link2 className="h-3 w-3 mr-1" />
+                                Link
+                              </Button>
+                            )}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>{project.probability}%</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -359,6 +412,18 @@ export default function PipelineKanban() {
             <span>Memperbarui pipeline...</span>
           </div>
         </div>
+      )}
+
+      {/* Link Quotation Dialog */}
+      {selectedProjectForLink && (
+        <LinkQuotationDialog
+          projectId={selectedProjectForLink.id}
+          projectName={selectedProjectForLink.project_name}
+          clientId={selectedProjectForLink.client_id}
+          open={linkDialogOpen}
+          onOpenChange={setLinkDialogOpen}
+          onSuccess={refetch}
+        />
       )}
     </AppLayout>
   );
