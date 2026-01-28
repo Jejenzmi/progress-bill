@@ -12,6 +12,7 @@ import { generateQuotationPDF, type QuotationItem, type CompanyProfile, type TTE
 import { useUserTTE } from '@/hooks/useUserTTE';
 import { QuotationApprovalDialog } from '@/components/quotations/QuotationApprovalDialog';
 import { CreateProjectFromQuotationDialog } from '@/components/quotations/CreateProjectFromQuotationDialog';
+import { NegotiatedPriceDialog } from '@/components/quotations/NegotiatedPriceDialog';
 import {
   Table,
   TableBody,
@@ -35,6 +36,8 @@ import {
   XCircle,
   Clock,
   FolderPlus,
+  HandCoins,
+  Percent,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -56,6 +59,11 @@ interface Quotation {
   rejection_reason: string | null;
   created_at: string;
   created_by: string | null;
+  margin_percentage: number | null;
+  negotiated_price: number | null;
+  negotiated_at: string | null;
+  negotiated_by: string | null;
+  negotiation_notes: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -95,6 +103,10 @@ export default function QuotationList() {
   // Create project from quotation states
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [quotationForProject, setQuotationForProject] = useState<Quotation | null>(null);
+  
+  // Negotiated price dialog states
+  const [negotiatedPriceDialogOpen, setNegotiatedPriceDialogOpen] = useState(false);
+  const [quotationForNegotiation, setQuotationForNegotiation] = useState<Quotation | null>(null);
   
   const canReview = hasRole('admin') || hasRole('coo');
   const canSubmit = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
@@ -428,7 +440,7 @@ export default function QuotationList() {
                   <TableHead>Proyek</TableHead>
                   <TableHead>Klien</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Berlaku Hingga</TableHead>
+                  <TableHead className="text-right">Harga Deal</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Approval</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
@@ -447,13 +459,28 @@ export default function QuotationList() {
                       {quotation.grand_total
                         ? formatCurrency(quotation.grand_total)
                         : '-'}
+                      {quotation.margin_percentage && (
+                        <div className="text-xs text-muted-foreground flex items-center justify-end gap-1 mt-0.5">
+                          <Percent className="h-3 w-3" />
+                          {quotation.margin_percentage}% margin
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      {quotation.valid_until
-                        ? format(new Date(quotation.valid_until), 'dd MMM yyyy', {
-                            locale: idLocale,
-                          })
-                        : '-'}
+                    <TableCell className="text-right">
+                      {quotation.negotiated_price ? (
+                        <div>
+                          <span className="font-medium text-success">
+                            {formatCurrency(quotation.negotiated_price)}
+                          </span>
+                          {quotation.grand_total && quotation.negotiated_price < quotation.grand_total && (
+                            <div className="text-xs text-destructive mt-0.5">
+                              -{((quotation.grand_total - quotation.negotiated_price) / quotation.grand_total * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(quotation.status)}
@@ -525,6 +552,22 @@ export default function QuotationList() {
                           </Button>
                         )}
                         
+                        {/* Input negotiated price button - for Marketing on approved/sent quotations */}
+                        {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuotationForNegotiation(quotation);
+                              setNegotiatedPriceDialogOpen(true);
+                            }}
+                            title="Input Harga Negosiasi"
+                            className={quotation.negotiated_price ? "text-success" : "text-orange-600"}
+                          >
+                            <HandCoins className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <Button
                           variant="ghost"
                           size="icon"
@@ -592,6 +635,22 @@ export default function QuotationList() {
         } : null}
         open={createProjectDialogOpen}
         onOpenChange={setCreateProjectDialogOpen}
+        onSuccess={fetchQuotations}
+      />
+
+      {/* Negotiated Price Dialog */}
+      <NegotiatedPriceDialog
+        quotation={quotationForNegotiation ? {
+          id: quotationForNegotiation.id,
+          project_name: quotationForNegotiation.project_name,
+          grand_total: quotationForNegotiation.grand_total,
+          negotiated_price: quotationForNegotiation.negotiated_price,
+          negotiation_notes: quotationForNegotiation.negotiation_notes,
+          margin_percentage: quotationForNegotiation.margin_percentage,
+          client_name: quotationForNegotiation.clients?.name,
+        } : null}
+        open={negotiatedPriceDialogOpen}
+        onOpenChange={setNegotiatedPriceDialogOpen}
         onSuccess={fetchQuotations}
       />
     </AppLayout>

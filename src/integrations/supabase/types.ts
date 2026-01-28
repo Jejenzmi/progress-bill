@@ -638,6 +638,11 @@ export type Database = {
           maintenance_cost: number | null
           maintenance_period: string | null
           man_days: Json
+          margin_percentage: number | null
+          negotiated_at: string | null
+          negotiated_by: string | null
+          negotiated_price: number | null
+          negotiation_notes: string | null
           project_name: string
           rejected_at: string | null
           rejected_by: string | null
@@ -664,6 +669,11 @@ export type Database = {
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
+          margin_percentage?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_price?: number | null
+          negotiation_notes?: string | null
           project_name: string
           rejected_at?: string | null
           rejected_by?: string | null
@@ -690,6 +700,11 @@ export type Database = {
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
+          margin_percentage?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_price?: number | null
+          negotiation_notes?: string | null
           project_name?: string
           rejected_at?: string | null
           rejected_by?: string | null

@@ -89,6 +89,9 @@ export default function Quotation() {
     'Support teknis selama masa garansi',
     'Opsional maintenance bulanan tersedia jika diperlukan',
   ]);
+  
+  // Margin tracking (from catalog products)
+  const [usedMarginPercentage, setUsedMarginPercentage] = useState<number | null>(null);
 
   // Fetch quotation prefix from settings and generate quotation number on mount or load edit data
   useEffect(() => {
@@ -204,8 +207,10 @@ export default function Quotation() {
     unit: string;
     unitPrice: number;
     total: number;
-  }>) => {
+  }>, marginPercentage: number) => {
     setItems([...items, ...products]);
+    // Track the margin percentage used
+    setUsedMarginPercentage(marginPercentage);
   };
 
   const removeItem = (index: number) => {
@@ -352,6 +357,7 @@ export default function Quotation() {
         grand_total: grandTotal,
         valid_until: validUntil.toISOString().split('T')[0],
         status: 'Draft',
+        margin_percentage: usedMarginPercentage,
       };
 
       if (editingQuotationId) {
