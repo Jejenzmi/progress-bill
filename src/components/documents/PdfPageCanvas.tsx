@@ -1,14 +1,15 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pdfjsLib: any;
 
 async function getPdfJs() {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist');
-  // Use CDN for worker to avoid Vite/Rollup resolution issues
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
   return pdfjsLib;
 }
 
@@ -36,6 +37,7 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
   const [renderSize, setRenderSize] = useState<{ w: number; h: number } | null>(null);
   const [pagePt, setPagePt] = useState<{ widthPt: number; heightPt: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const safePage = useMemo(() => Math.max(1, pageNumber || 1), [pageNumber]);
 
@@ -65,12 +67,16 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
     async function run() {
       if (!src || !wrapperSize?.w || !wrapperSize?.h || !canvasRef.current) return;
       setLoading(true);
+      setError(null);
 
       try {
         const pdf = await getPdfJs();
 
+        // Blob URL kadang tidak bisa di-load langsung via `url:` pada beberapa environment,
+        // jadi kita normalisasi ke `data:`.
+        const ab = await (await fetch(src)).arrayBuffer();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const loadingTask: any = pdf.getDocument({ url: src });
+        const loadingTask: any = pdf.getDocument({ data: new Uint8Array(ab) });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const doc: any = await loadingTask.promise;
 
@@ -104,6 +110,10 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
 
         renderTask = page.render({ canvasContext: ctx, viewport });
         await renderTask.promise;
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e?.message || 'Gagal memuat preview PDF');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -129,6 +139,13 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
         style={renderSize ? { width: `${renderSize.w}px`, height: `${renderSize.h}px` } : undefined}
       >
         <canvas ref={canvasRef} className={cn('block rounded bg-background', loading && 'opacity-40')} />
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+            <div className="text-sm text-muted-foreground px-4 text-center">
+              {error}
+            </div>
+          </div>
+        )}
         {typeof children === 'function'
           ? children({ containerRef: pageContainerRef, pagePt: pagePt ?? undefined })
           : children}
