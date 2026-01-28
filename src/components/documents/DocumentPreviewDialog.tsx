@@ -39,6 +39,8 @@ interface DocumentPreviewDialogProps {
   onSignerNameChange: (name: string) => void;
   signerPosition: string;
   onSignerPositionChange: (position: string) => void;
+  signerType: string;
+  onSignerTypeChange: (type: string) => void;
   onConfirm: (pageNumber?: number) => void;
   uploading: boolean;
   // User TTE settings for "self" option
@@ -57,6 +59,8 @@ export function DocumentPreviewDialog({
   onSignerNameChange,
   signerPosition,
   onSignerPositionChange,
+  signerType,
+  onSignerTypeChange,
   onConfirm,
   uploading,
   userTTEName = '',
@@ -65,7 +69,6 @@ export function DocumentPreviewDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string>('');
   const [selectedPage, setSelectedPage] = useState<number>(1);
-  const [selectedSigner, setSelectedSigner] = useState<string>('self');
 
   // Reset selectedPage to 1 when dialog opens with a new file
   useEffect(() => {
@@ -73,12 +76,12 @@ export function DocumentPreviewDialog({
       setSelectedPage(1);
       // Default to self if user has TTE settings
       if (userTTEName && userTTEPosition) {
-        setSelectedSigner('self');
+        onSignerTypeChange('self');
         onSignerNameChange(userTTEName);
         onSignerPositionChange(userTTEPosition);
       } else {
         // Default to COO if no user TTE settings
-        setSelectedSigner('coo');
+        onSignerTypeChange('coo');
         const coo = TTE_SIGNERS.find(s => s.id === 'coo')!;
         onSignerNameChange(coo.name);
         onSignerPositionChange(coo.position);
@@ -99,7 +102,7 @@ export function DocumentPreviewDialog({
 
   // Handle signer selection change
   const handleSignerChange = (signerId: string) => {
-    setSelectedSigner(signerId);
+    onSignerTypeChange(signerId);
     
     if (signerId === 'self') {
       // Use user's own TTE settings
@@ -308,7 +311,7 @@ export function DocumentPreviewDialog({
               
               <div className="space-y-2">
                 <Label>Pilih Penandatangan *</Label>
-                <Select value={selectedSigner} onValueChange={handleSignerChange}>
+                <Select value={signerType} onValueChange={handleSignerChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih penandatangan..." />
                   </SelectTrigger>
@@ -346,9 +349,15 @@ export function DocumentPreviewDialog({
                 </div>
               </div>
 
-              {selectedSigner === 'self' && !selfAvailable && (
-                <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+              {signerType === 'self' && !selfAvailable && (
+                <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
                   ⚠️ Anda belum mengatur TTE di halaman Settings. Silakan atur TTE terlebih dahulu atau pilih penandatangan lain.
+                </p>
+              )}
+              
+              {signerType !== 'self' && (
+                <p className="text-xs text-primary bg-primary/10 p-2 rounded border border-primary/20">
+                  ℹ️ Dokumen akan dikirim untuk approval ke {signerType === 'coo' ? 'COO' : 'CEO'} sebelum ditandatangani.
                 </p>
               )}
             </div>

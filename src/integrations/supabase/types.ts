@@ -666,6 +666,8 @@ export type Database = {
       }
       signed_documents: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           file_size: number | null
           file_type: string
@@ -673,15 +675,24 @@ export type Database = {
           original_file_name: string
           original_file_path: string
           qr_position: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           signed_at: string
           signed_file_path: string | null
           signer_name: string
           signer_position: string
+          signer_type: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          tte_status: string | null
           updated_at: string
           user_id: string
           verification_id: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           file_size?: number | null
           file_type: string
@@ -689,15 +700,24 @@ export type Database = {
           original_file_name: string
           original_file_path: string
           qr_position?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           signed_at?: string
           signed_file_path?: string | null
           signer_name: string
           signer_position: string
+          signer_type?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tte_status?: string | null
           updated_at?: string
           user_id: string
           verification_id?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           file_size?: number | null
           file_type?: string
@@ -705,10 +725,17 @@ export type Database = {
           original_file_name?: string
           original_file_path?: string
           qr_position?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           signed_at?: string
           signed_file_path?: string | null
           signer_name?: string
           signer_position?: string
+          signer_type?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tte_status?: string | null
           updated_at?: string
           user_id?: string
           verification_id?: string | null
