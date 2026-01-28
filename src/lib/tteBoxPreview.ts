@@ -40,6 +40,57 @@ export function getAllowedBoxCenterBounds(size: TTESize) {
   };
 }
 
+/**
+ * Hitung bounds center kotak TTE berdasarkan ukuran halaman PDF asli (dalam pt).
+ * Ini mengikuti logika pdfEmbedder: boxWidth/boxHeight & margin dalam pt.
+ */
+export function getAllowedBoxCenterBoundsForPage(
+  size: TTESize,
+  pageWidthPt: number,
+  pageHeightPt: number
+) {
+  const cfg = TTE_BOX_PT[size] ?? TTE_BOX_PT.medium;
+  const boxW = (cfg.boxWidth / pageWidthPt) * 100;
+  const boxH = (cfg.boxHeight / pageHeightPt) * 100;
+  const marginX = (TTE_MARGIN_PT / pageWidthPt) * 100;
+  const marginY = (TTE_MARGIN_PT / pageHeightPt) * 100;
+
+  const halfW = boxW / 2;
+  const halfH = boxH / 2;
+
+  return {
+    minX: halfW + marginX,
+    maxX: 100 - halfW - marginX,
+    minY: halfH + marginY,
+    maxY: 100 - halfH - marginY,
+    boxW,
+    boxH,
+  };
+}
+
+export function getPresetBoxCenterForPage(
+  preset: string,
+  size: TTESize,
+  pageWidthPt: number,
+  pageHeightPt: number
+): { x: number; y: number } {
+  const { minX, maxX, minY, maxY } = getAllowedBoxCenterBoundsForPage(size, pageWidthPt, pageHeightPt);
+  switch (preset) {
+    case 'top-left':
+      return { x: minX, y: minY };
+    case 'top-right':
+      return { x: maxX, y: minY };
+    case 'bottom-left':
+      return { x: minX, y: maxY };
+    case 'bottom-right':
+      return { x: maxX, y: maxY };
+    case 'center':
+      return { x: 50, y: 50 };
+    default:
+      return { x: maxX, y: maxY };
+  }
+}
+
 export function getPresetBoxCenter(preset: string, size: TTESize): { x: number; y: number } {
   const { minX, maxX, minY, maxY } = getAllowedBoxCenterBounds(size);
   switch (preset) {

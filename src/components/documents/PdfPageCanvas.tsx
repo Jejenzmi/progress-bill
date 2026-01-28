@@ -16,7 +16,12 @@ interface PdfPageCanvasProps {
   src: string;
   pageNumber: number;
   className?: string;
-  children?: React.ReactNode;
+  children?:
+    | React.ReactNode
+    | ((ctx: {
+        containerRef: React.RefObject<HTMLDivElement>;
+        pagePt?: { widthPt: number; heightPt: number };
+      }) => React.ReactNode);
 }
 
 /**
@@ -25,9 +30,11 @@ interface PdfPageCanvasProps {
  */
 export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [wrapperSize, setWrapperSize] = useState<{ w: number; h: number } | null>(null);
   const [renderSize, setRenderSize] = useState<{ w: number; h: number } | null>(null);
+  const [pagePt, setPagePt] = useState<{ widthPt: number; heightPt: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const safePage = useMemo(() => Math.max(1, pageNumber || 1), [pageNumber]);
@@ -70,6 +77,15 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
         const pageIndex = Math.min(Math.max(1, safePage), doc.numPages);
         const page = await doc.getPage(pageIndex);
 
+        // page.view is in PDF user space (pt)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const view: any = page.view;
+        if (Array.isArray(view) && view.length >= 4) {
+          const widthPt = Math.abs(view[2] - view[0]);
+          const heightPt = Math.abs(view[3] - view[1]);
+          setPagePt({ widthPt, heightPt });
+        }
+
         // Scale to fit container
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(wrapperSize.w / baseViewport.width, wrapperSize.h / baseViewport.height);
@@ -108,12 +124,16 @@ export function PdfPageCanvas({ src, pageNumber, className, children }: PdfPageC
   return (
     <div ref={wrapperRef} className={cn('w-full h-full flex items-center justify-center', className)}>
       <div
+        ref={pageContainerRef}
         className="relative"
         style={renderSize ? { width: `${renderSize.w}px`, height: `${renderSize.h}px` } : undefined}
       >
         <canvas ref={canvasRef} className={cn('block rounded bg-background', loading && 'opacity-40')} />
-        {children}
+        {typeof children === 'function'
+          ? children({ containerRef: pageContainerRef, pagePt: pagePt ?? undefined })
+          : children}
       </div>
     </div>
   );
 }
+

@@ -73,6 +73,11 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
   });
   
   const parsed = parseQRPosition(value);
+
+  // Sync jika parent mengubah value dari preset <-> custom (misal dari drag langsung di preview PDF)
+  useEffect(() => {
+    setMode(parsed.type);
+  }, [parsed.type]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);

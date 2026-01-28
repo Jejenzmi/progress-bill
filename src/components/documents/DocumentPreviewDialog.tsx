@@ -20,6 +20,7 @@ import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPositi
 import { TTEBoxOverlay } from './TTEBoxOverlay';
 import { PDFPageSelector } from './PDFPageSelector';
 import { PdfPageCanvas } from './PdfPageCanvas';
+import { TTEBoxDraggableOverlay } from './TTEBoxDraggableOverlay';
 import { Loader2, FileSignature, Eye, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -195,8 +196,26 @@ export function DocumentPreviewDialog({
                 ) : isPdf ? (
                   <div className="relative w-full h-full">
                     <PdfPageCanvas src={previewUrl} pageNumber={selectedPage}>
-                      {/* TTE Box Overlay for PDF (relative to actual rendered page) */}
-                      <TTEBoxOverlay qrPosition={qrPosition} qrPage={selectedPage} isPdf={true} showInfoBadge={true} />
+                      {({ containerRef, pagePt }) => (
+                        <>
+                          {/* Overlay pas di halaman (ukuran & preset mengikuti pagePt) */}
+                          <TTEBoxOverlay
+                            qrPosition={qrPosition}
+                            qrPage={selectedPage}
+                            isPdf={true}
+                            showInfoBadge={true}
+                            pagePt={pagePt}
+                          />
+
+                          {/* Drag langsung di halaman agar user bisa taruh tepat di 'Hormat Kami' */}
+                          <TTEBoxDraggableOverlay
+                            qrPosition={qrPosition}
+                            onQrPositionChange={onQrPositionChange}
+                            containerRef={containerRef}
+                            pagePt={pagePt}
+                          />
+                        </>
+                      )}
                     </PdfPageCanvas>
                   </div>
                 ) : (

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { QrCode } from 'lucide-react';
 import { parseQRPosition, QRPositionValue } from './QRPositionSelector';
-import { getTTEBoxPercent, getPresetBoxCenter, type TTESize } from '@/lib/tteBoxPreview';
+import { getAllowedBoxCenterBoundsForPage, getPresetBoxCenter, getPresetBoxCenterForPage, getTTEBoxPercent, type TTESize } from '@/lib/tteBoxPreview';
 
 interface TTEBoxOverlayProps {
   qrPosition: string | QRPositionValue;
@@ -9,6 +9,7 @@ interface TTEBoxOverlayProps {
   isPdf?: boolean;
   showInfoBadge?: boolean;
   className?: string;
+  pagePt?: { widthPt: number; heightPt: number };
 }
 
 /**
@@ -21,15 +22,23 @@ export function TTEBoxOverlay({
   isPdf = false,
   showInfoBadge = true,
   className,
+  pagePt,
 }: TTEBoxOverlayProps) {
   const parsed = parseQRPosition(qrPosition);
   const size: TTESize = parsed.size || 'medium';
-  const { boxW, boxH } = getTTEBoxPercent(size);
+
+  // Ukuran kotak harus mengikuti ukuran halaman asli (pt) agar 1:1 dengan embed PDF.
+  const { boxW, boxH } = pagePt
+    ? getAllowedBoxCenterBoundsForPage(size, pagePt.widthPt, pagePt.heightPt)
+    : getTTEBoxPercent(size);
 
   // Hitung posisi center
   const getCenter = (): { x: number; y: number } => {
     if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
       return { x: parsed.x, y: parsed.y };
+    }
+    if (pagePt) {
+      return getPresetBoxCenterForPage(parsed.preset || 'bottom-right', size, pagePt.widthPt, pagePt.heightPt);
     }
     return getPresetBoxCenter(parsed.preset || 'bottom-right', size);
   };
