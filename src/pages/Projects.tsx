@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Filter, Loader2, Briefcase, Pencil, Upload, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Briefcase, Pencil, Upload, FileText, FileCheck, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Database } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -359,6 +359,65 @@ export default function Projects() {
               </DialogHeader>
 
               <div className="space-y-6 mt-4">
+                {/* Quotation Info */}
+                {selectedProject.quotation ? (
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileCheck className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Informasi Quotation</h4>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Status Quotation</p>
+                        <Badge 
+                          variant="secondary" 
+                          className={
+                            selectedProject.quotation.approval_status === 'approved' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                              : selectedProject.quotation.approval_status === 'rejected'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : selectedProject.quotation.approval_status === 'pending'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                          }
+                        >
+                          {selectedProject.quotation.approval_status === 'approved' ? 'Disetujui' 
+                           : selectedProject.quotation.approval_status === 'rejected' ? 'Ditolak'
+                           : selectedProject.quotation.approval_status === 'pending' ? 'Menunggu Approval'
+                           : 'Draft'}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nilai Quotation</p>
+                        <p className="font-semibold">{formatCurrency(Number(selectedProject.quotation.grand_total || 0))}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Berlaku Hingga</p>
+                        <p className="font-semibold">
+                          {selectedProject.quotation.valid_until 
+                            ? new Date(selectedProject.quotation.valid_until).toLocaleDateString('id-ID')
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Disetujui Pada</p>
+                        <p className="font-semibold">
+                          {selectedProject.quotation.approved_at 
+                            ? new Date(selectedProject.quotation.approved_at).toLocaleDateString('id-ID')
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <AlertCircle className="h-5 w-5" />
+                      <p className="text-sm">Proyek ini tidak terhubung dengan Quotation</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Project Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="rounded-lg bg-muted/50 p-3">
@@ -453,7 +512,7 @@ export default function Projects() {
                                 {term.evidences.length > 0 ? 'Tambah Dokumen' : 'Upload Dokumen'}
                               </Button>
                             )}
-                            {canCreateInvoice && !term.invoice && !term.is_locked && term.evidences.length > 0 && (
+                            {canCreateInvoice && !term.invoice && !term.is_locked && term.evidences.length > 0 && selectedProject.status === 'Won' && (
                               <Button
                                 size="sm"
                                 onClick={() => handleGenerateInvoice(term, selectedProject)}
@@ -461,6 +520,12 @@ export default function Projects() {
                                 <FileText className="h-4 w-4 mr-2" />
                                 Buat Invoice
                               </Button>
+                            )}
+                            {canCreateInvoice && !term.invoice && !term.is_locked && term.evidences.length > 0 && selectedProject.status !== 'Won' && (
+                              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Invoice hanya bisa dibuat jika status proyek "Won"</span>
+                              </div>
                             )}
                             {term.invoice && (
                               <Button

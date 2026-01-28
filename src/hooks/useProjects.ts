@@ -7,9 +7,11 @@ type Client = Database['public']['Tables']['clients']['Row'];
 type PaymentTerm = Database['public']['Tables']['payment_terms']['Row'];
 type Invoice = Database['public']['Tables']['invoices']['Row'];
 type TermEvidence = Database['public']['Tables']['term_evidences']['Row'];
+type Quotation = Database['public']['Tables']['quotations']['Row'];
 
 export interface ProjectWithDetails extends Project {
   client: Client | null;
+  quotation: Quotation | null;
   payment_terms: (PaymentTerm & { invoice: Invoice | null; evidences: TermEvidence[] })[];
 }
 
@@ -22,12 +24,13 @@ export function useProjects() {
     try {
       setLoading(true);
       
-      // Fetch projects with client info
+      // Fetch projects with client and quotation info
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select(`
           *,
-          client:clients(*)
+          client:clients(*),
+          quotation:quotations(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -69,6 +72,7 @@ export function useProjects() {
         return {
           ...project,
           client: project.client,
+          quotation: project.quotation,
           payment_terms: projectTerms,
         };
       });

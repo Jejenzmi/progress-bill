@@ -493,6 +493,7 @@ export type Database = {
           pipeline_stage: Database["public"]["Enums"]["pipeline_stage"] | null
           probability: number | null
           project_name: string
+          quotation_id: string | null
           spk_file_path: string | null
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
@@ -509,6 +510,7 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
           probability?: number | null
           project_name: string
+          quotation_id?: string | null
           spk_file_path?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -525,6 +527,7 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
           probability?: number | null
           project_name?: string
+          quotation_id?: string | null
           spk_file_path?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -537,6 +540,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
             referencedColumns: ["id"]
           },
         ]
