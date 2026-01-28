@@ -184,6 +184,8 @@ export type Database = {
           duration_months: number
           end_date: string
           id: string
+          party1_obligations: Json | null
+          party2_obligations: Json | null
           payment_terms_snapshot: Json
           project_description: string | null
           project_id: string | null
@@ -220,6 +222,8 @@ export type Database = {
           duration_months?: number
           end_date: string
           id?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
           payment_terms_snapshot?: Json
           project_description?: string | null
           project_id?: string | null
@@ -256,6 +260,8 @@ export type Database = {
           duration_months?: number
           end_date?: string
           id?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
           payment_terms_snapshot?: Json
           project_description?: string | null
           project_id?: string | null
