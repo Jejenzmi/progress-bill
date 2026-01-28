@@ -40,6 +40,8 @@ export interface InvoiceData {
   subtotal: number;
   ppnPercentage: number;
   ppnAmount: number;
+  pphPercentage?: number;
+  pphAmount?: number;
   grandTotal: number;
   taxInvoiceNumber?: string;
   notes?: string;
@@ -599,10 +601,18 @@ export const generateInvoicePDF = async (
                 <span>SUBTOTAL</span>
                 <span>Rp. ${formatCurrencyPlain(invoice.subtotal)},-</span>
               </div>
+              ${invoice.ppnPercentage > 0 ? `
               <div class="total-row ppn">
                 <span>PPN ${invoice.ppnPercentage}%</span>
                 <span>Rp. ${formatCurrencyPlain(invoice.ppnAmount)},-</span>
               </div>
+              ` : ''}
+              ${(invoice.pphPercentage && invoice.pphPercentage > 0) ? `
+              <div class="total-row pph" style="color: #dc3545;">
+                <span>PPh ${invoice.pphPercentage}%</span>
+                <span>- Rp. ${formatCurrencyPlain(invoice.pphAmount || 0)},-</span>
+              </div>
+              ` : ''}
               <div class="total-row grand">
                 <span>TOTAL</span>
                 <span>Rp. ${formatCurrencyPlain(invoice.grandTotal)},-</span>
