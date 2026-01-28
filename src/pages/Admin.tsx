@@ -26,7 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Search, UserCog, Shield, Loader2, Plus, PenTool, Mail, Lock, User } from 'lucide-react';
+import { Search, UserCog, Shield, Loader2, Plus, PenTool, Mail, Lock, User, Key } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -96,6 +96,13 @@ export default function Admin() {
     is_active: true,
   });
   const [savingTTE, setSavingTTE] = useState(false);
+
+  // Reset password dialog
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserWithRoles | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -422,6 +429,104 @@ export default function Admin() {
     }
   };
 
+  const handleResetPassword = (user: UserWithRoles) => {
+    setResetPasswordUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowResetPassword(true);
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!resetPasswordUser) return;
+
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'Semua field wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'Password minimal 6 karakter',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'Password dan konfirmasi tidak sama',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        toast({
+          title: 'Error',
+          description: 'Sesi tidak valid. Silakan login ulang.',
+          variant: 'destructive',
+        });
+        setResettingPassword(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          user_id: resetPasswordUser.user_id,
+          new_password: newPassword,
+        },
+      });
+
+      if (error) {
+        console.error('Reset password error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Gagal reset password',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data?.error) {
+        toast({
+          title: 'Error',
+          description: data.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Berhasil',
+        description: `Password untuk ${resetPasswordUser.full_name || 'User'} telah direset`,
+      });
+
+      setShowResetPassword(false);
+      setResetPasswordUser(null);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal reset password',
+        variant: 'destructive',
+      });
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const filteredUsers = users.filter((user) =>
     (user.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -528,8 +633,17 @@ export default function Admin() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditTTE(user)}
+                          title="Pengaturan TTE"
                         >
                           <PenTool className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleResetPassword(user)}
+                          title="Reset Password"
+                        >
+                          <Key className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -763,6 +877,65 @@ export default function Admin() {
             <Button onClick={handleSaveTTE} disabled={savingTTE}>
               {savingTTE && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Simpan TTE
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Reset password untuk {resetPasswordUser?.full_name || 'User'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password-reset">Password Baru</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="new-password-reset"
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password-reset">Konfirmasi Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirm-password-reset"
+                  type="password"
+                  placeholder="Ulangi password baru"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <p className="text-sm text-primary">
+                ⚠️ Password baru akan langsung aktif. Pastikan untuk menginformasikan pengguna tentang password barunya.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetPassword(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleConfirmResetPassword} disabled={resettingPassword}>
+              {resettingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>
