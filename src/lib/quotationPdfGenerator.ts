@@ -140,9 +140,14 @@ export const generateQuotationPDF = async (
     <li>${term}</li>
   `).join('') || '';
 
-  // Use logo from settings if available, otherwise use the published URL fallback
-  const publishedBaseUrl = 'https://progress-bill.lovable.app';
-  const logoSrc = company.logo_url || `${publishedBaseUrl}/zen-logo-quotation.png`;
+  // Use logo from settings if available. Fallback to the logo in the current app origin
+  // so it works both in Preview and after Publish.
+  const appBaseUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://progress-bill.lovable.app';
+
+  const logoSrc = company.logo_url || `${appBaseUrl}/zen-logo-quotation.png`;
 
   return `
     <!DOCTYPE html>
