@@ -143,10 +143,12 @@ export function CreateQuotationFromLeadDialog({
       const validUntil = new Date();
       validUntil.setDate(validUntil.getDate() + 30);
 
-      // Create quotation with simple line item
+      // Create quotation with simple line item and link to lead
       const quotationData = {
         project_name: projectName,
         client_id: clientId,
+        lead_id: lead.id, // Link to the Hot Lead for auto-project creation
+        auto_create_project: true, // Flag for auto-creating project on approval
         man_days: [
           {
             item: `Pengembangan ${projectName}`,

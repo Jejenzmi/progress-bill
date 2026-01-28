@@ -588,12 +588,14 @@ export type Database = {
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
+          auto_create_project: boolean | null
           client_id: string | null
           created_at: string
           created_by: string | null
           grand_total: number | null
           hosting_cost: number | null
           id: string
+          lead_id: string | null
           maintenance_cost: number | null
           maintenance_period: string | null
           man_days: Json
@@ -612,12 +614,14 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          auto_create_project?: boolean | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number | null
           hosting_cost?: number | null
           id?: string
+          lead_id?: string | null
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
@@ -636,12 +640,14 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          auto_create_project?: boolean | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number | null
           hosting_cost?: number | null
           id?: string
+          lead_id?: string | null
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
@@ -662,6 +668,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]

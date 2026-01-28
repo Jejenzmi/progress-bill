@@ -19,7 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, XCircle, Clock, Send, MessageSquare, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { createNotification, notifyRoleUsers } from '@/lib/notificationHelper';
-import { id } from 'date-fns/locale';
+import { id as idLocale } from 'date-fns/locale';
+import { getPaymentTermTemplates } from '@/components/settings/PaymentTermTemplateManager';
 
 interface Quotation {
   id: string;
@@ -32,6 +33,9 @@ interface Quotation {
   rejected_at: string | null;
   rejection_reason: string | null;
   client_name?: string;
+  client_id?: string | null;
+  lead_id?: string | null;
+  auto_create_project?: boolean;
 }
 
 interface Comment {
@@ -227,6 +231,15 @@ export function QuotationApprovalDialog({
 
     setLoading(true);
     try {
+      // First, fetch the full quotation data to check auto_create_project flag
+      const { data: fullQuotation, error: fetchError } = await supabase
+        .from('quotations')
+        .select('*, clients(id, name)')
+        .eq('id', quotation.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('quotations')
         .update({
@@ -248,36 +261,114 @@ export function QuotationApprovalDialog({
           comment: newComment.trim() ? `[Approved] ${newComment.trim()}` : '[Approved] Quotation disetujui',
         });
 
+      // Auto-create project if quotation was created from Hot Lead
+      let autoCreatedProject = null;
+      if (fullQuotation.auto_create_project && fullQuotation.client_id) {
+        try {
+          // Get payment term templates
+          const templates = await getPaymentTermTemplates();
+          const projectValue = fullQuotation.grand_total || 0;
+
+          // Create project
+          const { data: project, error: projectError } = await supabase
+            .from('projects')
+            .insert({
+              project_name: fullQuotation.project_name,
+              client_id: fullQuotation.client_id,
+              quotation_id: fullQuotation.id,
+              total_value: projectValue,
+              start_date: new Date().toISOString().split('T')[0],
+              status: 'Pipeline',
+              pipeline_stage: 'Closing',
+              probability: 90,
+              created_by: user.id,
+            })
+            .select()
+            .single();
+
+          if (projectError) throw projectError;
+          autoCreatedProject = project;
+
+          // Create payment terms from templates
+          if (templates.length > 0) {
+            const termsToInsert = templates.map((term, index) => ({
+              project_id: project.id,
+              term_name: term.term_name,
+              percentage: term.percentage,
+              amount: (projectValue * term.percentage) / 100,
+              trigger_condition: term.trigger_condition,
+              trigger_description: term.trigger_description,
+              term_order: index + 1,
+              is_locked: index === 0 ? false : true,
+            }));
+
+            await supabase.from('payment_terms').insert(termsToInsert);
+          }
+
+          // Notify Finance about the new project
+          await notifyRoleUsers(
+            'finance',
+            'Proyek Baru Otomatis dari Hot Lead',
+            `Proyek "${fullQuotation.project_name}" telah otomatis dibuat dari quotation yang disetujui.`,
+            {
+              type: 'success',
+              link: '/projects',
+              relatedId: project.id,
+              relatedType: 'project',
+            }
+          );
+
+          // Add auto-creation comment
+          await supabase
+            .from('quotation_comments')
+            .insert({
+              quotation_id: quotation.id,
+              user_id: user.id,
+              comment: '[Auto] Proyek otomatis dibuat dari Hot Lead',
+            });
+
+        } catch (autoCreateError) {
+          console.error('Error auto-creating project:', autoCreateError);
+          // Don't fail the approval, just log
+        }
+      }
+
       // Notify the submitter about approval
       if (quotation.submitted_by) {
         await createNotification({
           userId: quotation.submitted_by,
           title: 'Quotation Disetujui',
-          message: `Quotation "${quotation.project_name}" telah disetujui.`,
+          message: autoCreatedProject 
+            ? `Quotation "${quotation.project_name}" disetujui dan proyek otomatis dibuat.`
+            : `Quotation "${quotation.project_name}" telah disetujui.`,
           type: 'success',
-          link: '/quotations',
-          relatedId: quotation.id,
-          relatedType: 'quotation',
+          link: autoCreatedProject ? '/projects' : '/quotations',
+          relatedId: autoCreatedProject ? autoCreatedProject.id : quotation.id,
+          relatedType: autoCreatedProject ? 'project' : 'quotation',
         });
       }
 
-      // Notify Marketing team about approved quotation so they can create project
-      await notifyRoleUsers(
-        'marketing',
-        'Quotation Siap untuk Proyek',
-        `Quotation "${quotation.project_name}" telah disetujui dan siap dibuat menjadi proyek.`,
-        {
-          type: 'info',
-          link: '/quotations',
-          relatedId: quotation.id,
-          relatedType: 'quotation',
-          excludeUserId: quotation.submitted_by || undefined, // Don't notify submitter twice if they're marketing
-        }
-      );
+      // Notify Marketing team about approved quotation (only if no auto-create)
+      if (!autoCreatedProject) {
+        await notifyRoleUsers(
+          'marketing',
+          'Quotation Siap untuk Proyek',
+          `Quotation "${quotation.project_name}" telah disetujui dan siap dibuat menjadi proyek.`,
+          {
+            type: 'info',
+            link: '/quotations',
+            relatedId: quotation.id,
+            relatedType: 'quotation',
+            excludeUserId: quotation.submitted_by || undefined,
+          }
+        );
+      }
 
       toast({
         title: 'Berhasil',
-        description: 'Quotation telah disetujui',
+        description: autoCreatedProject 
+          ? `Quotation disetujui dan proyek "${quotation.project_name}" otomatis dibuat`
+          : 'Quotation telah disetujui',
       });
 
       onSuccess();
@@ -408,7 +499,7 @@ export function QuotationApprovalDialog({
             </div>
             {quotation.submitted_at && (
               <p className="text-xs text-muted-foreground mt-2">
-                Disubmit: {format(new Date(quotation.submitted_at), 'dd MMM yyyy HH:mm', { locale: id })}
+                Disubmit: {format(new Date(quotation.submitted_at), 'dd MMM yyyy HH:mm', { locale: idLocale })}
               </p>
             )}
           </div>
@@ -437,7 +528,7 @@ export function QuotationApprovalDialog({
                         <User className="h-3 w-3 text-muted-foreground" />
                         <span className="font-medium text-xs">{comment.user_name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(comment.created_at), 'dd MMM HH:mm', { locale: id })}
+                          {format(new Date(comment.created_at), 'dd MMM HH:mm', { locale: idLocale })}
                         </span>
                       </div>
                       <p className={`pl-5 ${
