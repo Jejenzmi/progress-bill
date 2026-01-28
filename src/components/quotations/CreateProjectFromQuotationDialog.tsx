@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, FolderPlus, AlertCircle, ListChecks } from 'lucide-react';
 import { formatCurrency } from '@/data/mockData';
 import { Database } from '@/integrations/supabase/types';
+import { getPaymentTermTemplates } from '@/components/settings/PaymentTermTemplateManager';
+import { notifyRoleUsers } from '@/lib/notificationHelper';
 
 type PipelineStage = Database['public']['Enums']['pipeline_stage'];
 type TermTrigger = Database['public']['Enums']['term_trigger'];
@@ -51,7 +53,7 @@ interface PaymentTermTemplate {
   trigger_description: string;
 }
 
-// Default payment terms template
+// Default payment terms template (used as fallback)
 const DEFAULT_PAYMENT_TERMS: PaymentTermTemplate[] = [
   {
     term_name: 'Termin 1 (DP)',
@@ -97,14 +99,26 @@ export function CreateProjectFromQuotationDialog({
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('Proposal');
   const [autoGenerateTerms, setAutoGenerateTerms] = useState(true);
+  const [paymentTermTemplates, setPaymentTermTemplates] = useState<PaymentTermTemplate[]>(DEFAULT_PAYMENT_TERMS);
+
+  // Load payment term templates from settings
+  useEffect(() => {
+    const loadTemplates = async () => {
+      const templates = await getPaymentTermTemplates();
+      if (templates.length > 0) {
+        setPaymentTermTemplates(templates as PaymentTermTemplate[]);
+      }
+    };
+    loadTemplates();
+  }, []);
 
   // Reset form when quotation changes
-  useState(() => {
+  useEffect(() => {
     if (quotation) {
       setProjectName(quotation.project_name);
       setTotalValue(String(quotation.grand_total || 0));
     }
-  });
+  }, [quotation]);
 
   const handleCreate = async () => {
     if (!quotation || !quotation.client_id) {
@@ -162,9 +176,9 @@ export function CreateProjectFromQuotationDialog({
 
       if (error) throw error;
 
-      // Auto-generate payment terms if enabled
+      // Auto-generate payment terms if enabled using templates from settings
       if (autoGenerateTerms && project) {
-        const termsToInsert = DEFAULT_PAYMENT_TERMS.map((term, index) => ({
+        const termsToInsert = paymentTermTemplates.map((term, index) => ({
           project_id: project.id,
           term_name: term.term_name,
           percentage: term.percentage,
@@ -190,10 +204,23 @@ export function CreateProjectFromQuotationDialog({
         }
       }
 
+      // Notify Finance team about new project from approved quotation
+      await notifyRoleUsers(
+        'finance',
+        'Proyek Baru dari Quotation',
+        `Proyek "${projectName}" telah dibuat dari quotation yang disetujui. Siap untuk pembuatan invoice.`,
+        {
+          type: 'info',
+          link: '/projects',
+          relatedId: project.id,
+          relatedType: 'project',
+        }
+      );
+
       toast({
         title: 'Berhasil',
         description: autoGenerateTerms 
-          ? `Proyek "${projectName}" berhasil dibuat dengan ${DEFAULT_PAYMENT_TERMS.length} termin pembayaran`
+          ? `Proyek "${projectName}" berhasil dibuat dengan ${paymentTermTemplates.length} termin pembayaran`
           : `Proyek "${projectName}" berhasil dibuat dari quotation`,
       });
 
@@ -335,7 +362,7 @@ export function CreateProjectFromQuotationDialog({
                     Auto-generate Termin Pembayaran
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Buat termin pembayaran standar secara otomatis (30% DP, 40% Progress, 30% Final)
+                    Buat termin pembayaran otomatis berdasarkan template dari Settings
                   </p>
                 </div>
               </div>
@@ -343,7 +370,7 @@ export function CreateProjectFromQuotationDialog({
               {autoGenerateTerms && parseFloat(totalValue) > 0 && (
                 <div className="ml-6 space-y-1 pt-2 border-t">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Preview Termin:</p>
-                  {DEFAULT_PAYMENT_TERMS.map((term, index) => (
+                  {paymentTermTemplates.map((term, index) => (
                     <div key={index} className="flex justify-between text-xs">
                       <span>{term.term_name} ({term.percentage}%)</span>
                       <span className="font-medium">

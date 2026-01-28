@@ -13,6 +13,7 @@ import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrC
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { SalesTargetManager } from '@/components/settings/SalesTargetManager';
 import { BankAccountManager } from '@/components/settings/BankAccountManager';
+import { PaymentTermTemplateManager } from '@/components/settings/PaymentTermTemplateManager';
 
 interface SettingsData {
   company_profile: {
@@ -395,6 +396,11 @@ export default function Settings() {
         {/* Sales Targets */}
         {isAdmin && (
           <SalesTargetManager />
+        )}
+
+        {/* Payment Term Templates */}
+        {isAdmin && (
+          <PaymentTermTemplateManager disabled={!isAdmin} />
         )}
 
         {/* Legacy Targets (for backwards compatibility) */}
