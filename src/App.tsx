@@ -31,6 +31,7 @@ import Admin from "./pages/Admin";
 import QuotationList from "./pages/QuotationList";
 import Guide from "./pages/Guide";
 import FinanceDashboard from "./pages/FinanceDashboard";
+import NegotiationHistory from "./pages/NegotiationHistory";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -274,6 +275,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Guide />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/negotiation-history"
+        element={
+          <ProtectedRoute>
+            <NegotiationHistory />
           </ProtectedRoute>
         }
       />
