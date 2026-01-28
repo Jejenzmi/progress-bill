@@ -154,8 +154,36 @@ function generateVerificationData(data: TTEEmbedData, verifyUrl: string): string
 }
 
 /**
+ * Pad output bytes to match or exceed a target size.
+ * Uses PDF comment padding which is safe and ignored by readers.
+ */
+function padToSize(pdfBytes: Uint8Array, targetSize: number): Uint8Array {
+  if (pdfBytes.length >= targetSize) {
+    return pdfBytes;
+  }
+  
+  const paddingNeeded = targetSize - pdfBytes.length;
+  // Create padding as PDF comment: % followed by spaces, ending with newline
+  // PDF spec allows comments anywhere; we add at end before %%EOF
+  const paddingContent = new Uint8Array(paddingNeeded);
+  paddingContent[0] = 0x25; // %
+  for (let i = 1; i < paddingNeeded - 1; i++) {
+    paddingContent[i] = 0x20; // space
+  }
+  paddingContent[paddingNeeded - 1] = 0x0A; // newline
+  
+  // Combine original + padding
+  const result = new Uint8Array(pdfBytes.length + paddingNeeded);
+  result.set(pdfBytes, 0);
+  result.set(paddingContent, pdfBytes.length);
+  
+  return result;
+}
+
+/**
  * Embed TTE QR Code directly into an existing PDF
  * This modifies the original PDF rather than creating a certificate page
+ * Output size will match or exceed original file size to preserve apparent file integrity
  */
 export async function embedTTEIntoPDF(
   pdfBytes: ArrayBuffer | Uint8Array,
@@ -163,6 +191,9 @@ export async function embedTTEIntoPDF(
   verifyUrl: string,
   pageNumber: number = 1 // 1-indexed, which page to add QR
 ): Promise<Uint8Array> {
+  // Store original size for padding later
+  const originalSize = pdfBytes instanceof ArrayBuffer ? pdfBytes.byteLength : pdfBytes.length;
+  
   // Load the existing PDF without modifying existing content streams
   // This preserves the original quality of the document
   const pdfDoc = await PDFDocument.load(pdfBytes, {
@@ -277,11 +308,14 @@ export async function embedTTEIntoPDF(
   
   // Save without additional compression to preserve original quality
   // objectsPerTick: Infinity prevents chunking which can alter byte streams
-  return await pdfDoc.save({
+  const savedBytes = await pdfDoc.save({
     useObjectStreams: false,
     addDefaultPage: false,
     objectsPerTick: Infinity,
   });
+  
+  // Pad output to match original file size (if smaller)
+  return padToSize(savedBytes, originalSize);
 }
 
 /**
