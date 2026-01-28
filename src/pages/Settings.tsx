@@ -9,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrCode } from 'lucide-react';
+import { Building2, Save, Target, TrendingUp, Loader2, CreditCard, FileText, QrCode, Package, Percent } from 'lucide-react';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { SalesTargetManager } from '@/components/settings/SalesTargetManager';
 import { BankAccountManager } from '@/components/settings/BankAccountManager';
 import { PaymentTermTemplateManager } from '@/components/settings/PaymentTermTemplateManager';
+import { ProductCatalogManager } from '@/components/settings/ProductCatalogManager';
+import { MarginSettingsCard } from '@/components/settings/MarginSettingsCard';
 
 interface SettingsData {
   company_profile: {
@@ -391,6 +393,16 @@ export default function Settings() {
         {/* Bank Accounts */}
         {isAdmin && (
           <BankAccountManager />
+        )}
+
+        {/* Margin Settings */}
+        {isAdmin && (
+          <MarginSettingsCard disabled={!isAdmin} />
+        )}
+
+        {/* Product Catalog */}
+        {isAdmin && (
+          <ProductCatalogManager />
         )}
 
         {/* Sales Targets */}
