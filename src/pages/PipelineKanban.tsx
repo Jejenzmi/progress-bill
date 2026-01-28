@@ -12,6 +12,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
@@ -25,6 +32,7 @@ import {
   FileCheck2,
   FileX2,
   Link2,
+  Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LinkQuotationDialog } from '@/components/projects/LinkQuotationDialog';
@@ -75,6 +83,7 @@ export default function PipelineKanban() {
   const [updating, setUpdating] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedProjectForLink, setSelectedProjectForLink] = useState<PipelineProject | null>(null);
+  const [quotationFilter, setQuotationFilter] = useState<'all' | 'with' | 'without'>('all');
 
   // Filter pipeline projects
   const pipelineProjects: PipelineProject[] = projects
@@ -93,7 +102,12 @@ export default function PipelineKanban() {
     .filter(p => 
       p.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.client_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    )
+    .filter(p => {
+      if (quotationFilter === 'with') return p.quotation_id !== null;
+      if (quotationFilter === 'without') return p.quotation_id === null;
+      return true;
+    });
 
   const getProjectsByStage = (stage: PipelineStage) =>
     pipelineProjects.filter(p => p.pipeline_stage === stage);
@@ -211,6 +225,17 @@ export default function PipelineKanban() {
             className="pl-9"
           />
         </div>
+        <Select value={quotationFilter} onValueChange={(v) => setQuotationFilter(v as 'all' | 'with' | 'without')}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter Quotation" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Proyek</SelectItem>
+            <SelectItem value="with">Dengan Quotation</SelectItem>
+            <SelectItem value="without">Tanpa Quotation</SelectItem>
+          </SelectContent>
+        </Select>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
           Tambah Prospek
