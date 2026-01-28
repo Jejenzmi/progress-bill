@@ -140,27 +140,27 @@ export const generateQuotationPDF = async (
     <li>${term}</li>
   `).join('') || '';
 
-  // Fetch logo and convert to base64 to avoid CORS issues in print windows
-  let logoSrc = company.logo_url || '';
-  
-  // If no custom logo, try to fetch the default logo and convert to base64
-  if (!logoSrc) {
+  // Always use a reliable logo for print window:
+  // 1) try custom logo_url (if accessible)
+  // 2) fallback to local /zen-logo-quotation.png
+  const toDataUrl = async (url?: string): Promise<string | null> => {
+    if (!url) return null;
     try {
-      const response = await fetch('/zen-logo-quotation.png');
-      if (response.ok) {
-        const blob = await response.blob();
-        logoSrc = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch logo:', error);
-      // Fallback: use a simple text logo
-      logoSrc = '';
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return null;
     }
-  }
+  };
+
+  const logoLocalPath = '/zen-logo-quotation.png';
+  let logoSrc = (await toDataUrl(company.logo_url)) || (await toDataUrl(logoLocalPath)) || logoLocalPath;
 
   return `
     <!DOCTYPE html>
@@ -395,9 +395,22 @@ export const generateQuotationPDF = async (
         .signature-box p {
           font-size: 9pt;
         }
+        .signature-qr {
+          margin-top: 10px;
+          display: flex;
+          justify-content: center;
+        }
+        .signature-qr img {
+          width: 70px;
+          height: 70px;
+          border: 1px solid #3d5a80;
+          border-radius: 4px;
+          padding: 2px;
+          background: white;
+        }
         .signer-name {
           font-weight: bold;
-          margin-top: 40px;
+          margin-top: 12px;
           padding-top: 5px;
           border-top: 1px solid #333;
         }
@@ -637,6 +650,11 @@ export const generateQuotationPDF = async (
             <div class="signature-box">
               <p>Hormat kami,</p>
               <p style="font-weight: bold;">${company.name}</p>
+              ${tteEnabled && qrCodeDataURL ? `
+                <div class="signature-qr">
+                  <img src="${qrCodeDataURL}" alt="QR Verifikasi Dokumen" />
+                </div>
+              ` : ''}
               ${tteEnabled && tteSettings?.signer_name ? `
                 <p class="signer-name">${tteSettings.signer_name}</p>
                 <p class="signer-position">${tteSettings.signer_position || ''}</p>
@@ -651,9 +669,6 @@ export const generateQuotationPDF = async (
           <!-- TTE Section -->
           ${tteEnabled ? `
           <div class="tte-section">
-            <div class="tte-qr">
-              ${qrCodeDataURL ? `<img src="${qrCodeDataURL}" alt="QR TTE" />` : ''}
-            </div>
             <div class="tte-info">
               <div class="tte-title">Tanda Tangan Elektronik</div>
               <div class="tte-detail">
