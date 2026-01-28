@@ -94,12 +94,24 @@ export function TTEApprovalDialog({
 
     setLoading(true);
     try {
+      console.log('Starting TTE approval for document:', document.id);
+      console.log('Original file path:', document.original_file_path);
+      
       // Download original file
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('signed-documents')
         .download(document.original_file_path);
 
-      if (downloadError) throw downloadError;
+      if (downloadError) {
+        console.error('Download error:', downloadError);
+        throw new Error(`Gagal mengunduh dokumen: ${downloadError.message}`);
+      }
+
+      if (!fileData) {
+        throw new Error('File tidak ditemukan di storage');
+      }
+
+      console.log('File downloaded successfully, size:', fileData.size);
 
       // Generate signed PDF with TTE
       const file = new File([fileData], document.original_file_name, { type: document.file_type });
@@ -113,17 +125,25 @@ export function TTEApprovalDialog({
         qrPosition: document.qr_position,
       };
       
+      console.log('Generating signed PDF...');
       const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(file, tteData, VERIFICATION_BASE_URL);
+      console.log('PDF generated, verification ID:', verificationId);
       
       // Upload signed PDF
       const signedFileName = `${Date.now()}-signed-${document.original_file_name.replace(/\.[^/.]+$/, '')}.pdf`;
       const signedFilePath = `${document.submitted_by || user.id}/signed/${signedFileName}`;
 
+      console.log('Uploading signed PDF to:', signedFilePath);
       const { error: uploadError } = await supabase.storage
         .from('signed-documents')
         .upload(signedFilePath, signedPdfBlob);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Gagal mengupload dokumen: ${uploadError.message}`);
+      }
+
+      console.log('File uploaded successfully');
 
       // Update database record
       const { error: dbError } = await supabase
@@ -138,7 +158,12 @@ export function TTEApprovalDialog({
         })
         .eq('id', document.id);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        throw new Error(`Gagal memperbarui database: ${dbError.message}`);
+      }
+
+      console.log('Database updated successfully');
 
       // Notify submitter
       if (document.submitted_by) {
