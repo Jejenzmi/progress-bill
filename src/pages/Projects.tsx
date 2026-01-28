@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TermStatusCard } from '@/components/dashboard/TermStatusCard';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
@@ -9,6 +10,7 @@ import { formatCurrency } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -23,13 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Filter, Loader2, Briefcase, Pencil } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Briefcase, Pencil, Upload, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Database } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 type ProjectStatus = Database['public']['Enums']['project_status'];
+type EvidenceType = Database['public']['Enums']['evidence_type'];
 
 const statusFilters: { value: ProjectStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Semua Status' },
@@ -46,7 +49,10 @@ const STATUS_COLORS: Record<ProjectStatus, string> = {
   Lost: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
 
+const EVIDENCE_TYPES: EvidenceType[] = ['BAST', 'Laporan Progress', 'Faktur Pajak', 'Bukti Potong PPh', 'SPK', 'Lainnya'];
+
 export default function Projects() {
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { toast } = useToast();
   const { projects, loading, refetch } = useProjects();
@@ -55,9 +61,17 @@ export default function Projects() {
   const [selectedProject, setSelectedProject] = useState<ProjectWithDetails | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectWithDetails | null>(null);
+  
+  // Upload evidence state
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadingTerm, setUploadingTerm] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [evidenceType, setEvidenceType] = useState<EvidenceType>('SPK');
+  const [uploading, setUploading] = useState(false);
 
   const canCreateProject = hasRole('admin') || hasRole('marketing');
   const canCreateInvoice = hasRole('admin') || hasRole('finance');
+  const canUploadEvidence = hasRole('admin') || hasRole('finance') || hasRole('project_manager') || hasRole('marketing');
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
@@ -123,12 +137,12 @@ export default function Projects() {
 
       toast({
         title: 'Berhasil',
-        description: `Invoice ${invoiceNumber} berhasil dibuat`,
+        description: `Invoice ${invoiceNumber} berhasil dibuat. Mengarahkan ke halaman Invoice...`,
       });
 
-      // Refresh data
-      refetch();
+      // Navigate to invoices page
       setSelectedProject(null);
+      navigate('/invoices');
     } catch (error: any) {
       console.error('Error creating invoice:', error);
       toast({
@@ -136,6 +150,64 @@ export default function Projects() {
         description: error.message || 'Gagal membuat invoice',
         variant: 'destructive',
       });
+    }
+  };
+
+  // Open upload evidence dialog
+  const openUploadDialog = (term: any) => {
+    setUploadingTerm(term);
+    setSelectedFile(null);
+    setEvidenceType('SPK');
+    setUploadDialogOpen(true);
+  };
+
+  // Handle file upload
+  const handleUploadEvidence = async () => {
+    if (!selectedFile || !uploadingTerm) return;
+
+    setUploading(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${uploadingTerm.id}/${Date.now()}.${fileExt}`;
+      
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Insert evidence record
+      const { error: insertError } = await supabase
+        .from('term_evidences')
+        .insert({
+          term_id: uploadingTerm.id,
+          file_type: evidenceType,
+          file_name: selectedFile.name,
+          file_path: fileName,
+          file_size: selectedFile.size,
+        });
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Dokumen berhasil diupload',
+      });
+
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setUploadingTerm(null);
+      refetch();
+    } catch (error: any) {
+      console.error('Error uploading evidence:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal mengupload dokumen',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -351,6 +423,7 @@ export default function Projects() {
                               : undefined,
                           }}
                           projectName={selectedProject.project_name}
+                          onUploadEvidence={canUploadEvidence ? () => openUploadDialog(term) : undefined}
                           onGenerateInvoice={canCreateInvoice ? () => handleGenerateInvoice(term, selectedProject) : undefined}
                         />
                       ))}
@@ -364,6 +437,68 @@ export default function Projects() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Evidence Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Dokumen
+            </DialogTitle>
+            <DialogDescription>
+              Upload dokumen pendukung untuk termin {uploadingTerm?.term_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Jenis Dokumen</Label>
+              <Select value={evidenceType} onValueChange={(v) => setEvidenceType(v as EvidenceType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih jenis dokumen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVIDENCE_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>File</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="flex-1"
+                />
+              </div>
+              {selectedFile && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  <span>{selectedFile.name}</span>
+                  <span className="text-xs">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleUploadEvidence} disabled={!selectedFile || uploading}>
+              {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Upload
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
