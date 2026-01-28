@@ -11,6 +11,7 @@ import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { generateQuotationPDF, type QuotationItem, type CompanyProfile, type TTESettings } from '@/lib/quotationPdfGenerator';
 import { useUserTTE } from '@/hooks/useUserTTE';
 import { QuotationApprovalDialog } from '@/components/quotations/QuotationApprovalDialog';
+import { CreateProjectFromQuotationDialog } from '@/components/quotations/CreateProjectFromQuotationDialog';
 import {
   Table,
   TableBody,
@@ -33,6 +34,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  FolderPlus,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -90,8 +92,13 @@ export default function QuotationList() {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [approvalMode, setApprovalMode] = useState<'submit' | 'review'>('submit');
   
+  // Create project from quotation states
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+  const [quotationForProject, setQuotationForProject] = useState<Quotation | null>(null);
+  
   const canReview = hasRole('admin') || hasRole('coo');
   const canSubmit = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
+  const canCreateProject = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
 
   useEffect(() => {
     fetchQuotations();
@@ -502,6 +509,22 @@ export default function QuotationList() {
                           </Button>
                         )}
                         
+                        {/* Create Project button - for approved quotations */}
+                        {canCreateProject && quotation.approval_status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuotationForProject(quotation);
+                              setCreateProjectDialogOpen(true);
+                            }}
+                            title="Buat Proyek dari Quotation"
+                            className="text-success hover:text-success"
+                          >
+                            <FolderPlus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <Button
                           variant="ghost"
                           size="icon"
@@ -556,6 +579,20 @@ export default function QuotationList() {
         onOpenChange={setApprovalDialogOpen}
         onSuccess={fetchQuotations}
         mode={approvalMode}
+      />
+
+      {/* Create Project from Quotation Dialog */}
+      <CreateProjectFromQuotationDialog
+        quotation={quotationForProject ? {
+          id: quotationForProject.id,
+          project_name: quotationForProject.project_name,
+          client_id: quotationForProject.client_id,
+          client_name: quotationForProject.clients?.name,
+          grand_total: quotationForProject.grand_total,
+        } : null}
+        open={createProjectDialogOpen}
+        onOpenChange={setCreateProjectDialogOpen}
+        onSuccess={fetchQuotations}
       />
     </AppLayout>
   );
