@@ -14,6 +14,7 @@ import { QuotationApprovalDialog } from '@/components/quotations/QuotationApprov
 import { CreateProjectFromQuotationDialog } from '@/components/quotations/CreateProjectFromQuotationDialog';
 import { NegotiatedPriceDialog } from '@/components/quotations/NegotiatedPriceDialog';
 import { NegotiationApprovalDialog } from '@/components/quotations/NegotiationApprovalDialog';
+import { CreateContractDialog } from '@/components/contracts/CreateContractDialog';
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ import {
   HandCoins,
   Percent,
   RefreshCw,
+  ScrollText,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -118,11 +120,16 @@ export default function QuotationList() {
   const [negotiationApprovalDialogOpen, setNegotiationApprovalDialogOpen] = useState(false);
   const [quotationForNegotiationApproval, setQuotationForNegotiationApproval] = useState<Quotation | null>(null);
   
+  // Contract dialog states
+  const [createContractDialogOpen, setCreateContractDialogOpen] = useState(false);
+  const [quotationForContract, setQuotationForContract] = useState<Quotation | null>(null);
+  
   const canReviewNegotiation = hasRole('admin') || hasRole('bdo') || hasRole('coo');
   
   const canReview = hasRole('admin') || hasRole('coo');
   const canSubmit = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
   const canCreateProject = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
+  const canCreateContract = hasRole('admin') || hasRole('bdo') || hasRole('marketing') || hasRole('coo');
 
   useEffect(() => {
     fetchQuotations();
@@ -582,6 +589,22 @@ export default function QuotationList() {
                           </Button>
                         )}
                         
+                        {/* Create Contract button - for approved quotations */}
+                        {canCreateContract && quotation.approval_status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuotationForContract(quotation);
+                              setCreateContractDialogOpen(true);
+                            }}
+                            title="Buat Kontrak SPK"
+                            className="text-primary hover:text-primary"
+                          >
+                            <ScrollText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         {/* Input negotiated price button - for Marketing on approved/sent quotations */}
                         {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (!quotation.negotiation_status || quotation.negotiation_status === 'draft') && (
                           <Button
@@ -731,6 +754,31 @@ export default function QuotationList() {
         } : null}
         open={negotiationApprovalDialogOpen}
         onOpenChange={setNegotiationApprovalDialogOpen}
+        onSuccess={fetchQuotations}
+      />
+
+      {/* Create Contract Dialog */}
+      <CreateContractDialog
+        quotation={quotationForContract ? {
+          id: quotationForContract.id,
+          project_name: quotationForContract.project_name,
+          client_id: quotationForContract.client_id,
+          grand_total: quotationForContract.grand_total,
+          man_days: quotationForContract.man_days,
+          created_at: quotationForContract.created_at,
+          clients: quotationForContract.clients ? {
+            id: quotationForContract.client_id || '',
+            name: quotationForContract.clients.name,
+            address: quotationForContract.clients.address,
+            pic_name: null,
+            pic_email: null,
+            pic_phone: null,
+            npwp_badan: null,
+            client_type: 'Swasta',
+          } : null,
+        } : null}
+        open={createContractDialogOpen}
+        onOpenChange={setCreateContractDialogOpen}
         onSuccess={fetchQuotations}
       />
     </AppLayout>

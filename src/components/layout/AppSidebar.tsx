@@ -89,6 +89,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Finance Dashboard', href: '/finance-dashboard', icon: BarChart3, roles: ['admin', 'finance'] },
       { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing', 'bdo', 'coo'] },
+      { name: 'Kontrak SPK', href: '/contracts', icon: FileText, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
       { name: 'Riwayat Negosiasi', href: '/negotiation-history', icon: LineChart, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
       { name: 'Bonus Tim', href: '/team-bonus', icon: Award, roles: ['admin', 'finance', 'project_manager'] },
       { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance', 'bdo', 'coo'] },
