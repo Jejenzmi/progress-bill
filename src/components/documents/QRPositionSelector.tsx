@@ -4,6 +4,7 @@ import { Move, Grid3X3, GripVertical, Maximize, Minimize, Square } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { getAllowedBoxCenterBounds, getPresetBoxCenter, getTTEBoxPercent } from '@/lib/tteBoxPreview';
 
 export type QRSize = 'small' | 'medium' | 'large';
 
@@ -92,9 +93,10 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    // Clamp values to keep QR inside bounds (considering QR size ~15%)
-    const clampedX = Math.max(8, Math.min(92, x));
-    const clampedY = Math.max(8, Math.min(92, y));
+    // Clamp berdasarkan ukuran kotak TTE sebenarnya (bukan kotak QR preview)
+    const bounds = getAllowedBoxCenterBounds(parsed.size || 'medium');
+    const clampedX = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+    const clampedY = Math.max(bounds.minY, Math.min(bounds.maxY, y));
     
     onChange({ type: 'custom', x: clampedX, y: clampedY, size: parsed.size || 'medium' });
   }, [mode, onChange, isDragging, parsed.size]);
@@ -114,8 +116,9 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    const clampedX = Math.max(8, Math.min(92, x));
-    const clampedY = Math.max(8, Math.min(92, y));
+    const bounds = getAllowedBoxCenterBounds(parsed.size || 'medium');
+    const clampedX = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+    const clampedY = Math.max(bounds.minY, Math.min(bounds.maxY, y));
     
     onChange({ type: 'custom', x: clampedX, y: clampedY, size: parsed.size || 'medium' });
   }, [isDragging, mode, onChange, parsed.size]);
@@ -142,8 +145,9 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
     const x = ((touch.clientX - rect.left) / rect.width) * 100;
     const y = ((touch.clientY - rect.top) / rect.height) * 100;
     
-    const clampedX = Math.max(8, Math.min(92, x));
-    const clampedY = Math.max(8, Math.min(92, y));
+    const bounds = getAllowedBoxCenterBounds(parsed.size || 'medium');
+    const clampedX = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+    const clampedY = Math.max(bounds.minY, Math.min(bounds.maxY, y));
     
     onChange({ type: 'custom', x: clampedX, y: clampedY, size: parsed.size || 'medium' });
   }, [isDragging, mode, onChange, parsed.size]);
@@ -159,16 +163,8 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
     }
   }, [isDragging, handleDragEnd]);
 
-  const getPresetPosition = (presetId: string): { x: number; y: number } => {
-    switch (presetId) {
-      case 'top-left': return { x: 12, y: 12 };
-      case 'top-right': return { x: 88, y: 12 };
-      case 'center': return { x: 50, y: 50 };
-      case 'bottom-left': return { x: 12, y: 85 };
-      case 'bottom-right': return { x: 88, y: 85 };
-      default: return { x: 88, y: 85 };
-    }
-  };
+  const getPresetPosition = (presetId: string): { x: number; y: number } =>
+    getPresetBoxCenter(presetId, parsed.size || 'medium');
 
   const currentPosition = parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined
     ? { x: parsed.x, y: parsed.y }
@@ -181,12 +177,9 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
     return presets.find((p) => p.id === parsed.preset)?.label || 'Kanan Bawah';
   };
 
-  const getQRSizeClass = (): string => {
-    switch (parsed.size) {
-      case 'small': return 'w-5 h-5 text-[6px]';
-      case 'large': return 'w-10 h-10 text-[10px]';
-      default: return 'w-7 h-7 text-[8px]';
-    }
+  const getBoxStyle = (): React.CSSProperties => {
+    const { boxW, boxH } = getTTEBoxPercent(parsed.size || 'medium');
+    return { width: `${boxW}%`, height: `${boxH}%` };
   };
 
   return (
@@ -215,7 +208,8 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
           onClick={() => {
             setMode('custom');
             if (parsed.type !== 'custom') {
-              onChange({ type: 'custom', x: 85, y: 85, size: parsed.size || 'medium' });
+              const initial = getPresetBoxCenter('bottom-right', parsed.size || 'medium');
+              onChange({ type: 'custom', x: initial.x, y: initial.y, size: parsed.size || 'medium' });
             }
           }}
           className="flex-1"
@@ -302,16 +296,14 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
                       )}
                       title={position.label}
                     >
-                      <div 
+                      <div
                         className={cn(
                           'rounded border-2 border-dashed flex items-center justify-center font-bold',
-                          getQRSizeClass(),
-                          isSelected 
-                            ? 'border-primary-foreground' 
-                            : 'border-muted-foreground'
+                          isSelected ? 'border-primary-foreground' : 'border-muted-foreground'
                         )}
+                        style={{ width: '80%', height: '45%' }}
                       >
-                        QR
+                        <span className="text-[9px]">TTE</span>
                       </div>
                     </button>
                   );
@@ -329,22 +321,34 @@ export function QRPositionSelector({ value, onChange, showSizeSelector = true }:
                 left: `${currentPosition.x}%`,
                 top: `${currentPosition.y}%`,
                 transform: 'translate(-50%, -50%)',
+                ...getBoxStyle(),
               }}
               onMouseDown={handleDragStart}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
             >
-              <div 
+              <div
                 className={cn(
-                  'rounded border-2 border-dashed flex items-center justify-center font-bold transition-all',
-                  'bg-primary text-primary-foreground border-primary-foreground',
+                  'relative h-full w-full rounded border-2 border-dashed transition-all',
+                  'bg-primary/10 border-primary',
                   'shadow-lg hover:shadow-xl',
-                  getQRSizeClass(),
                   isDragging && 'ring-2 ring-primary ring-offset-2'
                 )}
               >
-                <GripVertical className="h-3 w-3 mr-0.5 opacity-70" />
-                QR
+                <div className="absolute left-[6%] top-[10%] w-[34%] aspect-square rounded border border-primary/40 bg-background/70 flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-primary">QR</span>
+                </div>
+                <div className="absolute left-[44%] top-[12%] right-[6%] bottom-[12%] flex flex-col justify-between">
+                  <div className="text-[8px] font-semibold text-primary leading-tight">Tanda Tangan Elektronik</div>
+                  <div className="space-y-1">
+                    <div className="h-[2px] w-[85%] rounded bg-primary/30" />
+                    <div className="h-[2px] w-[70%] rounded bg-primary/25" />
+                  </div>
+                  <div className="flex items-center gap-1 text-[8px] font-bold text-primary">
+                    <GripVertical className="h-3 w-3 opacity-70" />
+                    Drag
+                  </div>
+                </div>
               </div>
             </div>
           )}
