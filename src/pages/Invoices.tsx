@@ -107,10 +107,71 @@ export default function Invoices() {
   // PPh state
   const [showPph, setShowPph] = useState(false);
   const [pphPercentage, setPphPercentage] = useState(2);
+  
+  // Track if preferences loaded
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
+    loadTaxPreferences();
   }, []);
+
+  // Load saved tax preferences from settings
+  const loadTaxPreferences = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'invoice_settings')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.value) {
+        const value = data.value as Record<string, unknown>;
+        if (value.ppn_mode) setPpnMode(value.ppn_mode as 'exclude' | 'include' | 'none');
+        if (value.ppn_percentage !== undefined) setPpnPercentage(value.ppn_percentage as number);
+        if (value.show_pph !== undefined) setShowPph(value.show_pph as boolean);
+        if (value.pph_percentage !== undefined) setPphPercentage(value.pph_percentage as number);
+      }
+      setPreferencesLoaded(true);
+    } catch (error) {
+      console.error('Error loading tax preferences:', error);
+      setPreferencesLoaded(true);
+    }
+  };
+
+  // Save tax preferences to settings
+  const saveTaxPreferences = async () => {
+    try {
+      // Get current invoice_settings first
+      const { data: currentData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'invoice_settings')
+        .maybeSingle();
+
+      const currentValue = (currentData?.value as Record<string, unknown>) || {};
+      
+      // Merge with new tax preferences
+      const updatedValue = {
+        ...currentValue,
+        ppn_mode: ppnMode,
+        ppn_percentage: ppnPercentage,
+        show_pph: showPph,
+        pph_percentage: pphPercentage,
+      };
+
+      const { error } = await supabase
+        .from('settings')
+        .update({ value: updatedValue })
+        .eq('key', 'invoice_settings');
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving tax preferences:', error);
+    }
+  };
 
   const fetchInvoices = async () => {
     try {
@@ -272,6 +333,9 @@ export default function Invoices() {
     if (!pendingInvoice || !pendingAction) return;
     
     setPpnDialogOpen(false);
+    
+    // Save preferences to database
+    await saveTaxPreferences();
     
     const company = await getCompanyProfile();
     const tteSettings = await fetchTTEForPDF();
