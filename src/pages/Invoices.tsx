@@ -103,6 +103,10 @@ export default function Invoices() {
   const [ppnPercentage, setPpnPercentage] = useState(11);
   const [pendingAction, setPendingAction] = useState<'preview' | 'download' | null>(null);
   const [pendingInvoice, setPendingInvoice] = useState<InvoiceData | null>(null);
+  
+  // PPh state
+  const [showPph, setShowPph] = useState(false);
+  const [pphPercentage, setPphPercentage] = useState(2);
 
   useEffect(() => {
     fetchInvoices();
@@ -195,11 +199,18 @@ export default function Invoices() {
 
   // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
-  const buildInvoicePDFData = (invoice: InvoiceData, mode: 'exclude' | 'include' | 'none', ppn: number) => {
+  const buildInvoicePDFData = (
+    invoice: InvoiceData, 
+    mode: 'exclude' | 'include' | 'none', 
+    ppn: number,
+    includePph: boolean,
+    pphRate: number
+  ) => {
     const baseAmount = invoice.amount;
     let subtotal: number;
     let ppnAmount: number;
     let grandTotal: number;
+    let pphAmount = 0;
 
     if (mode === 'exclude') {
       // PPN ditambahkan di atas harga
@@ -216,6 +227,12 @@ export default function Invoices() {
       subtotal = baseAmount;
       ppnAmount = 0;
       grandTotal = baseAmount;
+    }
+
+    // Calculate PPh if enabled
+    if (includePph) {
+      pphAmount = Math.round(subtotal * (pphRate / 100));
+      grandTotal = grandTotal - pphAmount;
     }
 
     const items: InvoiceItem[] = [{
@@ -238,6 +255,8 @@ export default function Invoices() {
       subtotal,
       ppnPercentage: mode === 'none' ? 0 : ppn,
       ppnAmount,
+      pphPercentage: includePph ? pphRate : 0,
+      pphAmount,
       grandTotal,
     };
   };
@@ -256,7 +275,7 @@ export default function Invoices() {
     
     const company = await getCompanyProfile();
     const tteSettings = await fetchTTEForPDF();
-    const invoiceData = buildInvoicePDFData(pendingInvoice, ppnMode, ppnPercentage);
+    const invoiceData = buildInvoicePDFData(pendingInvoice, ppnMode, ppnPercentage, showPph, pphPercentage);
     const html = await generateInvoicePDF(invoiceData, company, tteSettings);
     
     if (pendingAction === 'preview') {
@@ -612,6 +631,44 @@ export default function Invoices() {
                 <span className="text-sm text-muted-foreground">%</span>
               </div>
             )}
+
+            {/* PPh Section */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-medium">PPh (Pajak Penghasilan)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Potongan pajak penghasilan dari nilai invoice
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="show-pph"
+                    checked={showPph}
+                    onChange={(e) => setShowPph(e.target.checked)}
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="show-pph" className="cursor-pointer">Tampilkan PPh</Label>
+                </div>
+              </div>
+              
+              {showPph && (
+                <div className="flex items-center gap-3 bg-muted/50 p-3 rounded-lg">
+                  <Label htmlFor="pph-rate" className="text-sm">Persentase PPh:</Label>
+                  <Input
+                    id="pph-rate"
+                    type="number"
+                    value={pphPercentage}
+                    onChange={(e) => setPphPercentage(parseInt(e.target.value) || 0)}
+                    className="w-20"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end">
