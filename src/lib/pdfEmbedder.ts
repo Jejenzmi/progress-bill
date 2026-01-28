@@ -163,8 +163,12 @@ export async function embedTTEIntoPDF(
   verifyUrl: string,
   pageNumber: number = 1 // 1-indexed, which page to add QR
 ): Promise<Uint8Array> {
-  // Load the existing PDF
-  const pdfDoc = await PDFDocument.load(pdfBytes);
+  // Load the existing PDF without modifying existing content streams
+  // This preserves the original quality of the document
+  const pdfDoc = await PDFDocument.load(pdfBytes, {
+    ignoreEncryption: true,
+    updateMetadata: false,
+  });
   const pages = pdfDoc.getPages();
   
   // Get the target page (default to first page if invalid)
@@ -271,7 +275,11 @@ export async function embedTTEIntoPDF(
     color: rgb(0.102, 0.373, 0.478),
   });
   
-  return await pdfDoc.save();
+  // Save without additional compression to preserve original quality
+  return await pdfDoc.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+  });
 }
 
 /**
@@ -344,8 +352,11 @@ export async function embedTTEIntoImage(
     height: imgHeight,
   });
   
-  // Now embed TTE using the same function
-  const pdfBytes = await pdfDoc.save();
+  // Save without compression to preserve image quality
+  const pdfBytes = await pdfDoc.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+  });
   return await embedTTEIntoPDF(pdfBytes, data, verifyUrl, 1);
 }
 
@@ -469,7 +480,10 @@ export async function createCertificatePDF(
     });
   });
   
-  // Embed TTE QR Code
-  const pdfBytes = await pdfDoc.save();
+  // Embed TTE QR Code - save without compression
+  const pdfBytes = await pdfDoc.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+  });
   return await embedTTEIntoPDF(pdfBytes, data, verifyUrl, 1);
 }
