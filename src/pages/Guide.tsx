@@ -31,6 +31,17 @@ import {
   Play,
   ChevronRight,
   Circle,
+  Upload,
+  Image,
+  Building,
+  CreditCard,
+  Percent,
+  ClipboardList,
+  ArrowDown,
+  Zap,
+  RefreshCw,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -107,6 +118,332 @@ export default function Guide() {
   const [selectedRole, setSelectedRole] = useState<string>('overview');
 
   const roleSlides = {
+    // Setup Guide - Panduan Setup Awal yang Detail
+    setup: [
+      {
+        title: 'Panduan Setup Awal',
+        subtitle: 'Langkah pertama sebelum menggunakan aplikasi',
+        icon: Settings,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+              <h3 className="text-xl font-semibold mb-4">Sebelum Mulai</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Pastikan Anda sudah login dengan akun Admin untuk mengakses semua pengaturan.
+                Setup awal ini penting agar semua dokumen (Quotation, Invoice) memiliki informasi perusahaan yang lengkap.
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <FeatureCard icon={Image} title="1. Upload Logo" description="Logo akan tampil di kop surat PDF Quotation dan Invoice" />
+              <FeatureCard icon={Building} title="2. Profil Perusahaan" description="Nama, NPWP, alamat, email, website perusahaan" />
+              <FeatureCard icon={CreditCard} title="3. Rekening Bank" description="Informasi rekening untuk pembayaran di Invoice" />
+              <FeatureCard icon={Percent} title="4. Template Termin" description="Template pembagian termin pembayaran proyek" />
+            </div>
+            
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Akses Admin Diperlukan</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hanya user dengan role Admin yang dapat mengubah pengaturan. Hubungi admin jika Anda tidak memiliki akses.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Step 1: Upload Logo Perusahaan',
+        subtitle: 'Logo akan muncul di semua dokumen PDF',
+        icon: Image,
+        content: (
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Cara Upload Logo</h3>
+                <StepCard step={1} title="Buka Pengaturan" description="Klik menu 'Pengaturan' di sidebar atau navigasi ke /settings" />
+                <StepCard step={2} title="Scroll ke Logo Upload" description="Di bagian 'Profil Perusahaan', cari section 'Logo Perusahaan'" />
+                <StepCard step={3} title="Pilih File" description="Klik 'Pilih File' atau drag & drop gambar logo (PNG/JPG, max 2MB)" />
+                <StepCard step={4} title="Simpan" description="Logo otomatis diupload. Klik 'Simpan Pengaturan' di bawah halaman" />
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Spesifikasi Logo</h3>
+                <div className="p-4 rounded-xl bg-muted/50 border space-y-3">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Format: PNG atau JPG</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Ukuran maksimal: 2MB</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Resolusi rekomendasi: 300x100px</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Background transparan (PNG) lebih baik</span>
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 inline mr-1" />
+                    Logo akan otomatis muncul di kop surat Quotation dan Invoice PDF
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Step 2: Isi Profil Perusahaan',
+        subtitle: 'Data perusahaan untuk dokumen resmi',
+        icon: Building,
+        content: (
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-muted/50 border">
+              <h3 className="font-semibold mb-4">Data yang Harus Diisi</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                    <div>
+                      <p className="font-medium text-sm">Nama Perusahaan</p>
+                      <p className="text-xs text-muted-foreground">Contoh: PT Zen Multimedia Indonesia</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                    <div>
+                      <p className="font-medium text-sm">NPWP Perusahaan</p>
+                      <p className="text-xs text-muted-foreground">Nomor Pokok Wajib Pajak (15 digit)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">3</div>
+                    <div>
+                      <p className="font-medium text-sm">Alamat Lengkap</p>
+                      <p className="text-xs text-muted-foreground">Jalan, nomor, kota, provinsi, kode pos</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0">4</div>
+                    <div>
+                      <p className="font-medium text-sm">Telepon</p>
+                      <p className="text-xs text-muted-foreground">Nomor telepon kantor</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0">5</div>
+                    <div>
+                      <p className="font-medium text-sm">Email</p>
+                      <p className="text-xs text-muted-foreground">Email resmi perusahaan</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                    <div className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0">6</div>
+                    <div>
+                      <p className="font-medium text-sm">Website</p>
+                      <p className="text-xs text-muted-foreground">URL website perusahaan (opsional)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Tips Pengisian
+              </h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• NPWP harus sesuai format: XX.XXX.XXX.X-XXX.XXX</li>
+                <li>• Alamat akan muncul di header setiap dokumen</li>
+                <li>• Email digunakan untuk korespondensi dengan klien</li>
+              </ul>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Step 3: Tambah Rekening Bank',
+        subtitle: 'Informasi pembayaran untuk Invoice',
+        icon: CreditCard,
+        content: (
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Cara Menambah Rekening</h3>
+                <StepCard step={1} title="Scroll ke Bank Accounts" description="Di halaman Settings, cari section 'Kelola Rekening Bank'" />
+                <StepCard step={2} title="Klik Tambah Rekening" description="Klik tombol '+ Tambah Rekening Baru'" />
+                <StepCard step={3} title="Isi Detail Rekening" description="Nama Bank, Nomor Rekening, Nama Pemilik Rekening" />
+                <StepCard step={4} title="Set Sebagai Default" description="Centang 'Jadikan Default' untuk rekening utama" />
+                <StepCard step={5} title="Simpan" description="Klik 'Simpan' untuk menyimpan rekening" />
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Contoh Pengisian</h3>
+                <div className="p-4 rounded-xl border bg-card">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Nama Bank</p>
+                      <p className="font-medium">Bank Central Asia (BCA)</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Nomor Rekening</p>
+                      <p className="font-medium font-mono">123-456-7890</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Atas Nama</p>
+                      <p className="font-medium">PT Zen Multimedia Indonesia</p>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary">Default</Badge>
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 inline mr-1" />
+                    Anda bisa menambah beberapa rekening dan memilih saat membuat Invoice
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Step 4: Setup Template Termin',
+        subtitle: 'Template pembagian termin pembayaran',
+        icon: Percent,
+        content: (
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-muted/50 border">
+              <h3 className="font-semibold mb-4">Apa itu Template Termin?</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Template termin adalah pola pembagian pembayaran proyek yang akan otomatis diterapkan saat membuat proyek baru dari Quotation yang diapprove.
+              </p>
+              
+              <div className="grid md:grid-cols-3 gap-3">
+                <div className="p-3 rounded-lg bg-background border text-center">
+                  <p className="text-2xl font-bold text-primary">30%</p>
+                  <p className="text-xs text-muted-foreground">Down Payment (DP)</p>
+                  <Badge variant="outline" className="mt-2 text-xs">SPK Signed</Badge>
+                </div>
+                <div className="p-3 rounded-lg bg-background border text-center">
+                  <p className="text-2xl font-bold text-primary">40%</p>
+                  <p className="text-xs text-muted-foreground">Progress</p>
+                  <Badge variant="outline" className="mt-2 text-xs">Progress Report</Badge>
+                </div>
+                <div className="p-3 rounded-lg bg-background border text-center">
+                  <p className="text-2xl font-bold text-primary">30%</p>
+                  <p className="text-xs text-muted-foreground">Final Payment</p>
+                  <Badge variant="outline" className="mt-2 text-xs">BAST</Badge>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <StepCard step={1} title="Buka Template Manager" description="Di halaman Settings, scroll ke 'Template Termin Pembayaran'" />
+              <StepCard step={2} title="Edit atau Tambah Termin" description="Klik 'Edit Template' untuk mengubah default, atau buat template baru" />
+              <StepCard step={3} title="Atur Persentase" description="Pastikan total semua termin = 100%" />
+              <StepCard step={4} title="Pilih Trigger" description="Pilih kondisi trigger: SPK Signed, Progress Report, BAST, Maintenance, atau Custom" />
+            </div>
+            
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Total Harus 100%</p>
+                  <p className="text-sm text-muted-foreground">
+                    Jumlah persentase semua termin harus sama dengan 100%. Sistem akan menampilkan error jika tidak sesuai.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Setup Selesai!',
+        subtitle: 'Anda siap menggunakan aplikasi',
+        icon: CheckCircle2,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Setup Awal Berhasil!</h3>
+              <p className="text-muted-foreground">
+                Semua pengaturan dasar sudah dikonfigurasi. Anda sekarang bisa mulai menambah data klien dan leads.
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-blue-500/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-500" />
+                    Langkah Selanjutnya
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  <ol className="space-y-2 list-decimal list-inside">
+                    <li>Tambah data Klien di menu Klien</li>
+                    <li>Input Lead baru di menu Leads</li>
+                    <li>Buat Quotation dari Lead Hot</li>
+                    <li>Ajukan approval ke COO</li>
+                  </ol>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-primary/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Play className="h-5 w-5 text-primary" />
+                    Alur Otomatis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      Hot Lead → Quotation → Approve → Project
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      Termin otomatis dari template
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      Notifikasi ke Finance saat project dibuat
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <h4 className="font-medium mb-2">Navigasi Cepat</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="cursor-pointer hover:bg-accent">Klien → /clients</Badge>
+                <Badge variant="outline" className="cursor-pointer hover:bg-accent">Leads → /leads</Badge>
+                <Badge variant="outline" className="cursor-pointer hover:bg-accent">Quotation → /quotation</Badge>
+                <Badge variant="outline" className="cursor-pointer hover:bg-accent">Projects → /projects</Badge>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+    ],
     overview: [
       {
         title: 'Selamat Datang!',
@@ -232,6 +569,81 @@ export default function Guide() {
         ),
       },
       {
+        title: 'Alur Data Lengkap',
+        subtitle: 'Hubungan antar modul aplikasi',
+        icon: RefreshCw,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-muted/30 border">
+              <h3 className="font-semibold mb-4 text-center">Diagram Alur Data</h3>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center min-w-[120px]">
+                    <UserPlus className="h-6 w-6 mx-auto mb-1 text-blue-500" />
+                    <p className="text-sm font-medium">LEAD</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center min-w-[120px]">
+                    <Users className="h-6 w-6 mx-auto mb-1 text-purple-500" />
+                    <p className="text-sm font-medium">CLIENT</p>
+                  </div>
+                </div>
+                <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-center min-w-[120px]">
+                    <Calculator className="h-6 w-6 mx-auto mb-1 text-yellow-600" />
+                    <p className="text-sm font-medium">QUOTATION</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-center min-w-[120px]">
+                    <Briefcase className="h-6 w-6 mx-auto mb-1 text-orange-500" />
+                    <p className="text-sm font-medium">PROJECT</p>
+                  </div>
+                </div>
+                <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center min-w-[120px]">
+                    <FileText className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                    <p className="text-sm font-medium">EVIDENCE</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center min-w-[120px]">
+                    <Receipt className="h-6 w-6 mx-auto mb-1 text-emerald-500" />
+                    <p className="text-sm font-medium">INVOICE</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Fitur Auto-Create
+                </h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Lead Hot → Quotation → Project (otomatis)</li>
+                  <li>• Template termin otomatis diterapkan</li>
+                  <li>• Notifikasi otomatis ke Finance</li>
+                </ul>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-500" />
+                  Trigger Invoice
+                </h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Invoice terkunci sampai evidence diupload</li>
+                  <li>• Evidence: SPK, BAST, Laporan Progress</li>
+                  <li>• Finance bisa generate setelah unlock</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
         title: 'Quick Start',
         subtitle: 'Langkah awal menggunakan aplikasi',
         icon: Play,
@@ -261,6 +673,16 @@ export default function Guide() {
               description="Buat Quotation untuk penawaran, generate Invoice untuk tagihan, dan gunakan TTE untuk tandatangan elektronik."
               icon={FileText}
             />
+            
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Info className="h-5 w-5 text-primary" />
+                Lihat Panduan Setup Lengkap
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Klik tombol "Setup Awal" di atas untuk melihat panduan detail setup logo, rekening bank, dan template termin.
+              </p>
+            </div>
           </div>
         ),
       },
@@ -945,6 +1367,15 @@ export default function Guide() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedRole === 'setup' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => selectRole('setup')}
+                className={selectedRole === 'setup' ? 'bg-green-600 hover:bg-green-700' : 'border-green-500 text-green-600 hover:bg-green-50'}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Setup Awal
+              </Button>
               <Button
                 variant={selectedRole === 'overview' ? 'default' : 'outline'}
                 size="sm"
