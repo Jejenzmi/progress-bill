@@ -9,11 +9,24 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition, QRSize } from './QRPositionSelector';
 import { PDFPageSelector } from './PDFPageSelector';
-import { Loader2, FileSignature, Eye } from 'lucide-react';
+import { Loader2, FileSignature, Eye, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Predefined TTE signers - same as Quotation
+const TTE_SIGNERS = [
+  { id: 'self', label: 'Marketing (Saya Sendiri)', name: '', position: '' },
+  { id: 'coo', label: 'COO - Indra Apriana, S.Kom', name: 'Indra Apriana, S.Kom', position: 'Chief Operational Officer' },
+  { id: 'ceo', label: 'CEO - Jejen Jaenudin, SM., M.Kom', name: 'Jejen Jaenudin, SM., M.Kom', position: 'Chief Executive Officer' },
+];
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -28,6 +41,9 @@ interface DocumentPreviewDialogProps {
   onSignerPositionChange: (position: string) => void;
   onConfirm: (pageNumber?: number) => void;
   uploading: boolean;
+  // User TTE settings for "self" option
+  userTTEName?: string;
+  userTTEPosition?: string;
 }
 
 export function DocumentPreviewDialog({
@@ -43,17 +59,32 @@ export function DocumentPreviewDialog({
   onSignerPositionChange,
   onConfirm,
   uploading,
+  userTTEName = '',
+  userTTEPosition = '',
 }: DocumentPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string>('');
   const [selectedPage, setSelectedPage] = useState<number>(1);
+  const [selectedSigner, setSelectedSigner] = useState<string>('self');
 
   // Reset selectedPage to 1 when dialog opens with a new file
   useEffect(() => {
     if (open && file) {
       setSelectedPage(1);
+      // Default to self if user has TTE settings
+      if (userTTEName && userTTEPosition) {
+        setSelectedSigner('self');
+        onSignerNameChange(userTTEName);
+        onSignerPositionChange(userTTEPosition);
+      } else {
+        // Default to COO if no user TTE settings
+        setSelectedSigner('coo');
+        const coo = TTE_SIGNERS.find(s => s.id === 'coo')!;
+        onSignerNameChange(coo.name);
+        onSignerPositionChange(coo.position);
+      }
     }
-  }, [open, file]);
+  }, [open, file, userTTEName, userTTEPosition]);
 
   useEffect(() => {
     if (file) {
@@ -65,6 +96,24 @@ export function DocumentPreviewDialog({
       setPreviewUrl(fileUrl);
     }
   }, [file, fileUrl]);
+
+  // Handle signer selection change
+  const handleSignerChange = (signerId: string) => {
+    setSelectedSigner(signerId);
+    
+    if (signerId === 'self') {
+      // Use user's own TTE settings
+      onSignerNameChange(userTTEName || '');
+      onSignerPositionChange(userTTEPosition || '');
+    } else {
+      // Use predefined signer
+      const signer = TTE_SIGNERS.find(s => s.id === signerId);
+      if (signer) {
+        onSignerNameChange(signer.name);
+        onSignerPositionChange(signer.position);
+      }
+    }
+  };
 
   // Handle QR position change from selector (supports both preset and custom)
   const handleQrPositionChange = useCallback((value: string | QRPositionValue) => {
@@ -113,6 +162,9 @@ export function DocumentPreviewDialog({
   const isImage = fileType.startsWith('image/');
   const isPdf = fileType === 'application/pdf';
   const qrSizeClass = getQrSizeClass();
+
+  // Check if self option is available (user has TTE settings)
+  const selfAvailable = !!userTTEName && !!userTTEPosition;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -249,35 +301,66 @@ export function DocumentPreviewDialog({
             </div>
 
             <div className="border-t pt-4 space-y-4">
-              <Label className="text-base font-semibold">Informasi Penandatangan</Label>
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Penandatangan Terdaftar
+              </Label>
               
               <div className="space-y-2">
-                <Label>Nama Penandatangan *</Label>
-                <Input
-                  placeholder="Nama lengkap"
-                  value={signerName}
-                  onChange={(e) => onSignerNameChange(e.target.value)}
-                />
+                <Label>Pilih Penandatangan *</Label>
+                <Select value={selectedSigner} onValueChange={handleSignerChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih penandatangan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTE_SIGNERS.map((signer) => (
+                      <SelectItem 
+                        key={signer.id} 
+                        value={signer.id}
+                        disabled={signer.id === 'self' && !selfAvailable}
+                      >
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span>{signer.label}</span>
+                          {signer.id === 'self' && !selfAvailable && (
+                            <span className="text-xs text-muted-foreground">(Belum diatur)</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Jabatan *</Label>
-                <Input
-                  placeholder="Jabatan penandatangan"
-                  value={signerPosition}
-                  onChange={(e) => onSignerPositionChange(e.target.value)}
-                />
+              {/* Display selected signer info */}
+              <div className="bg-muted/50 border rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Nama:</span>
+                  <span className="font-medium">{signerName || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Jabatan:</span>
+                  <span className="font-medium">{signerPosition || '-'}</span>
+                </div>
               </div>
+
+              {selectedSigner === 'self' && !selfAvailable && (
+                <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                  ⚠️ Anda belum mengatur TTE di halaman Settings. Silakan atur TTE terlebih dahulu atau pilih penandatangan lain.
+                </p>
+              )}
             </div>
 
             {/* Info Box */}
             <div className="bg-muted/50 border rounded-lg p-4 text-sm">
               <h4 className="font-medium mb-2">Informasi TTE</h4>
               <ul className="space-y-1 text-muted-foreground text-xs">
+                <li>• Hanya penandatangan terdaftar yang dapat digunakan</li>
                 <li>• QR Code akan ditempatkan di posisi yang dipilih</li>
                 <li>• QR Code di-embed langsung ke dalam PDF asli</li>
-                <li>• Ukuran QR dapat disesuaikan (kecil/sedang/besar)</li>
-                <li>• Informasi penandatangan akan tercantum dalam QR</li>
+                <li>• Verifikasi publik tersedia di crm.zefin.id/verify</li>
                 {isPdf && <li>• Pilih halaman untuk PDF multi-halaman</li>}
               </ul>
             </div>

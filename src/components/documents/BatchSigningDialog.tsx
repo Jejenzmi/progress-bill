@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,10 +11,24 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { QRPositionSelector, QRPositionValue, stringifyQRPosition } from './QRPositionSelector';
-import { Loader2, FileSignature, Upload, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, FileSignature, Upload, X, FileText, CheckCircle2, AlertCircle, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Predefined TTE signers - same as Quotation
+const TTE_SIGNERS = [
+  { id: 'self', label: 'Marketing (Saya Sendiri)', name: '', position: '' },
+  { id: 'coo', label: 'COO - Indra Apriana, S.Kom', name: 'Indra Apriana, S.Kom', position: 'Chief Operational Officer' },
+  { id: 'ceo', label: 'CEO - Jejen Jaenudin, SM., M.Kom', name: 'Jejen Jaenudin, SM., M.Kom', position: 'Chief Executive Officer' },
+];
 
 interface FileWithStatus {
   file: File;
@@ -31,6 +45,9 @@ interface BatchSigningDialogProps {
   onSignerPositionChange: (position: string) => void;
   onConfirm: (files: File[], qrPosition: string) => Promise<void>;
   uploading: boolean;
+  // User TTE settings for "self" option
+  userTTEName?: string;
+  userTTEPosition?: string;
 }
 
 export function BatchSigningDialog({
@@ -42,10 +59,46 @@ export function BatchSigningDialog({
   onSignerPositionChange,
   onConfirm,
   uploading,
+  userTTEName = '',
+  userTTEPosition = '',
 }: BatchSigningDialogProps) {
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
   const [qrPosition, setQrPosition] = useState('bottom-right');
   const [progress, setProgress] = useState(0);
+  const [selectedSigner, setSelectedSigner] = useState<string>('self');
+
+  // Initialize signer when dialog opens
+  useEffect(() => {
+    if (open) {
+      if (userTTEName && userTTEPosition) {
+        setSelectedSigner('self');
+        onSignerNameChange(userTTEName);
+        onSignerPositionChange(userTTEPosition);
+      } else {
+        // Default to COO if no user TTE settings
+        setSelectedSigner('coo');
+        const coo = TTE_SIGNERS.find(s => s.id === 'coo')!;
+        onSignerNameChange(coo.name);
+        onSignerPositionChange(coo.position);
+      }
+    }
+  }, [open, userTTEName, userTTEPosition]);
+
+  // Handle signer selection change
+  const handleSignerChange = (signerId: string) => {
+    setSelectedSigner(signerId);
+    
+    if (signerId === 'self') {
+      onSignerNameChange(userTTEName || '');
+      onSignerPositionChange(userTTEPosition || '');
+    } else {
+      const signer = TTE_SIGNERS.find(s => s.id === signerId);
+      if (signer) {
+        onSignerNameChange(signer.name);
+        onSignerPositionChange(signer.position);
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -99,6 +152,9 @@ export function BatchSigningDialog({
     }
   };
 
+  // Check if self option is available
+  const selfAvailable = !!userTTEName && !!userTTEPosition;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -144,7 +200,7 @@ export function BatchSigningDialog({
           {selectedFiles.length > 0 && (
             <div className="space-y-2">
               <Label>File Terpilih ({selectedFiles.length})</Label>
-              <ScrollArea className="h-[150px] border rounded-lg p-2">
+              <ScrollArea className="h-[120px] border rounded-lg p-2">
                 <div className="space-y-2">
                   {selectedFiles.map((fileItem, index) => (
                     <div
@@ -193,21 +249,43 @@ export function BatchSigningDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Nama Penandatangan *</Label>
-                <Input
-                  placeholder="Nama lengkap"
-                  value={signerName}
-                  onChange={(e) => onSignerNameChange(e.target.value)}
-                />
+                <Label className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Penandatangan Terdaftar *
+                </Label>
+                <Select value={selectedSigner} onValueChange={handleSignerChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih penandatangan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTE_SIGNERS.map((signer) => (
+                      <SelectItem 
+                        key={signer.id} 
+                        value={signer.id}
+                        disabled={signer.id === 'self' && !selfAvailable}
+                      >
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span>{signer.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Jabatan *</Label>
-                <Input
-                  placeholder="Jabatan penandatangan"
-                  value={signerPosition}
-                  onChange={(e) => onSignerPositionChange(e.target.value)}
-                />
+              {/* Display selected signer info */}
+              <div className="bg-muted/50 border rounded-lg p-3 space-y-1 text-sm">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Nama:</span>
+                  <span className="font-medium">{signerName || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Jabatan:</span>
+                  <span className="font-medium">{signerPosition || '-'}</span>
+                </div>
               </div>
             </div>
 
