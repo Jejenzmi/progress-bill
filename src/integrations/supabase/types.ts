@@ -521,6 +521,120 @@ export type Database = {
         }
         Relationships: []
       }
+      project_bonus_settings: {
+        Row: {
+          bonus_pool_amount: number
+          bonus_pool_percentage: number
+          created_at: string
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          is_finalized: boolean | null
+          margin_amount: number
+          notes: string | null
+          project_id: string | null
+          quotation_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bonus_pool_amount?: number
+          bonus_pool_percentage?: number
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          margin_amount?: number
+          notes?: string | null
+          project_id?: string | null
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bonus_pool_amount?: number
+          bonus_pool_percentage?: number
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          margin_amount?: number
+          notes?: string | null
+          project_id?: string | null
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_bonus_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_bonus_settings_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: true
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_team_members: {
+        Row: {
+          complexity_weight: number
+          contribution_notes: string | null
+          created_at: string
+          id: string
+          man_days: number
+          project_id: string | null
+          quotation_id: string | null
+          role_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          complexity_weight?: number
+          contribution_notes?: string | null
+          created_at?: string
+          id?: string
+          man_days?: number
+          project_id?: string | null
+          quotation_id?: string | null
+          role_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          complexity_weight?: number
+          contribution_notes?: string | null
+          created_at?: string
+          id?: string
+          man_days?: number
+          project_id?: string | null
+          quotation_id?: string | null
+          role_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_team_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_team_members_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           client_id: string
@@ -885,6 +999,60 @@ export type Database = {
           verification_id?: string | null
         }
         Relationships: []
+      }
+      team_member_bonuses: {
+        Row: {
+          bonus_amount: number
+          contribution_percentage: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          project_bonus_id: string | null
+          status: string | null
+          team_member_id: string | null
+          updated_at: string
+          weighted_contribution: number
+        }
+        Insert: {
+          bonus_amount?: number
+          contribution_percentage?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          project_bonus_id?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          updated_at?: string
+          weighted_contribution?: number
+        }
+        Update: {
+          bonus_amount?: number
+          contribution_percentage?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          project_bonus_id?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          updated_at?: string
+          weighted_contribution?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_bonuses_project_bonus_id_fkey"
+            columns: ["project_bonus_id"]
+            isOneToOne: false
+            referencedRelation: "project_bonus_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_bonuses_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "project_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       term_evidences: {
         Row: {

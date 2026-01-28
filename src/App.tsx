@@ -32,6 +32,7 @@ import QuotationList from "./pages/QuotationList";
 import Guide from "./pages/Guide";
 import FinanceDashboard from "./pages/FinanceDashboard";
 import NegotiationHistory from "./pages/NegotiationHistory";
+import TeamBonus from "./pages/TeamBonus";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -283,6 +284,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <NegotiationHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/team-bonus"
+        element={
+          <ProtectedRoute>
+            <TeamBonus />
           </ProtectedRoute>
         }
       />
