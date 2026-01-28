@@ -276,9 +276,11 @@ export async function embedTTEIntoPDF(
   });
   
   // Save without additional compression to preserve original quality
+  // objectsPerTick: Infinity prevents chunking which can alter byte streams
   return await pdfDoc.save({
     useObjectStreams: false,
     addDefaultPage: false,
+    objectsPerTick: Infinity,
   });
 }
 
@@ -356,6 +358,7 @@ export async function embedTTEIntoImage(
   const pdfBytes = await pdfDoc.save({
     useObjectStreams: false,
     addDefaultPage: false,
+    objectsPerTick: Infinity,
   });
   return await embedTTEIntoPDF(pdfBytes, data, verifyUrl, 1);
 }
@@ -484,6 +487,7 @@ export async function createCertificatePDF(
   const pdfBytes = await pdfDoc.save({
     useObjectStreams: false,
     addDefaultPage: false,
+    objectsPerTick: Infinity,
   });
   return await embedTTEIntoPDF(pdfBytes, data, verifyUrl, 1);
 }
