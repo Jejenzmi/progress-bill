@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LinkQuotationDialog } from '@/components/projects/LinkQuotationDialog';
+import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 
 type PipelineStage = 'Meeting' | 'Proposal' | 'Negosiasi' | 'Closing';
 
@@ -84,6 +85,7 @@ export default function PipelineKanban() {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedProjectForLink, setSelectedProjectForLink] = useState<PipelineProject | null>(null);
   const [quotationFilter, setQuotationFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Filter pipeline projects
   const pipelineProjects: PipelineProject[] = projects
@@ -236,7 +238,7 @@ export default function PipelineKanban() {
             <SelectItem value="without">Tanpa Quotation</SelectItem>
           </SelectContent>
         </Select>
-        <Button>
+        <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Tambah Prospek
         </Button>
@@ -450,6 +452,13 @@ export default function PipelineKanban() {
           onSuccess={refetch}
         />
       )}
+
+      {/* Create Project Dialog */}
+      <CreateProjectDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={refetch}
+      />
     </AppLayout>
   );
 }

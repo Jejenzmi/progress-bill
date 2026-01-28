@@ -60,6 +60,7 @@ export default function LeadDetail() {
   const [lead, setLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     if (!leadId) return;
@@ -111,6 +112,76 @@ export default function LeadDetail() {
       supabase.removeChannel(channel);
     };
   }, [leadId, toast]);
+
+  const handleConvertToClient = async () => {
+    if (!lead) return;
+    
+    if (lead.converted_to_client_id) {
+      toast({
+        title: 'Info',
+        description: 'Lead ini sudah dikonversi menjadi klien',
+      });
+      return;
+    }
+
+    setConverting(true);
+    try {
+      // Create client from lead
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .insert({
+          name: lead.company_name || lead.name,
+          pic_name: lead.name,
+          pic_email: lead.email,
+          pic_phone: lead.phone,
+          address: lead.address,
+        })
+        .select()
+        .single();
+
+      if (clientError) {
+        if (clientError.code === '42501') {
+          throw new Error('Anda tidak memiliki akses untuk membuat klien. Hubungi admin.');
+        }
+        throw clientError;
+      }
+
+      // Update lead with conversion info
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({
+          converted_to_client_id: client.id,
+          converted_at: new Date().toISOString(),
+        })
+        .eq('id', lead.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setLead({ 
+        ...lead, 
+        converted_to_client_id: client.id, 
+        converted_at: new Date().toISOString() 
+      });
+
+      toast({
+        title: 'Berhasil',
+        description: `${lead.name} berhasil dikonversi menjadi klien. Lanjutkan ke halaman Klien untuk membuat proyek.`,
+      });
+
+      // Optional: Navigate to client page
+      // navigate(`/clients`);
+    } catch (error: any) {
+      console.error('Error converting lead to client:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal mengkonversi lead menjadi klien',
+        variant: 'destructive',
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -316,9 +387,30 @@ export default function LeadDetail() {
                 Tambah Aktivitas
               </Button>
               {!lead.converted_to_client_id && (
-                <Button variant="outline" className="w-full" size="sm">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Convert to Client
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  size="sm"
+                  onClick={handleConvertToClient}
+                  disabled={converting}
+                >
+                  {converting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4 mr-2" />
+                  )}
+                  {converting ? 'Mengkonversi...' : 'Convert to Client'}
+                </Button>
+              )}
+              {lead.converted_to_client_id && (
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  size="sm"
+                  onClick={() => navigate('/clients')}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Lihat Klien
                 </Button>
               )}
             </CardContent>
