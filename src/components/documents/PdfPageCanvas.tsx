@@ -1,15 +1,17 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pdfjsLib: any;
 
 async function getPdfJs() {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  // IMPORTANT: jangan pakai worker dari /assets karena beberapa server/custom domain
+  // mengirim MIME type .mjs yang salah → "fake worker failed".
+  // Pakai CDN yang version-match agar selalu berhasil.
+  const v = String(pdfjsLib.version || '').trim();
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${v}/build/pdf.worker.min.mjs`;
   return pdfjsLib;
 }
 
