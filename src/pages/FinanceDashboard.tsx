@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +36,7 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
+import { ReadyTermsWidget } from '@/components/invoices/ReadyTermsWidget';
 
 interface InvoiceWithDetails {
   id: string;
@@ -96,7 +97,7 @@ export default function FinanceDashboard() {
     }
   }, [canAccess, yearFilter]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -154,7 +155,7 @@ export default function FinanceDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [yearFilter]);
 
   const exportToExcel = async () => {
     setExporting(true);
@@ -336,7 +337,10 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Ready Terms Widget */}
+        <ReadyTermsWidget onInvoiceCreated={fetchData} />
+
         {/* Recent Invoices */}
         <Card>
           <CardHeader>
@@ -344,7 +348,7 @@ export default function FinanceDashboard() {
             <CardDescription>10 invoice terakhir</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {invoices.slice(0, 10).map((inv) => (
                 <div
                   key={inv.id}
@@ -383,7 +387,7 @@ export default function FinanceDashboard() {
                 <p>Tidak ada invoice jatuh tempo</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {invoices
                   .filter((i) => i.status === 'Overdue')
                   .slice(0, 10)
