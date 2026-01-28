@@ -39,6 +39,7 @@ import {
   FolderPlus,
   HandCoins,
   Percent,
+  RefreshCw,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -582,7 +583,7 @@ export default function QuotationList() {
                         )}
                         
                         {/* Input negotiated price button - for Marketing on approved/sent quotations */}
-                        {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (!quotation.negotiation_status || quotation.negotiation_status === 'rejected') && (
+                        {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (!quotation.negotiation_status || quotation.negotiation_status === 'draft') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -594,6 +595,22 @@ export default function QuotationList() {
                             className={quotation.negotiated_price ? "text-primary" : "text-warning"}
                           >
                             <HandCoins className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Revise negotiated price button - for Marketing on rejected negotiation */}
+                        {canSubmit && quotation.negotiation_status === 'rejected' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuotationForNegotiation(quotation);
+                              setNegotiatedPriceDialogOpen(true);
+                            }}
+                            title="Revisi Harga Negosiasi"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
                         
@@ -693,6 +710,8 @@ export default function QuotationList() {
           negotiation_notes: quotationForNegotiation.negotiation_notes,
           margin_percentage: quotationForNegotiation.margin_percentage,
           client_name: quotationForNegotiation.clients?.name,
+          negotiation_status: quotationForNegotiation.negotiation_status,
+          negotiation_rejection_reason: quotationForNegotiation.negotiation_rejection_reason,
         } : null}
         open={negotiatedPriceDialogOpen}
         onOpenChange={setNegotiatedPriceDialogOpen}
