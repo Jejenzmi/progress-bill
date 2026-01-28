@@ -26,6 +26,8 @@ import {
 import { Plus, Search, Filter, Loader2, Briefcase, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Database } from '@/integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type ProjectStatus = Database['public']['Enums']['project_status'];
 
@@ -46,6 +48,7 @@ const STATUS_COLORS: Record<ProjectStatus, string> = {
 
 export default function Projects() {
   const { hasRole } = useAuth();
+  const { toast } = useToast();
   const { projects, loading, refetch } = useProjects();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
@@ -54,6 +57,7 @@ export default function Projects() {
   const [editingProject, setEditingProject] = useState<ProjectWithDetails | null>(null);
 
   const canCreateProject = hasRole('admin') || hasRole('marketing');
+  const canCreateInvoice = hasRole('admin') || hasRole('finance');
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
@@ -69,6 +73,70 @@ export default function Projects() {
       count: statusProjects.length,
       value: statusProjects.reduce((sum, p) => sum + Number(p.total_value), 0),
     };
+  };
+
+  // Generate invoice for a term
+  const handleGenerateInvoice = async (term: any, project: ProjectWithDetails) => {
+    try {
+      // Get invoice settings for prefix
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'invoice_settings')
+        .maybeSingle();
+
+      const invoiceSettings = settingsData?.value as Record<string, unknown> | null;
+      const prefix = (invoiceSettings?.prefix as string) || 'INV/ZEN';
+      const defaultTopDays = (invoiceSettings?.default_top_days as number) || 14;
+
+      // Generate invoice number
+      const now = new Date();
+      const month = now.toLocaleDateString('id-ID', { month: 'short' }).toUpperCase();
+      const year = now.getFullYear();
+      
+      // Get next sequence number
+      const { count } = await supabase
+        .from('invoices')
+        .select('*', { count: 'exact', head: true });
+      
+      const sequence = (count || 0) + 1;
+      const invoiceNumber = `${sequence.toString().padStart(3, '0')}/${prefix}/${month}/${year}`;
+
+      // Calculate due date
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + defaultTopDays);
+
+      // Insert invoice
+      const { error } = await supabase
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          term_id: term.id,
+          project_id: project.id,
+          amount: term.amount,
+          invoice_date: now.toISOString().split('T')[0],
+          due_date: dueDate.toISOString().split('T')[0],
+          status: 'Draft',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: `Invoice ${invoiceNumber} berhasil dibuat`,
+      });
+
+      // Refresh data
+      refetch();
+      setSelectedProject(null);
+    } catch (error: any) {
+      console.error('Error creating invoice:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal membuat invoice',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -283,6 +351,7 @@ export default function Projects() {
                               : undefined,
                           }}
                           projectName={selectedProject.project_name}
+                          onGenerateInvoice={canCreateInvoice ? () => handleGenerateInvoice(term, selectedProject) : undefined}
                         />
                       ))}
                     </div>
