@@ -83,7 +83,7 @@ export function SalesTargetManager() {
     target_type: 'monthly',
     target_period: `${currentYear}-01`,
     target_amount: 0,
-    user_id: '',
+    user_id: 'global',
     notes: '',
   });
 
@@ -95,16 +95,39 @@ export function SalesTargetManager() {
     try {
       setLoading(true);
       
-      const [targetsRes, profilesRes] = await Promise.all([
-        supabase.from('sales_targets').select('*').order('target_period', { ascending: false }),
-        supabase.from('profiles').select('user_id, full_name'),
-      ]);
+      // Fetch targets
+      const { data: targetsData, error: targetsError } = await supabase
+        .from('sales_targets')
+        .select('*')
+        .order('target_period', { ascending: false });
 
-      if (targetsRes.error) throw targetsRes.error;
-      if (profilesRes.error) throw profilesRes.error;
+      if (targetsError) throw targetsError;
 
-      setTargets(targetsRes.data || []);
-      setProfiles(profilesRes.data || []);
+      // Fetch marketing users with their profiles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'marketing');
+
+      if (rolesError) throw rolesError;
+
+      // Get user_ids from marketing role
+      const marketingUserIds = rolesData?.map(r => r.user_id) || [];
+
+      // Fetch profiles for those marketing users
+      let profilesData: Profile[] = [];
+      if (marketingUserIds.length > 0) {
+        const { data, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', marketingUserIds);
+        
+        if (profilesError) throw profilesError;
+        profilesData = data || [];
+      }
+
+      setTargets(targetsData || []);
+      setProfiles(profilesData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -119,7 +142,7 @@ export function SalesTargetManager() {
         target_type: target.target_type,
         target_period: target.target_period,
         target_amount: target.target_amount,
-        user_id: target.user_id || '',
+        user_id: target.user_id || 'global',
         notes: target.notes || '',
       });
     } else {
@@ -128,7 +151,7 @@ export function SalesTargetManager() {
         target_type: 'monthly',
         target_period: `${currentYear}-01`,
         target_amount: 0,
-        user_id: '',
+        user_id: 'global',
         notes: '',
       });
     }
@@ -151,7 +174,7 @@ export function SalesTargetManager() {
         target_type: form.target_type,
         target_period: form.target_type === 'yearly' ? currentYear.toString() : form.target_period,
         target_amount: form.target_amount,
-        user_id: form.user_id || null,
+        user_id: form.user_id === 'global' ? null : form.user_id,
         notes: form.notes || null,
       };
 
@@ -421,7 +444,7 @@ export function SalesTargetManager() {
                   <SelectValue placeholder="Pilih target untuk..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Company (Global)</SelectItem>
+                  <SelectItem value="global">Company (Global)</SelectItem>
                   {profiles.map(profile => (
                     <SelectItem key={profile.user_id} value={profile.user_id}>
                       {profile.full_name || 'Unknown User'}
