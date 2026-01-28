@@ -13,6 +13,7 @@ import { useUserTTE } from '@/hooks/useUserTTE';
 import { QuotationApprovalDialog } from '@/components/quotations/QuotationApprovalDialog';
 import { CreateProjectFromQuotationDialog } from '@/components/quotations/CreateProjectFromQuotationDialog';
 import { NegotiatedPriceDialog } from '@/components/quotations/NegotiatedPriceDialog';
+import { NegotiationApprovalDialog } from '@/components/quotations/NegotiationApprovalDialog';
 import {
   Table,
   TableBody,
@@ -64,6 +65,10 @@ interface Quotation {
   negotiated_at: string | null;
   negotiated_by: string | null;
   negotiation_notes: string | null;
+  negotiation_status: string | null;
+  negotiation_approved_at: string | null;
+  negotiation_approved_by: string | null;
+  negotiation_rejection_reason: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -107,6 +112,12 @@ export default function QuotationList() {
   // Negotiated price dialog states
   const [negotiatedPriceDialogOpen, setNegotiatedPriceDialogOpen] = useState(false);
   const [quotationForNegotiation, setQuotationForNegotiation] = useState<Quotation | null>(null);
+  
+  // Negotiation approval dialog states
+  const [negotiationApprovalDialogOpen, setNegotiationApprovalDialogOpen] = useState(false);
+  const [quotationForNegotiationApproval, setQuotationForNegotiationApproval] = useState<Quotation | null>(null);
+  
+  const canReviewNegotiation = hasRole('admin') || hasRole('bdo') || hasRole('coo');
   
   const canReview = hasRole('admin') || hasRole('coo');
   const canSubmit = hasRole('admin') || hasRole('bdo') || hasRole('marketing');
@@ -367,13 +378,28 @@ export default function QuotationList() {
   const getApprovalStatusBadge = (status: string | null) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="border-orange-500 text-orange-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+        return <Badge variant="outline" className="border-warning text-warning"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
       case 'approved':
-        return <Badge variant="outline" className="border-green-500 text-green-600"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+        return <Badge variant="outline" className="border-primary text-primary"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
       case 'rejected':
-        return <Badge variant="outline" className="border-red-500 text-red-600"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+        return <Badge variant="outline" className="border-destructive text-destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       default:
         return null;
+    }
+  };
+
+  const getNegotiationStatusBadge = (quotation: Quotation) => {
+    if (!quotation.negotiated_price) return null;
+    
+    switch (quotation.negotiation_status) {
+      case 'pending':
+        return <Badge variant="outline" className="border-warning text-warning text-xs"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="border-primary text-primary text-xs"><CheckCircle className="h-3 w-3 mr-1" />Deal</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="border-destructive text-destructive text-xs"><XCircle className="h-3 w-3 mr-1" />Ditolak</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">Draft</Badge>;
     }
   };
 
@@ -469,7 +495,7 @@ export default function QuotationList() {
                     <TableCell className="text-right">
                       {quotation.negotiated_price ? (
                         <div>
-                          <span className="font-medium text-success">
+                          <span className="font-medium text-primary">
                             {formatCurrency(quotation.negotiated_price)}
                           </span>
                           {quotation.grand_total && quotation.negotiated_price < quotation.grand_total && (
@@ -477,6 +503,9 @@ export default function QuotationList() {
                               -{((quotation.grand_total - quotation.negotiated_price) / quotation.grand_total * 100).toFixed(1)}%
                             </div>
                           )}
+                          <div className="mt-1">
+                            {getNegotiationStatusBadge(quotation)}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
@@ -553,7 +582,7 @@ export default function QuotationList() {
                         )}
                         
                         {/* Input negotiated price button - for Marketing on approved/sent quotations */}
-                        {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (
+                        {canSubmit && (quotation.status === 'Sent' || quotation.approval_status === 'approved') && (!quotation.negotiation_status || quotation.negotiation_status === 'rejected') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -562,9 +591,25 @@ export default function QuotationList() {
                               setNegotiatedPriceDialogOpen(true);
                             }}
                             title="Input Harga Negosiasi"
-                            className={quotation.negotiated_price ? "text-success" : "text-orange-600"}
+                            className={quotation.negotiated_price ? "text-primary" : "text-warning"}
                           >
                             <HandCoins className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Review negotiation button - for BDO/COO on pending negotiation */}
+                        {canReviewNegotiation && quotation.negotiation_status === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuotationForNegotiationApproval(quotation);
+                              setNegotiationApprovalDialogOpen(true);
+                            }}
+                            title="Review Harga Negosiasi"
+                            className="text-warning hover:text-warning"
+                          >
+                            <CheckCircle className="h-4 w-4" />
                           </Button>
                         )}
                         
@@ -651,6 +696,22 @@ export default function QuotationList() {
         } : null}
         open={negotiatedPriceDialogOpen}
         onOpenChange={setNegotiatedPriceDialogOpen}
+        onSuccess={fetchQuotations}
+      />
+
+      {/* Negotiation Approval Dialog */}
+      <NegotiationApprovalDialog
+        quotation={quotationForNegotiationApproval ? {
+          id: quotationForNegotiationApproval.id,
+          project_name: quotationForNegotiationApproval.project_name,
+          grand_total: quotationForNegotiationApproval.grand_total,
+          negotiated_price: quotationForNegotiationApproval.negotiated_price,
+          negotiation_notes: quotationForNegotiationApproval.negotiation_notes,
+          margin_percentage: quotationForNegotiationApproval.margin_percentage,
+          client_name: quotationForNegotiationApproval.clients?.name,
+        } : null}
+        open={negotiationApprovalDialogOpen}
+        onOpenChange={setNegotiationApprovalDialogOpen}
         onSuccess={fetchQuotations}
       />
     </AppLayout>

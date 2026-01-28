@@ -85,17 +85,29 @@ export function NegotiatedPriceDialog({
           negotiated_at: new Date().toISOString(),
           negotiated_by: user.id,
           negotiation_notes: notes.trim() || null,
+          negotiation_status: 'pending', // Set to pending for BDO/COO approval
         })
         .eq('id', quotation.id);
 
       if (error) throw error;
 
-      // Notify Finance users about the negotiation
-      await notifyRoleUsers('finance', 
-        'Harga Negosiasi Baru',
-        `Quotation "${quotation.project_name}" telah mendapatkan harga negosiasi: ${formatCurrency(priceValue)}`,
+      // Notify BDO/COO users for approval
+      await notifyRoleUsers('bdo', 
+        'Harga Negosiasi Perlu Approval',
+        `Quotation "${quotation.project_name}" memiliki harga negosiasi baru: ${formatCurrency(priceValue)}. Mohon review dan approve.`,
         {
-          type: 'info',
+          type: 'warning',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+        }
+      );
+      
+      await notifyRoleUsers('coo', 
+        'Harga Negosiasi Perlu Approval',
+        `Quotation "${quotation.project_name}" memiliki harga negosiasi baru: ${formatCurrency(priceValue)}. Mohon review dan approve.`,
+        {
+          type: 'warning',
           link: '/quotations',
           relatedId: quotation.id,
           relatedType: 'quotation',
@@ -104,7 +116,7 @@ export function NegotiatedPriceDialog({
 
       toast({
         title: 'Berhasil',
-        description: 'Harga negosiasi berhasil disimpan',
+        description: 'Harga negosiasi berhasil disubmit untuk approval BDO/COO',
       });
 
       onSuccess();
