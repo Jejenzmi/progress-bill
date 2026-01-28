@@ -30,6 +30,7 @@ import PMDashboard from "./pages/PMDashboard";
 import Admin from "./pages/Admin";
 import QuotationList from "./pages/QuotationList";
 import Guide from "./pages/Guide";
+import FinanceDashboard from "./pages/FinanceDashboard";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -241,6 +242,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Cashflow />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance-dashboard"
+        element={
+          <ProtectedRoute>
+            <FinanceDashboard />
           </ProtectedRoute>
         }
       />

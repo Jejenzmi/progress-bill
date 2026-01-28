@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Building2, User, Phone, Mail, MapPin, Briefcase, Loader2 } from 'lucide-react';
+import { Plus, Search, Building2, User, Phone, Mail, MapPin, Briefcase, Loader2, Pencil, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const formatCurrency = (amount: number): string => {
@@ -49,6 +49,8 @@ interface ClientData {
   pic_phone: string | null;
   pic_email: string | null;
   address: string | null;
+  npwp_pribadi: string | null;
+  npwp_badan: string | null;
   project_count: number;
   total_value: number;
 }
@@ -62,6 +64,7 @@ export default function Clients() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -71,6 +74,8 @@ export default function Clients() {
     pic_phone: '',
     pic_email: '',
     address: '',
+    npwp_pribadi: '',
+    npwp_badan: '',
   });
 
   useEffect(() => {
@@ -129,6 +134,8 @@ export default function Clients() {
         pic_phone: formData.pic_phone || null,
         pic_email: formData.pic_email || null,
         address: formData.address || null,
+        npwp_pribadi: formData.npwp_pribadi || null,
+        npwp_badan: formData.npwp_badan || null,
       }]);
 
       if (error) throw error;
@@ -152,6 +159,46 @@ export default function Clients() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!selectedClient) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: formData.name,
+          client_type: formData.client_type,
+          pic_name: formData.pic_name || null,
+          pic_phone: formData.pic_phone || null,
+          pic_email: formData.pic_email || null,
+          address: formData.address || null,
+          npwp_pribadi: formData.npwp_pribadi || null,
+          npwp_badan: formData.npwp_badan || null,
+        })
+        .eq('id', selectedClient.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Data klien berhasil diperbarui',
+      });
+
+      setEditMode(false);
+      setSelectedClient(null);
+      fetchClients();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -160,7 +207,23 @@ export default function Clients() {
       pic_phone: '',
       pic_email: '',
       address: '',
+      npwp_pribadi: '',
+      npwp_badan: '',
     });
+  };
+
+  const openEditMode = (client: ClientData) => {
+    setFormData({
+      name: client.name,
+      client_type: client.client_type,
+      pic_name: client.pic_name || '',
+      pic_phone: client.pic_phone || '',
+      pic_email: client.pic_email || '',
+      address: client.address || '',
+      npwp_pribadi: client.npwp_pribadi || '',
+      npwp_badan: client.npwp_badan || '',
+    });
+    setEditMode(true);
   };
 
   const filteredClients = clients.filter((client) =>
@@ -266,6 +329,24 @@ export default function Clients() {
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="Alamat lengkap"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>NPWP Pribadi</Label>
+                    <Input
+                      value={formData.npwp_pribadi}
+                      onChange={(e) => setFormData({ ...formData, npwp_pribadi: e.target.value })}
+                      placeholder="XX.XXX.XXX.X-XXX.XXX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>NPWP Badan</Label>
+                    <Input
+                      value={formData.npwp_badan}
+                      onChange={(e) => setFormData({ ...formData, npwp_badan: e.target.value })}
+                      placeholder="XX.XXX.XXX.X-XXX.XXX"
+                    />
+                  </div>
                 </div>
                 <Button onClick={handleSubmit} disabled={saving} className="w-full">
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -388,24 +469,34 @@ export default function Clients() {
       </div>
 
       {/* Client Detail Dialog */}
-      <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
+      <Dialog open={!!selectedClient && !editMode} onOpenChange={() => setSelectedClient(null)}>
         <DialogContent className="max-w-2xl">
           {selectedClient && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl">{selectedClient.name}</DialogTitle>
-                <DialogDescription>
-                  <span
-                    className={cn(
-                      'status-badge',
-                      selectedClient.client_type === 'Pemerintah'
-                        ? 'bg-info/10 text-info'
-                        : 'bg-success/10 text-success'
-                    )}
-                  >
-                    {selectedClient.client_type}
-                  </span>
-                </DialogDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <DialogTitle className="text-xl">{selectedClient.name}</DialogTitle>
+                    <DialogDescription>
+                      <span
+                        className={cn(
+                          'status-badge',
+                          selectedClient.client_type === 'Pemerintah'
+                            ? 'bg-info/10 text-info'
+                            : 'bg-success/10 text-success'
+                        )}
+                      >
+                        {selectedClient.client_type}
+                      </span>
+                    </DialogDescription>
+                  </div>
+                  {canManage && (
+                    <Button variant="outline" size="sm" onClick={() => openEditMode(selectedClient)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </DialogHeader>
 
               <div className="space-y-6 mt-4">
@@ -441,6 +532,24 @@ export default function Clients() {
                   </div>
                 </div>
 
+                {/* NPWP Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">NPWP Pribadi</p>
+                      <p className="font-medium font-mono text-sm">{selectedClient.npwp_pribadi || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">NPWP Badan</p>
+                      <p className="font-medium font-mono text-sm">{selectedClient.npwp_badan || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg bg-muted/50 p-4 text-center">
@@ -458,6 +567,100 @@ export default function Clients() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={editMode} onOpenChange={(open) => { if (!open) { setEditMode(false); resetForm(); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Klien</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi klien
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-2">
+              <Label>Nama Klien *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipe Klien</Label>
+              <Select
+                value={formData.client_type}
+                onValueChange={(v) => setFormData({ ...formData, client_type: v as any })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pemerintah">Pemerintah</SelectItem>
+                  <SelectItem value="Swasta">Swasta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nama PIC</Label>
+                <Input
+                  value={formData.pic_name}
+                  onChange={(e) => setFormData({ ...formData, pic_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telepon PIC</Label>
+                <Input
+                  value={formData.pic_phone}
+                  onChange={(e) => setFormData({ ...formData, pic_phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Email PIC</Label>
+              <Input
+                type="email"
+                value={formData.pic_email}
+                onChange={(e) => setFormData({ ...formData, pic_email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Alamat</Label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>NPWP Pribadi</Label>
+                <Input
+                  value={formData.npwp_pribadi}
+                  onChange={(e) => setFormData({ ...formData, npwp_pribadi: e.target.value })}
+                  placeholder="XX.XXX.XXX.X-XXX.XXX"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>NPWP Badan</Label>
+                <Input
+                  value={formData.npwp_badan}
+                  onChange={(e) => setFormData({ ...formData, npwp_badan: e.target.value })}
+                  placeholder="XX.XXX.XXX.X-XXX.XXX"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => { setEditMode(false); resetForm(); }}>
+              Batal
+            </Button>
+            <Button onClick={handleUpdate} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Simpan Perubahan
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>
