@@ -61,12 +61,16 @@ import {
   BarChart3,
   Tag,
   Users,
+  FileText,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
 import { LeadAnalyticsDashboard } from '@/components/leads/LeadAnalyticsDashboard';
 import { LeadSegmentation } from '@/components/leads/LeadSegmentation';
 import { SalesWorkloadView } from '@/components/leads/SalesWorkloadView';
+import { ConversionDashboard } from '@/components/leads/ConversionDashboard';
+import { CreateQuotationFromLeadDialog } from '@/components/leads/CreateQuotationFromLeadDialog';
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   cold: { label: 'Cold', color: 'text-blue-700', bgColor: 'bg-blue-100' },
@@ -99,6 +103,8 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [quotationDialogOpen, setQuotationDialogOpen] = useState(false);
+  const [leadForQuotation, setLeadForQuotation] = useState<Lead | null>(null);
   
   // Form state
   const [form, setForm] = useState<LeadInput>({
@@ -227,6 +233,11 @@ export default function Leads() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleCreateQuotation = (lead: Lead) => {
+    setLeadForQuotation(lead);
+    setQuotationDialogOpen(true);
   };
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,6 +411,10 @@ export default function Leads() {
             <TabsTrigger value="kanban" className="flex items-center gap-2">
               <LayoutGrid className="h-4 w-4" />
               Kanban
+            </TabsTrigger>
+            <TabsTrigger value="conversion" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Conversion
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -588,6 +603,12 @@ export default function Leads() {
                                     Convert to Client
                                   </DropdownMenuItem>
                                 )}
+                                {lead.status === 'hot' && (
+                                  <DropdownMenuItem onClick={() => handleCreateQuotation(lead)}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Buat Quotation
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-destructive"
@@ -619,6 +640,11 @@ export default function Leads() {
             onStatusChange={handleStatusChange}
             onConvert={handleConvert}
           />
+        </TabsContent>
+
+        {/* Conversion Dashboard View */}
+        <TabsContent value="conversion">
+          <ConversionDashboard leads={leads} />
         </TabsContent>
 
         {/* Analytics View */}
@@ -806,6 +832,16 @@ export default function Leads() {
         itemName={selectedLead?.name || 'Lead'}
         onConfirm={handleDelete}
         loading={deleting}
+      />
+
+      {/* Create Quotation from Lead Dialog */}
+      <CreateQuotationFromLeadDialog
+        lead={leadForQuotation}
+        open={quotationDialogOpen}
+        onOpenChange={setQuotationDialogOpen}
+        onSuccess={() => {
+          // Refetch leads
+        }}
       />
     </AppLayout>
   );

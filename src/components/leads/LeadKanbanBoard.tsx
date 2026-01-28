@@ -12,8 +12,10 @@ import {
   DollarSign,
   ArrowRight,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CreateQuotationFromLeadDialog } from './CreateQuotationFromLeadDialog';
 
 interface LeadKanbanBoardProps {
   leads: Lead[];
@@ -41,6 +43,13 @@ export function LeadKanbanBoard({ leads, onStatusChange, onConvert }: LeadKanban
   const navigate = useNavigate();
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [quotationDialogOpen, setQuotationDialogOpen] = useState(false);
+  const [leadForQuotation, setLeadForQuotation] = useState<Lead | null>(null);
+
+  const handleCreateQuotation = (lead: Lead) => {
+    setLeadForQuotation(lead);
+    setQuotationDialogOpen(true);
+  };
 
   const getLeadsByStatus = (status: LeadStatus) =>
     leads.filter(l => l.status === status && !l.converted_to_client_id);
@@ -169,20 +178,34 @@ export function LeadKanbanBoard({ leads, onStatusChange, onConvert }: LeadKanban
                         </div>
                       )}
 
-                      {/* Quick convert button for hot leads */}
+                      {/* Quick action buttons for hot leads */}
                       {config.status === 'hot' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full mt-2 text-xs h-7 border-green-300 text-green-700 hover:bg-green-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onConvert(lead);
-                          }}
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Convert to Client
-                        </Button>
+                        <div className="flex gap-1 mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 text-xs h-7 border-success/50 text-success hover:bg-success/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onConvert(lead);
+                            }}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Client
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 text-xs h-7 border-primary/50 text-primary hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateQuotation(lead);
+                            }}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            Quotation
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -198,6 +221,13 @@ export function LeadKanbanBoard({ leads, onStatusChange, onConvert }: LeadKanban
           </div>
         );
       })}
+
+      {/* Create Quotation Dialog */}
+      <CreateQuotationFromLeadDialog
+        lead={leadForQuotation}
+        open={quotationDialogOpen}
+        onOpenChange={setQuotationDialogOpen}
+      />
     </div>
   );
 }
