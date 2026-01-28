@@ -78,7 +78,7 @@ export function PaymentTermTemplateManager({ disabled = false }: PaymentTermTemp
         .from('settings')
         .select('value')
         .eq('key', 'payment_term_templates')
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
@@ -338,7 +338,7 @@ export async function getPaymentTermTemplates(): Promise<Omit<PaymentTermTemplat
       .from('settings')
       .select('value')
       .eq('key', 'payment_term_templates')
-      .single();
+      .maybeSingle();
 
     if (error || !data?.value) {
       return DEFAULT_TEMPLATES;
