@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { createNotification } from '@/lib/notificationHelper';
 import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
 import { parseQRPosition } from './QRPositionSelector';
+import { TTEBoxOverlay } from './TTEBoxOverlay';
 import { cn } from '@/lib/utils';
 import { 
   Loader2, 
@@ -38,95 +39,9 @@ import { id as idLocale } from 'date-fns/locale';
 // Production verification URL
 const VERIFICATION_BASE_URL = 'https://crm.zefin.id/verify';
 
-// QR Position Indicator Component
+// QRPositionIndicator now uses the shared TTEBoxOverlay component
 function QRPositionIndicator({ qrPosition, qrPage, isPdf }: { qrPosition: string; qrPage?: number; isPdf?: boolean }) {
-  const parsed = parseQRPosition(qrPosition);
-  
-  // Get position style
-  const getPositionStyle = (): React.CSSProperties => {
-    if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
-      return {
-        position: 'absolute',
-        left: `${parsed.x}%`,
-        top: `${parsed.y}%`,
-        transform: 'translate(-50%, -50%)',
-      };
-    }
-    
-    const presetStyles: Record<string, React.CSSProperties> = {
-      'top-left': { position: 'absolute', top: '1rem', left: '1rem' },
-      'top-right': { position: 'absolute', top: '1rem', right: '1rem' },
-      'bottom-left': { position: 'absolute', bottom: '1rem', left: '1rem' },
-      'bottom-right': { position: 'absolute', bottom: '1rem', right: '1rem' },
-      'center': { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-    };
-    
-    return presetStyles[parsed.preset || 'bottom-right'] || presetStyles['bottom-right'];
-  };
-
-  // Get size class based on QR size
-  const getSizeClass = (): string => {
-    switch (parsed.size) {
-      case 'small': return 'w-10 h-10';
-      case 'large': return 'w-16 h-16';
-      default: return 'w-12 h-12';
-    }
-  };
-
-  const getPositionLabel = (): string => {
-    if (parsed.type === 'custom') {
-      return `Kustom (${parsed.x?.toFixed(0)}%, ${parsed.y?.toFixed(0)}%)`;
-    }
-    const presetLabels: Record<string, string> = {
-      'top-left': 'Kiri Atas',
-      'top-right': 'Kanan Atas',
-      'center': 'Tengah',
-      'bottom-left': 'Kiri Bawah',
-      'bottom-right': 'Kanan Bawah',
-    };
-    return presetLabels[parsed.preset || 'bottom-right'] || 'Kanan Bawah';
-  };
-
-  const getSizeLabel = (): string => {
-    switch (parsed.size) {
-      case 'small': return 'Kecil';
-      case 'large': return 'Besar';
-      default: return 'Sedang';
-    }
-  };
-
-  return (
-    <>
-      {/* QR Position Overlay */}
-      <div
-        className={cn(
-          'border-2 border-dashed border-primary bg-primary/20 rounded-lg flex flex-col items-center justify-center pointer-events-none z-20 animate-pulse',
-          getSizeClass()
-        )}
-        style={getPositionStyle()}
-      >
-        <QrCode className="h-5 w-5 text-primary" />
-        <span className="text-[8px] font-bold text-primary mt-0.5">QR TTE</span>
-      </div>
-      
-      {/* Position Info Badge */}
-      <div className="absolute bottom-2 left-2 bg-background/95 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium z-20 border shadow-sm flex items-center gap-2">
-        <QrCode className="h-3 w-3 text-primary" />
-        {isPdf && qrPage && (
-          <>
-            <span className="text-muted-foreground">Halaman:</span>
-            <span className="font-semibold">{qrPage}</span>
-            <span className="text-muted-foreground">|</span>
-          </>
-        )}
-        <span className="text-muted-foreground">Posisi:</span>
-        <span className="font-semibold">{getPositionLabel()}</span>
-        <span className="text-muted-foreground">|</span>
-        <span className="text-muted-foreground">Ukuran:</span>
-        <span className="font-semibold">{getSizeLabel()}</span>
-      </div>
-    </>
-  );
+  return <TTEBoxOverlay qrPosition={qrPosition} qrPage={qrPage} isPdf={isPdf} showInfoBadge={true} />;
 }
 
 interface SignedDocument {
