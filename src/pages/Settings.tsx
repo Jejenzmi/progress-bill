@@ -28,6 +28,9 @@ interface SettingsData {
     prefix: string;
     default_top_days: number;
   };
+  quotation_settings: {
+    prefix: string;
+  };
   tte_settings: {
     signer_name: string;
     signer_position: string;
@@ -69,6 +72,9 @@ export default function Settings() {
       prefix: 'INV/ZEN',
       default_top_days: 14,
     },
+    quotation_settings: {
+      prefix: 'QUO-ZMI',
+    },
     tte_settings: {
       signer_name: '',
       signer_position: 'Direktur',
@@ -100,6 +106,8 @@ export default function Settings() {
             newSettings.company_profile = item.value as any;
           } else if (item.key === 'invoice_settings') {
             newSettings.invoice_settings = item.value as any;
+          } else if (item.key === 'quotation_settings') {
+            newSettings.quotation_settings = item.value as any;
           } else if (item.key === 'tte_settings') {
             newSettings.tte_settings = item.value as any;
           } else if (item.key === 'rate_card') {
@@ -124,6 +132,7 @@ export default function Settings() {
       const updates = [
         { key: 'company_profile', value: settings.company_profile },
         { key: 'invoice_settings', value: settings.invoice_settings },
+        { key: 'quotation_settings', value: settings.quotation_settings },
         { key: 'tte_settings', value: settings.tte_settings },
         { key: 'rate_card', value: settings.rate_card },
         { key: 'targets', value: settings.targets },
@@ -169,6 +178,16 @@ export default function Settings() {
       ...settings,
       invoice_settings: {
         ...settings.invoice_settings,
+        [field]: value,
+      },
+    });
+  };
+
+  const updateQuotationSettings = (field: string, value: string) => {
+    setSettings({
+      ...settings,
+      quotation_settings: {
+        ...settings.quotation_settings,
         [field]: value,
       },
     });
@@ -442,6 +461,31 @@ export default function Settings() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quotation Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pengaturan Quotation</CardTitle>
+            <CardDescription>
+              Konfigurasi format nomor surat penawaran
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="quotationPrefix">Prefix Nomor Quotation</Label>
+              <Input
+                id="quotationPrefix"
+                value={settings.quotation_settings?.prefix || 'QUO-ZMI'}
+                onChange={(e) => updateQuotationSettings('prefix', e.target.value)}
+                disabled={!isAdmin}
+                placeholder="Contoh: QUO-ZMI"
+              />
+              <p className="text-xs text-muted-foreground">
+                Format: [Nomor Urut]/{'{prefix}'}/[Bulan]/[Tahun] → Contoh: 123/{settings.quotation_settings?.prefix || 'QUO-ZMI'}/JAN/2026
+              </p>
             </div>
           </CardContent>
         </Card>

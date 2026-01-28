@@ -87,17 +87,37 @@ export default function Quotation() {
     'Opsional maintenance bulanan tersedia jika diperlukan',
   ]);
 
-  // Generate quotation number on mount or load edit data
+  // Fetch quotation prefix from settings and generate quotation number on mount or load edit data
   useEffect(() => {
-    if (editId) {
-      loadQuotationForEdit(editId);
-    } else {
-      const now = new Date();
-      const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
-      const year = now.getFullYear();
-      const random = Math.floor(Math.random() * 900) + 100;
-      setQuotationNumber(`${random}/QUO-ZMI/${month}/${year}`);
-    }
+    const loadData = async () => {
+      if (editId) {
+        loadQuotationForEdit(editId);
+      } else {
+        // Fetch quotation prefix from settings
+        let prefix = 'QUO-ZMI';
+        try {
+          const { data } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'quotation_settings')
+            .single();
+          
+          if (data?.value && typeof data.value === 'object' && 'prefix' in data.value) {
+            prefix = (data.value as { prefix: string }).prefix;
+          }
+        } catch (error) {
+          console.log('Using default quotation prefix');
+        }
+        
+        const now = new Date();
+        const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+        const year = now.getFullYear();
+        const random = Math.floor(Math.random() * 900) + 100;
+        setQuotationNumber(`${random}/${prefix}/${month}/${year}`);
+      }
+    };
+    
+    loadData();
   }, [editId]);
 
   const loadQuotationForEdit = async (id: string) => {
