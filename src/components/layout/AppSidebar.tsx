@@ -98,6 +98,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Dokumen', href: '/documents', icon: FileText, roles: ['admin', 'marketing', 'finance', 'project_manager', 'bdo', 'coo'] },
       { name: 'TTE Dokumen', href: '/signed-documents', icon: FileSignature, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
+      { name: 'Review TTE', href: '/tte-review', icon: FileSignature, roles: ['admin', 'coo'] },
     ],
   },
 ];
