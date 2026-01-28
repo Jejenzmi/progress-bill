@@ -179,34 +179,39 @@ export const generateQuotationPDF = async (
         /* Header */
         .header {
           display: flex;
-          align-items: center;
-          padding: 15mm 15mm 10mm 15mm;
-          gap: 15px;
+          align-items: flex-start;
+          justify-content: space-between;
+          padding: 10mm 15mm 8mm 15mm;
         }
         .header-pattern {
-          width: 80px;
-          height: 80px;
-          background: radial-gradient(circle, #3d5a80 1.5px, transparent 1.5px);
-          background-size: 8px 8px;
-          mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0.5) 50%, transparent 70%);
-          -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0.5) 50%, transparent 70%);
+          width: 180px;
+          height: 100px;
+          background: radial-gradient(circle, #3d5a80 2px, transparent 2px);
+          background-size: 10px 10px;
+          mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 30%, rgba(0,0,0,0.4) 60%, transparent 100%),
+                      linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
+          -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 30%, rgba(0,0,0,0.4) 60%, transparent 100%),
+                              linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
+          mask-composite: intersect;
+          -webkit-mask-composite: source-in;
           flex-shrink: 0;
         }
         .header-info {
-          flex: 1;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
+          text-align: right;
         }
         .header-logo {
-          height: 50px;
+          height: 55px;
           width: auto;
         }
         .company-name {
-          font-size: 14pt;
+          font-size: 13pt;
           font-weight: bold;
           color: #3d5a80;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
+          line-height: 1.2;
         }
         
         /* Content */
@@ -514,7 +519,7 @@ export const generateQuotationPDF = async (
           <div class="header-pattern"></div>
           <div class="header-info">
             <img src="${logoSrc}" alt="Logo" class="header-logo" onerror="this.style.display='none'" />
-            <div class="company-name">${company.name.toUpperCase()}</div>
+            <div class="company-name">PT. ZEN MULTIMEDIA<br/>INDONESIA</div>
           </div>
         </div>
 
