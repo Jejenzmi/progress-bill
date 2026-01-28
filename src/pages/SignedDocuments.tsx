@@ -62,6 +62,7 @@ interface SignedDocument {
   file_type: string;
   file_size: number | null;
   qr_position: string;
+  qr_page?: number;
   signer_name: string;
   signer_position: string;
   signed_at: string;
@@ -196,6 +197,7 @@ export default function SignedDocuments() {
             file_type: selectedFile.type || 'application/octet-stream',
             file_size: selectedFile.size,
             qr_position: qrPosition,
+            qr_page: pageNumber || 1,
             signer_name: signerName.trim(),
             signer_position: signerPosition.trim(),
             signed_at: signedAt.toISOString(),
