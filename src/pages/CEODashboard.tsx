@@ -5,6 +5,13 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import {
   TrendingUp,
@@ -109,11 +116,16 @@ export default function CEODashboard() {
   const [monthlyData, setMonthlyData] = useState<MonthlyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Period filter
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const availableYears = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
   const fetchData = async () => {
     try {
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().toISOString().slice(0, 7);
+      const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
       // Fetch all data in parallel
       const [
@@ -150,13 +162,14 @@ export default function CEODashboard() {
       const totalRevenue = wonProjects.reduce((sum, p) => sum + Number(p.total_value || 0), 0);
       
       const thisMonthInvoices = invoices.filter(inv => 
-        inv.paid_at && inv.paid_at.startsWith(currentMonth)
+        inv.paid_at && inv.paid_at.startsWith(targetMonthStr)
       );
       const totalRevenueThisMonth = thisMonthInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
       
-      const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 7);
+      const prevMonthDate = new Date(selectedYear, selectedMonth - 1, 1);
+      const lastMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
       const lastMonthInvoices = invoices.filter(inv => 
-        inv.paid_at && inv.paid_at.startsWith(lastMonth)
+        inv.paid_at && inv.paid_at.startsWith(lastMonthStr)
       );
       const totalRevenueLastMonth = lastMonthInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
       const revenueGrowth = totalRevenueLastMonth > 0 
@@ -165,10 +178,10 @@ export default function CEODashboard() {
 
       // Targets
       const yearlyTargetRecord = targets.find(t => 
-        t.target_type === 'yearly' && t.target_period.startsWith(currentYear.toString()) && !t.user_id
+        t.target_type === 'yearly' && t.target_period.startsWith(selectedYear.toString()) && !t.user_id
       );
       const monthlyTargetRecord = targets.find(t => 
-        t.target_type === 'monthly' && t.target_period === currentMonth && !t.user_id
+        t.target_type === 'monthly' && t.target_period === targetMonthStr && !t.user_id
       );
       
       const yearlyTarget = Number(yearlyTargetRecord?.target_amount || 0);
@@ -178,7 +191,7 @@ export default function CEODashboard() {
       }
 
       const yearlyInvoices = invoices.filter(inv => 
-        inv.paid_at && inv.paid_at.startsWith(currentYear.toString())
+        inv.paid_at && inv.paid_at.startsWith(selectedYear.toString())
       );
       const totalRevenueThisYear = yearlyInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
       
@@ -212,7 +225,7 @@ export default function CEODashboard() {
           return project?.created_by === user.user_id;
         });
         const userRevenueThisMonth = userInvoices
-          .filter(inv => inv.paid_at && inv.paid_at.startsWith(currentMonth))
+          .filter(inv => inv.paid_at && inv.paid_at.startsWith(targetMonthStr))
           .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
         
         const closedDeals = userWon.length + userLost.length;
@@ -223,12 +236,12 @@ export default function CEODashboard() {
         const userConvertedLeads = userLeads.filter(l => l.converted_to_client_id).length;
         
         const userActivities = activities.filter(a => 
-          a.created_by === user.user_id && a.created_at.startsWith(currentMonth)
+          a.created_by === user.user_id && a.created_at.startsWith(targetMonthStr)
         ).length;
 
         // Get user target
         const userTarget = targets.find(t => 
-          t.target_type === 'monthly' && t.target_period === currentMonth && t.user_id === user.user_id
+          t.target_type === 'monthly' && t.target_period === targetMonthStr && t.user_id === user.user_id
         );
         const userMonthlyTarget = Number(userTarget?.target_amount || monthlyTarget);
         const targetProgress = userMonthlyTarget > 0 ? (userRevenueThisMonth / userMonthlyTarget) * 100 : 0;
@@ -261,25 +274,24 @@ export default function CEODashboard() {
 
       // Calculate monthly revenue data for chart
       const monthlyRevenueData: MonthlyRevenue[] = monthNames.map((name, index) => {
-        const monthStr = `${currentYear}-${String(index + 1).padStart(2, '0')}`;
+        const monthStr = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
         const monthInvoices = invoices.filter(inv => 
           inv.paid_at && inv.paid_at.startsWith(monthStr)
         );
         const revenue = monthInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
         
         // Calculate forecast for future months
-        const currentMonthIndex = new Date().getMonth();
         let forecast = revenue;
-        if (index > currentMonthIndex) {
+        if (index > selectedMonth) {
           // Future month: use weighted pipeline / remaining months
-          forecast = weightedForecast / (12 - currentMonthIndex);
+          forecast = weightedForecast / (12 - selectedMonth);
         }
 
         return {
           month: name,
           revenue,
           target: monthlyTarget,
-          forecast: index >= currentMonthIndex ? forecast : revenue,
+          forecast: index >= selectedMonth ? forecast : revenue,
         };
       });
 
@@ -315,7 +327,7 @@ export default function CEODashboard() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedYear, selectedMonth]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -363,7 +375,29 @@ export default function CEODashboard() {
       title="CEO Dashboard" 
       subtitle="Executive overview - semua tim sales dan performa bisnis"
     >
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthNames.map((name, index) => (
+                <SelectItem key={index} value={index.toString()}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((year) => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
           Refresh
