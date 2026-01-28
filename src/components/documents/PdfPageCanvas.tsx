@@ -1,18 +1,14 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-// pdfjs-dist needs a worker. With Vite we can import it as a URL.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.js?url';
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pdfjsLib: any;
 
 async function getPdfJs() {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  // Use CDN for worker to avoid Vite/Rollup resolution issues
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
   return pdfjsLib;
 }
 
