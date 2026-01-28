@@ -151,9 +151,9 @@ export default function VerifyDocument() {
                         <ShieldCheck className="h-8 w-8 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="text-primary">Dokumen Terverifikasi</CardTitle>
+                        <CardTitle className="text-primary">✓ Dokumen SAH & Terverifikasi</CardTitle>
                         <CardDescription>
-                          Dokumen ini telah ditandatangani secara elektronik dan valid
+                          Dokumen ini sah dan resmi dikeluarkan oleh PT Zen Multimedia Indonesia
                         </CardDescription>
                       </div>
                     </div>
@@ -197,11 +197,15 @@ export default function VerifyDocument() {
                       </div>
                     </div>
 
-                    {/* Disclaimer */}
-                    <div className="text-xs text-muted-foreground border-t pt-4">
-                      <p>
-                        Dokumen ini telah ditandatangani secara elektronik sesuai dengan ketentuan yang berlaku.
-                        Tanda tangan elektronik pada dokumen ini memiliki kekuatan hukum yang sama dengan tanda tangan basah.
+                    {/* Validity Statement */}
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-sm font-medium text-primary mb-1">
+                        ✓ Dokumen Resmi & Sah
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Dokumen ini adalah dokumen resmi yang dikeluarkan oleh perusahaan dan telah 
+                        ditandatangani secara elektronik sesuai dengan ketentuan yang berlaku. 
+                        Tanda tangan elektronik pada dokumen ini memiliki kekuatan hukum yang sah.
                       </p>
                     </div>
                   </CardContent>
