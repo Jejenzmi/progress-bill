@@ -36,7 +36,10 @@ import {
   FileDown,
   Files,
   RotateCcw,
-  CheckCircle2
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Send
 } from 'lucide-react';
 
 // Production verification URL (use custom domain)
@@ -46,7 +49,10 @@ import { id } from 'date-fns/locale';
 import { DocumentPreviewDialog } from '@/components/documents/DocumentPreviewDialog';
 import { BatchSigningDialog } from '@/components/documents/BatchSigningDialog';
 import { RegenerateTTEDialog } from '@/components/documents/RegenerateTTEDialog';
+import { TTEApprovalDialog } from '@/components/documents/TTEApprovalDialog';
 import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
+import { notifyRoleUsers } from '@/lib/notificationHelper';
+import { Badge } from '@/components/ui/badge';
 
 interface SignedDocument {
   id: string;
@@ -60,6 +66,11 @@ interface SignedDocument {
   signer_position: string;
   signed_at: string;
   created_at: string;
+  tte_status?: string;
+  signer_type?: string;
+  submitted_by?: string;
+  submitted_at?: string;
+  rejection_reason?: string;
 }
 
 export default function SignedDocuments() {
@@ -79,6 +90,8 @@ export default function SignedDocuments() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalMode, setApprovalMode] = useState<'review' | 'view'>('view');
   const [selectedDoc, setSelectedDoc] = useState<SignedDocument | null>(null);
   
   // Upload form state
@@ -86,6 +99,7 @@ export default function SignedDocuments() {
   const [qrPosition, setQrPosition] = useState('bottom-right');
   const [signerName, setSignerName] = useState('');
   const [signerPosition, setSignerPosition] = useState('');
+  const [signerType, setSignerType] = useState('self');
 
   useEffect(() => {
     if (user) {
@@ -157,19 +171,7 @@ export default function SignedDocuments() {
       const signedAt = new Date();
       const verifyUrl = VERIFICATION_BASE_URL;
       
-      // Generate signed PDF with TTE
-      const tteData: DocumentTTEData = {
-        documentName: selectedFile.name,
-        signerName: signerName.trim(),
-        signerPosition: signerPosition.trim(),
-        signedAt,
-        qrPosition,
-        pageNumber: pageNumber || 1, // Use selected page or default to 1
-      };
-      
-      const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(selectedFile, tteData, verifyUrl);
-      
-      // Upload original file
+      // Upload original file first
       const originalFileName = `${Date.now()}-${selectedFile.name}`;
       const originalFilePath = `${user.id}/originals/${originalFileName}`;
 
@@ -179,39 +181,93 @@ export default function SignedDocuments() {
 
       if (uploadOriginalError) throw uploadOriginalError;
 
-      // Upload signed PDF
-      const signedFileName = `${Date.now()}-signed-${selectedFile.name.replace(/\.[^/.]+$/, '')}.pdf`;
-      const signedFilePath = `${user.id}/signed/${signedFileName}`;
+      // Check if this needs approval (COO/CEO signer)
+      const needsApproval = signerType !== 'self';
 
-      const { error: uploadSignedError } = await supabase.storage
-        .from('signed-documents')
-        .upload(signedFilePath, signedPdfBlob);
+      if (needsApproval) {
+        // Save document as pending approval (don't generate TTE yet)
+        const { error: dbError } = await supabase
+          .from('signed_documents')
+          .insert({
+            user_id: user.id,
+            original_file_name: selectedFile.name,
+            original_file_path: originalFilePath,
+            signed_file_path: null, // Will be generated after approval
+            file_type: selectedFile.type || 'application/octet-stream',
+            file_size: selectedFile.size,
+            qr_position: qrPosition,
+            signer_name: signerName.trim(),
+            signer_position: signerPosition.trim(),
+            signed_at: signedAt.toISOString(),
+            verification_id: null,
+            tte_status: 'pending',
+            signer_type: signerType,
+            submitted_at: new Date().toISOString(),
+            submitted_by: user.id,
+          });
 
-      if (uploadSignedError) throw uploadSignedError;
+        if (dbError) throw dbError;
 
-      // Create database record
-      const { error: dbError } = await supabase
-        .from('signed_documents')
-        .insert({
-          user_id: user.id,
-          original_file_name: selectedFile.name,
-          original_file_path: originalFilePath,
-          signed_file_path: signedFilePath,
-          file_type: selectedFile.type || 'application/octet-stream',
-          file_size: selectedFile.size,
-          qr_position: qrPosition,
-          signer_name: signerName.trim(),
-          signer_position: signerPosition.trim(),
-          signed_at: signedAt.toISOString(),
-          verification_id: verificationId,
+        // Notify COO or Admin based on signer type
+        const notifyRole = signerType === 'ceo' ? 'admin' : 'coo';
+        await notifyRoleUsers(notifyRole, 'Permintaan TTE Baru', 
+          `Dokumen "${selectedFile.name}" memerlukan persetujuan TTE Anda.`, 
+          { type: 'info', link: '/signed-documents', relatedType: 'signed_document' }
+        );
+
+        toast({
+          title: 'Permintaan Dikirim',
+          description: `Dokumen telah dikirim untuk approval ke ${signerType === 'coo' ? 'COO' : 'CEO'}`,
         });
+      } else {
+        // Self signing - generate TTE immediately
+        const tteData: DocumentTTEData = {
+          documentName: selectedFile.name,
+          signerName: signerName.trim(),
+          signerPosition: signerPosition.trim(),
+          signedAt,
+          qrPosition,
+          pageNumber: pageNumber || 1,
+        };
+        
+        const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(selectedFile, tteData, verifyUrl);
+        
+        // Upload signed PDF
+        const signedFileName = `${Date.now()}-signed-${selectedFile.name.replace(/\.[^/.]+$/, '')}.pdf`;
+        const signedFilePath = `${user.id}/signed/${signedFileName}`;
 
-      if (dbError) throw dbError;
+        const { error: uploadSignedError } = await supabase.storage
+          .from('signed-documents')
+          .upload(signedFilePath, signedPdfBlob);
 
-      toast({
-        title: 'Berhasil',
-        description: 'Dokumen berhasil ditandatangani dan disimpan',
-      });
+        if (uploadSignedError) throw uploadSignedError;
+
+        // Create database record
+        const { error: dbError } = await supabase
+          .from('signed_documents')
+          .insert({
+            user_id: user.id,
+            original_file_name: selectedFile.name,
+            original_file_path: originalFilePath,
+            signed_file_path: signedFilePath,
+            file_type: selectedFile.type || 'application/octet-stream',
+            file_size: selectedFile.size,
+            qr_position: qrPosition,
+            signer_name: signerName.trim(),
+            signer_position: signerPosition.trim(),
+            signed_at: signedAt.toISOString(),
+            verification_id: verificationId,
+            tte_status: 'signed',
+            signer_type: 'self',
+          });
+
+        if (dbError) throw dbError;
+
+        toast({
+          title: 'Berhasil',
+          description: 'Dokumen berhasil ditandatangani dan disimpan',
+        });
+      }
 
       // Reset form and refresh
       resetForm();
@@ -528,6 +584,20 @@ export default function SignedDocuments() {
     return positions[position] || position;
   };
 
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"><Clock className="h-3 w-3 mr-1" />Menunggu Approval</Badge>;
+      case 'approved':
+      case 'signed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"><CheckCircle2 className="h-3 w-3 mr-1" />Ditandatangani</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"><XCircle className="h-3 w-3 mr-1" />Ditolak</Badge>;
+      default:
+        return <Badge variant="outline"><FileSignature className="h-3 w-3 mr-1" />Draft</Badge>;
+    }
+  };
+
   return (
     <AppLayout title="Tanda Tangan Elektronik" subtitle="Upload dan tandatangani dokumen dengan QR Code TTE">
       <div className="space-y-6">
@@ -577,8 +647,7 @@ export default function SignedDocuments() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nama File</TableHead>
-                      <TableHead>Ukuran</TableHead>
-                      <TableHead>Posisi QR</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Penandatangan</TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
@@ -595,8 +664,9 @@ export default function SignedDocuments() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>{formatFileSize(doc.file_size)}</TableCell>
-                        <TableCell>{getPositionLabel(doc.qr_position)}</TableCell>
+                        <TableCell>
+                          {getStatusBadge(doc.tte_status)}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{doc.signer_name}</div>
@@ -610,6 +680,22 @@ export default function SignedDocuments() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {/* Review button for COO/Admin on pending documents */}
+                            {doc.tte_status === 'pending' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDoc(doc);
+                                  setApprovalMode('review');
+                                  setApprovalDialogOpen(true);
+                                }}
+                                title="Review & Approve TTE"
+                                className="bg-orange-600 hover:bg-orange-700"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -618,30 +704,48 @@ export default function SignedDocuments() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleDownloadSigned(doc)}
-                              disabled={generating === doc.id || !doc.signed_file_path}
-                              title="Download PDF bertanda tangan"
-                            >
-                              {generating === doc.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <FileDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDoc(doc);
-                                setRegenerateDialogOpen(true);
-                              }}
-                              title="Regenerate TTE"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
+                            {doc.tte_status === 'signed' && doc.signed_file_path && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleDownloadSigned(doc)}
+                                disabled={generating === doc.id}
+                                title="Download PDF bertanda tangan"
+                              >
+                                {generating === doc.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FileDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                            {doc.tte_status === 'signed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDoc(doc);
+                                  setRegenerateDialogOpen(true);
+                                }}
+                                title="Regenerate TTE"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {(doc.tte_status === 'rejected' || doc.tte_status === 'pending') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDoc(doc);
+                                  setApprovalMode('view');
+                                  setApprovalDialogOpen(true);
+                                }}
+                                title="Lihat Detail"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -715,6 +819,8 @@ export default function SignedDocuments() {
         onSignerNameChange={setSignerName}
         signerPosition={signerPosition}
         onSignerPositionChange={setSignerPosition}
+        signerType={signerType}
+        onSignerTypeChange={setSignerType}
         onConfirm={handleUploadAndSign}
         uploading={uploading}
         userTTEName={tteSettings?.signer_name}
@@ -753,6 +859,15 @@ export default function SignedDocuments() {
         loading={regenerating}
         userTTEName={tteSettings?.signer_name}
         userTTEPosition={tteSettings?.signer_position}
+      />
+
+      {/* TTE Approval Dialog */}
+      <TTEApprovalDialog
+        open={approvalDialogOpen}
+        onOpenChange={setApprovalDialogOpen}
+        document={selectedDoc}
+        mode={approvalMode}
+        onSuccess={fetchDocuments}
       />
     </AppLayout>
   );

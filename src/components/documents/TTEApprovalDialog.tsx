@@ -1,0 +1,359 @@
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { createNotification } from '@/lib/notificationHelper';
+import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
+import { 
+  Loader2, 
+  FileText, 
+  CheckCircle2, 
+  XCircle, 
+  User, 
+  Calendar,
+  FileSignature
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+
+// Production verification URL
+const VERIFICATION_BASE_URL = 'https://crm.zefin.id/verify';
+
+interface SignedDocument {
+  id: string;
+  original_file_name: string;
+  original_file_path: string;
+  signed_file_path: string | null;
+  file_type: string;
+  file_size: number | null;
+  qr_position: string;
+  signer_name: string;
+  signer_position: string;
+  signed_at: string;
+  created_at: string;
+  tte_status?: string;
+  signer_type?: string;
+  submitted_by?: string;
+  submitted_at?: string;
+  rejection_reason?: string;
+}
+
+interface TTEApprovalDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  document: SignedDocument | null;
+  mode: 'review' | 'view';
+  onSuccess: () => void;
+}
+
+export function TTEApprovalDialog({
+  open,
+  onOpenChange,
+  document,
+  mode,
+  onSuccess,
+}: TTEApprovalDialogProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [submitterName, setSubmitterName] = useState<string>('');
+
+  useEffect(() => {
+    if (document?.submitted_by) {
+      fetchSubmitterName(document.submitted_by);
+    }
+  }, [document?.submitted_by]);
+
+  const fetchSubmitterName = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('user_id', userId)
+      .single();
+    
+    if (data?.full_name) {
+      setSubmitterName(data.full_name);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!document || !user) return;
+
+    setLoading(true);
+    try {
+      // Download original file
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('signed-documents')
+        .download(document.original_file_path);
+
+      if (downloadError) throw downloadError;
+
+      // Generate signed PDF with TTE
+      const file = new File([fileData], document.original_file_name, { type: document.file_type });
+      const signedAt = new Date();
+      
+      const tteData: DocumentTTEData = {
+        documentName: file.name,
+        signerName: document.signer_name,
+        signerPosition: document.signer_position,
+        signedAt,
+        qrPosition: document.qr_position,
+      };
+      
+      const { blob: signedPdfBlob, verificationId } = await generateSignedPDF(file, tteData, VERIFICATION_BASE_URL);
+      
+      // Upload signed PDF
+      const signedFileName = `${Date.now()}-signed-${document.original_file_name.replace(/\.[^/.]+$/, '')}.pdf`;
+      const signedFilePath = `${document.submitted_by || user.id}/signed/${signedFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('signed-documents')
+        .upload(signedFilePath, signedPdfBlob);
+
+      if (uploadError) throw uploadError;
+
+      // Update database record
+      const { error: dbError } = await supabase
+        .from('signed_documents')
+        .update({
+          tte_status: 'signed',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id,
+          signed_file_path: signedFilePath,
+          signed_at: signedAt.toISOString(),
+          verification_id: verificationId,
+        })
+        .eq('id', document.id);
+
+      if (dbError) throw dbError;
+
+      // Notify submitter
+      if (document.submitted_by) {
+        await createNotification({
+          userId: document.submitted_by,
+          title: 'TTE Dokumen Disetujui',
+          message: `Dokumen "${document.original_file_name}" telah disetujui dan ditandatangani.`,
+          type: 'success',
+          link: '/signed-documents',
+          relatedId: document.id,
+          relatedType: 'signed_document',
+        });
+      }
+
+      toast({
+        title: 'Berhasil',
+        description: 'Dokumen telah disetujui dan ditandatangani',
+      });
+
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error approving TTE:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal menyetujui dokumen',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!document || !user) return;
+
+    if (!rejectionReason.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Alasan penolakan wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('signed_documents')
+        .update({
+          tte_status: 'rejected',
+          rejected_at: new Date().toISOString(),
+          rejected_by: user.id,
+          rejection_reason: rejectionReason,
+        })
+        .eq('id', document.id);
+
+      if (error) throw error;
+
+      // Notify submitter
+      if (document.submitted_by) {
+        await createNotification({
+          userId: document.submitted_by,
+          title: 'TTE Dokumen Ditolak',
+          message: `Dokumen "${document.original_file_name}" ditolak. Alasan: ${rejectionReason}`,
+          type: 'warning',
+          link: '/signed-documents',
+          relatedId: document.id,
+          relatedType: 'signed_document',
+        });
+      }
+
+      toast({
+        title: 'Berhasil',
+        description: 'Permintaan TTE telah ditolak',
+      });
+
+      onSuccess();
+      onOpenChange(false);
+      setRejectionReason('');
+    } catch (error: any) {
+      console.error('Error rejecting TTE:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menolak permintaan TTE',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800">Menunggu Approval</Badge>;
+      case 'approved':
+      case 'signed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800">Disetujui</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-100 text-red-800">Ditolak</Badge>;
+      default:
+        return <Badge variant="outline">Draft</Badge>;
+    }
+  };
+
+  if (!document) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSignature className="h-5 w-5" />
+            {mode === 'review' ? 'Review Permintaan TTE' : 'Detail Permintaan TTE'}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'review' 
+              ? 'Tinjau dan setujui atau tolak permintaan tanda tangan elektronik'
+              : 'Lihat detail permintaan tanda tangan elektronik'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Status */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Status</span>
+            {getStatusBadge(document.tte_status)}
+          </div>
+
+          {/* Document Info */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="font-medium">{document.original_file_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {document.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : '-'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="font-medium">{document.signer_name}</p>
+                <p className="text-sm text-muted-foreground">{document.signer_position}</p>
+              </div>
+            </div>
+
+            {document.submitted_at && (
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Diajukan pada</p>
+                  <p className="font-medium">
+                    {format(new Date(document.submitted_at), 'dd MMM yyyy, HH:mm', { locale: idLocale })}
+                  </p>
+                  {submitterName && (
+                    <p className="text-sm text-muted-foreground">oleh {submitterName}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Rejection Reason (for rejected docs or when rejecting) */}
+          {document.tte_status === 'rejected' && document.rejection_reason && (
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">Alasan Penolakan:</p>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1">{document.rejection_reason}</p>
+            </div>
+          )}
+
+          {mode === 'review' && document.tte_status === 'pending' && (
+            <div className="space-y-2">
+              <Label>Alasan Penolakan (jika ditolak)</Label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Masukkan alasan jika ingin menolak permintaan ini..."
+                rows={3}
+              />
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {mode === 'review' ? 'Batal' : 'Tutup'}
+          </Button>
+          
+          {mode === 'review' && document.tte_status === 'pending' && (
+            <>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <XCircle className="mr-2 h-4 w-4" />
+                Tolak
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Setujui & Tanda Tangani
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
