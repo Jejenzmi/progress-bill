@@ -22,6 +22,7 @@ import {
   Crown,
   Briefcase as BriefcaseBusiness,
   LineChart,
+  Award,
   ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -89,6 +90,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Finance Dashboard', href: '/finance-dashboard', icon: BarChart3, roles: ['admin', 'finance'] },
       { name: 'Quotation', href: '/quotations', icon: Calculator, roles: ['admin', 'marketing', 'bdo', 'coo'] },
       { name: 'Riwayat Negosiasi', href: '/negotiation-history', icon: LineChart, roles: ['admin', 'marketing', 'finance', 'bdo', 'coo'] },
+      { name: 'Bonus Tim', href: '/team-bonus', icon: Award, roles: ['admin', 'finance', 'project_manager'] },
       { name: 'Invoice', href: '/invoices', icon: Receipt, roles: ['admin', 'finance', 'bdo', 'coo'] },
       { name: 'Cashflow', href: '/cashflow', icon: Calendar, roles: ['admin', 'finance', 'bdo', 'coo'] },
     ],
