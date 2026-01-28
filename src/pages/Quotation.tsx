@@ -75,6 +75,7 @@ export default function Quotation() {
   ]);
   
   // Costs
+  const [ppnMode, setPpnMode] = useState<'exclude' | 'include'>('exclude');
   const [ppnPercentage, setPpnPercentage] = useState(11);
   const [estimatedDuration, setEstimatedDuration] = useState('1–30 hari kalender');
   const [paymentTerms, setPaymentTerms] = useState<string[]>([
@@ -228,8 +229,19 @@ export default function Quotation() {
 
   // Calculations
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const ppnAmount = Math.round(subtotal * (ppnPercentage / 100));
-  const grandTotal = subtotal + ppnAmount;
+  
+  // PPN calculation based on mode
+  // Exclude: subtotal + PPN = grandTotal
+  // Include: subtotal already includes PPN, so we extract it
+  const ppnAmount = ppnMode === 'exclude' 
+    ? Math.round(subtotal * (ppnPercentage / 100))
+    : Math.round(subtotal - (subtotal / (1 + ppnPercentage / 100)));
+  const grandTotal = ppnMode === 'exclude' 
+    ? subtotal + ppnAmount 
+    : subtotal;
+  const subtotalBeforePPN = ppnMode === 'include' 
+    ? Math.round(subtotal / (1 + ppnPercentage / 100))
+    : subtotal;
 
   const getCompanyProfile = async (): Promise<CompanyProfile> => {
     const { data: companyData } = await supabase
@@ -279,6 +291,10 @@ export default function Quotation() {
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 30);
 
+    // For PDF, always show subtotal before PPN and then add PPN
+    const displaySubtotal = ppnMode === 'include' ? subtotalBeforePPN : subtotal;
+    const displayPpnAmount = ppnAmount;
+
     return {
       quotationNumber,
       quotationDate: new Date(),
@@ -288,9 +304,9 @@ export default function Quotation() {
       projectName,
       projectDescription: projectDescription || undefined,
       items,
-      subtotal,
+      subtotal: displaySubtotal,
       ppnPercentage,
-      ppnAmount,
+      ppnAmount: displayPpnAmount,
       grandTotal,
       paymentTerms: paymentTerms.filter(t => t.trim()),
       estimatedDuration: estimatedDuration || undefined,
@@ -669,26 +685,80 @@ export default function Quotation() {
                 ))}
 
                 {/* Subtotal & PPN */}
-                <div className="border-t pt-4 mt-4 space-y-2">
-                  <div className="flex justify-between items-center px-2">
-                    <span className="font-medium">Subtotal</span>
-                    <span className="text-lg font-semibold">{formatCurrencyLocal(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between items-center px-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">PPN</span>
-                      <Input
-                        type="number"
-                        value={ppnPercentage}
-                        onChange={(e) => setPpnPercentage(parseInt(e.target.value) || 0)}
-                        className="w-16 h-8"
-                        min={0}
-                        max={100}
-                      />
-                      <span className="text-muted-foreground">%</span>
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  {/* PPN Mode Selection */}
+                  <div className="flex items-center gap-4 px-2 pb-2 border-b">
+                    <span className="text-sm font-medium">Mode PPN:</span>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={ppnMode === 'exclude' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPpnMode('exclude')}
+                      >
+                        Exclude PPN
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={ppnMode === 'include' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPpnMode('include')}
+                      >
+                        Include PPN
+                      </Button>
                     </div>
-                    <span className="text-muted-foreground">{formatCurrencyLocal(ppnAmount)}</span>
                   </div>
+
+                  {ppnMode === 'exclude' ? (
+                    <>
+                      <div className="flex justify-between items-center px-2">
+                        <span className="font-medium">Subtotal</span>
+                        <span className="text-lg font-semibold">{formatCurrencyLocal(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">PPN</span>
+                          <Input
+                            type="number"
+                            value={ppnPercentage}
+                            onChange={(e) => setPpnPercentage(parseInt(e.target.value) || 0)}
+                            className="w-16 h-8"
+                            min={0}
+                            max={100}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                        <span className="text-muted-foreground">{formatCurrencyLocal(ppnAmount)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center px-2">
+                        <span className="text-muted-foreground">Harga Sebelum PPN</span>
+                        <span className="text-muted-foreground">{formatCurrencyLocal(subtotalBeforePPN)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">PPN</span>
+                          <Input
+                            type="number"
+                            value={ppnPercentage}
+                            onChange={(e) => setPpnPercentage(parseInt(e.target.value) || 0)}
+                            className="w-16 h-8"
+                            min={0}
+                            max={100}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                        <span className="text-muted-foreground">{formatCurrencyLocal(ppnAmount)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-2">
+                        <span className="font-medium">Total (Include PPN)</span>
+                        <span className="text-lg font-semibold">{formatCurrencyLocal(subtotal)}</span>
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="flex justify-between items-center px-2 pt-2 border-t">
                     <span className="font-bold">Grand Total</span>
                     <span className="text-xl font-bold text-primary">{formatCurrencyLocal(grandTotal)}</span>
