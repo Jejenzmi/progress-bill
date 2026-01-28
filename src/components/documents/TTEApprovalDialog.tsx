@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +24,10 @@ import {
   XCircle, 
   User, 
   Calendar,
-  FileSignature
+  FileSignature,
+  Eye,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -70,12 +74,35 @@ export function TTEApprovalDialog({
   const [loading, setLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [submitterName, setSubmitterName] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (document?.submitted_by) {
       fetchSubmitterName(document.submitted_by);
     }
   }, [document?.submitted_by]);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setShowPreview(false);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+    }
+  }, [open]);
 
   const fetchSubmitterName = async (userId: string) => {
     const { data } = await supabase
@@ -86,6 +113,71 @@ export function TTEApprovalDialog({
     
     if (data?.full_name) {
       setSubmitterName(data.full_name);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!document) return;
+
+    setPreviewLoading(true);
+    try {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('signed-documents')
+        .download(document.original_file_path);
+
+      if (downloadError) {
+        throw new Error(`Gagal mengunduh dokumen: ${downloadError.message}`);
+      }
+
+      if (!fileData) {
+        throw new Error('File tidak ditemukan');
+      }
+
+      const url = URL.createObjectURL(fileData);
+      setPreviewUrl(url);
+      setShowPreview(true);
+    } catch (error: any) {
+      console.error('Error loading preview:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal memuat preview dokumen',
+        variant: 'destructive',
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!document) return;
+
+    try {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('signed-documents')
+        .download(document.original_file_path);
+
+      if (downloadError) throw downloadError;
+      if (!fileData) throw new Error('File tidak ditemukan');
+
+      const url = URL.createObjectURL(fileData);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = document.original_file_name;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Berhasil',
+        description: 'Dokumen berhasil diunduh',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Gagal mengunduh dokumen',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -272,9 +364,12 @@ export function TTEApprovalDialog({
 
   if (!document) return null;
 
+  const isPdf = document.file_type === 'application/pdf';
+  const isImage = document.file_type.startsWith('image/');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className={showPreview ? "max-w-5xl max-h-[90vh]" : "max-w-lg"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSignature className="h-5 w-5" />
@@ -287,68 +382,150 @@ export function TTEApprovalDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Status */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Status</span>
-            {getStatusBadge(document.tte_status)}
-          </div>
-
-          {/* Document Info */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="font-medium">{document.original_file_name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {document.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : '-'}
-                </p>
+        <div className={showPreview ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
+          {/* Preview Panel */}
+          {showPreview && previewUrl && (
+            <div className="border rounded-lg overflow-hidden bg-muted/30 min-h-[400px] relative">
+              <div className="absolute top-2 left-2 bg-background/90 px-2 py-1 rounded text-xs font-medium z-10 flex items-center gap-1">
+                <Eye className="h-3 w-3" />
+                Preview Dokumen
               </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="font-medium">{document.signer_name}</p>
-                <p className="text-sm text-muted-foreground">{document.signer_position}</p>
-              </div>
-            </div>
-
-            {document.submitted_at && (
-              <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Diajukan pada</p>
-                  <p className="font-medium">
-                    {format(new Date(document.submitted_at), 'dd MMM yyyy, HH:mm', { locale: idLocale })}
-                  </p>
-                  {submitterName && (
-                    <p className="text-sm text-muted-foreground">oleh {submitterName}</p>
-                  )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 z-10"
+                onClick={() => {
+                  setShowPreview(false);
+                  if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                    setPreviewUrl(null);
+                  }
+                }}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+              
+              {isPdf ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full min-h-[400px] border-0"
+                  title="PDF Preview"
+                />
+              ) : isImage ? (
+                <div className="w-full h-full min-h-[400px] flex items-center justify-center p-4">
+                  <img
+                    src={previewUrl}
+                    alt="Document preview"
+                    className="max-w-full max-h-full object-contain rounded"
+                  />
                 </div>
+              ) : (
+                <div className="w-full h-full min-h-[400px] flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2" />
+                    <p className="text-sm">Preview tidak tersedia untuk tipe file ini</p>
+                    <Button variant="link" size="sm" onClick={handleDownload} className="mt-2">
+                      <Download className="h-4 w-4 mr-1" />
+                      Download untuk melihat
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Info Panel */}
+          <ScrollArea className={showPreview ? "max-h-[60vh]" : ""}>
+            <div className="space-y-4 pr-2">
+              {/* Status */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                {getStatusBadge(document.tte_status)}
               </div>
-            )}
-          </div>
 
-          {/* Rejection Reason (for rejected docs or when rejecting) */}
-          {document.tte_status === 'rejected' && document.rejection_reason && (
-            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-sm font-medium text-red-800 dark:text-red-200">Alasan Penolakan:</p>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">{document.rejection_reason}</p>
-            </div>
-          )}
+              {/* Document Info */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium">{document.original_file_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {document.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : '-'}
+                    </p>
+                  </div>
+                </div>
 
-          {mode === 'review' && document.tte_status === 'pending' && (
-            <div className="space-y-2">
-              <Label>Alasan Penolakan (jika ditolak)</Label>
-              <Textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Masukkan alasan jika ingin menolak permintaan ini..."
-                rows={3}
-              />
+                {/* Preview & Download Buttons */}
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreview}
+                    disabled={previewLoading}
+                    className="flex-1"
+                  >
+                    {previewLoading ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Eye className="h-4 w-4 mr-1" />
+                    )}
+                    {showPreview ? 'Refresh Preview' : 'Lihat Dokumen'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownload}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                </div>
+
+                <div className="flex items-start gap-3 pt-3 border-t">
+                  <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="font-medium">{document.signer_name}</p>
+                    <p className="text-sm text-muted-foreground">{document.signer_position}</p>
+                  </div>
+                </div>
+
+                {document.submitted_at && (
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Diajukan pada</p>
+                      <p className="font-medium">
+                        {format(new Date(document.submitted_at), 'dd MMM yyyy, HH:mm', { locale: idLocale })}
+                      </p>
+                      {submitterName && (
+                        <p className="text-sm text-muted-foreground">oleh {submitterName}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Rejection Reason (for rejected docs or when rejecting) */}
+              {document.tte_status === 'rejected' && document.rejection_reason && (
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">Alasan Penolakan:</p>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">{document.rejection_reason}</p>
+                </div>
+              )}
+
+              {mode === 'review' && document.tte_status === 'pending' && (
+                <div className="space-y-2">
+                  <Label>Alasan Penolakan (jika ditolak)</Label>
+                  <Textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Masukkan alasan jika ingin menolak permintaan ini..."
+                    rows={3}
+                  />
+                </div>
+              )}
             </div>
-          )}
+          </ScrollArea>
         </div>
 
         <DialogFooter className="gap-2">
