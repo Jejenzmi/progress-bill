@@ -134,23 +134,11 @@ function getQRPositionCoords(
 }
 
 /**
- * Generate verification data for QR Code
+ * Generate verification URL for QR Code (same as Quotation - direct URL redirect)
  */
-function generateVerificationData(data: TTEEmbedData, verifyUrl: string): string {
-  return JSON.stringify({
-    document: data.documentName,
-    signer: data.signerName,
-    position: data.signerPosition,
-    signed_at: new Intl.DateTimeFormat('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(data.signedAt) + ' WIB',
-    verification_id: data.verificationId,
-    verify_url: `${verifyUrl}?id=${data.verificationId}`,
-  }, null, 2);
+function generateVerificationUrl(data: TTEEmbedData, verifyUrl: string): string {
+  // Use direct URL like Quotation for seamless redirect when scanning
+  return `${verifyUrl}?id=${data.verificationId}`;
 }
 
 /**
@@ -230,9 +218,9 @@ export async function embedTTEIntoPDF(
     borderWidth: 0.5,
   });
   
-  // Generate QR Code
-  const verificationData = generateVerificationData(data, verifyUrl);
-  const qrBytes = await generateQRCodeBytes(verificationData);
+  // Generate QR Code with direct URL (same as Quotation)
+  const verificationUrl = generateVerificationUrl(data, verifyUrl);
+  const qrBytes = await generateQRCodeBytes(verificationUrl);
   const qrImage = await pdfDoc.embedPng(qrBytes);
   
   // Draw QR Code
