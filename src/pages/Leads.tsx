@@ -63,6 +63,8 @@ import {
   Users,
   FileText,
   TrendingUp,
+  Zap,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
@@ -71,6 +73,8 @@ import { LeadSegmentation } from '@/components/leads/LeadSegmentation';
 import { SalesWorkloadView } from '@/components/leads/SalesWorkloadView';
 import { ConversionDashboard } from '@/components/leads/ConversionDashboard';
 import { CreateQuotationFromLeadDialog } from '@/components/leads/CreateQuotationFromLeadDialog';
+import { AutoGenerationDashboard } from '@/components/leads/AutoGenerationDashboard';
+import { ConversionHistoryTimeline } from '@/components/leads/ConversionHistoryTimeline';
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   cold: { label: 'Cold', color: 'text-blue-700', bgColor: 'bg-blue-100' },
@@ -416,6 +420,14 @@ export default function Leads() {
               <TrendingUp className="h-4 w-4" />
               Conversion
             </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              History
+            </TabsTrigger>
+            <TabsTrigger value="automation" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Automation
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Analytics
@@ -645,6 +657,16 @@ export default function Leads() {
         {/* Conversion Dashboard View */}
         <TabsContent value="conversion">
           <ConversionDashboard leads={leads} />
+        </TabsContent>
+
+        {/* Conversion History Timeline View */}
+        <TabsContent value="history">
+          <ConversionHistoryTimeline />
+        </TabsContent>
+
+        {/* Auto-Generation Dashboard View */}
+        <TabsContent value="automation">
+          <AutoGenerationDashboard />
         </TabsContent>
 
         {/* Analytics View */}
