@@ -30,10 +30,11 @@ import {
 } from '@/components/ui/dialog';
 import { generateInvoicePDF, type CompanyProfile, type InvoiceItem, type TTESettings } from '@/lib/invoicePdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
-import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2, CreditCard, FileCheck } from 'lucide-react';
+import { Search, Filter, Download, Eye, Receipt, CheckCircle, Clock, AlertTriangle, FileText, Loader2, CreditCard, FileCheck, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -130,6 +131,11 @@ export default function Invoices() {
   const [taxInvoiceDialogOpen, setTaxInvoiceDialogOpen] = useState(false);
   const [taxInvoiceNumber, setTaxInvoiceNumber] = useState('');
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  
+  // Create invoice dialog
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const canCreateInvoice = hasRole('admin') || hasRole('finance');
 
   useEffect(() => {
     fetchInvoices();
@@ -565,22 +571,30 @@ export default function Invoices() {
             className="pl-9"
           />
         </div>
-        <Select
-          value={statusFilter}
-          onValueChange={setStatusFilter}
-        >
-          <SelectTrigger className="w-[160px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusFilters.map((filter) => (
-              <SelectItem key={filter.value} value={filter.value}>
-                {filter.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-3">
+          <Select
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-[160px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filter Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusFilters.map((filter) => (
+                <SelectItem key={filter.value} value={filter.value}>
+                  {filter.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {canCreateInvoice && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Invoice
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Invoice Table */}
@@ -962,6 +976,13 @@ export default function Invoices() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchInvoices}
+      />
     </AppLayout>
   );
 }
