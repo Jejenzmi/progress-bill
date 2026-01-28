@@ -261,6 +261,20 @@ export function QuotationApprovalDialog({
         });
       }
 
+      // Notify Marketing team about approved quotation so they can create project
+      await notifyRoleUsers(
+        'marketing',
+        'Quotation Siap untuk Proyek',
+        `Quotation "${quotation.project_name}" telah disetujui dan siap dibuat menjadi proyek.`,
+        {
+          type: 'info',
+          link: '/quotations',
+          relatedId: quotation.id,
+          relatedType: 'quotation',
+          excludeUserId: quotation.submitted_by || undefined, // Don't notify submitter twice if they're marketing
+        }
+      );
+
       toast({
         title: 'Berhasil',
         description: 'Quotation telah disetujui',
