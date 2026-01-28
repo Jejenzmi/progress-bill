@@ -39,7 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Search, FileText, MoreVertical, Download, Eye, CheckCircle, Printer, Pen, Upload } from 'lucide-react';
+import { Loader2, Search, FileText, MoreVertical, Download, Eye, CheckCircle, Printer, Pen, Upload, Clock } from 'lucide-react';
 import { printContractPDF, ContractData, ContractCompanyInfo, ContractClientInfo } from '@/lib/contractPdfGenerator';
 import { ContractSigningDialog } from '@/components/contracts/ContractSigningDialog';
 
@@ -175,6 +175,47 @@ export default function Contracts() {
     }
   };
 
+  const handleDownloadSignedContract = async (contract: ContractWithDetails) => {
+    if (!contract.signed_contract_path) {
+      toast({
+        title: 'Error',
+        description: 'Kontrak yang ditandatangani tidak tersedia',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(contract.signed_contract_path);
+
+      if (error) throw error;
+
+      // Create download link
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SPK_${contract.contract_number}_signed.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Berhasil',
+        description: 'Kontrak berhasil diunduh',
+      });
+    } catch (error: any) {
+      console.error('Error downloading contract:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal mengunduh kontrak',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleMarkSigned = async (contract: ContractWithDetails) => {
     try {
       const { error } = await supabase
@@ -305,6 +346,15 @@ export default function Contracts() {
                             <Printer className="h-4 w-4 mr-2" />
                             Cetak PDF
                           </DropdownMenuItem>
+                          
+                          {/* Download signed contract */}
+                          {contract.status === 'signed' && contract.signed_contract_path && (
+                            <DropdownMenuItem onClick={() => handleDownloadSignedContract(contract)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Download Kontrak Signed
+                            </DropdownMenuItem>
+                          )}
+                          
                           {canManage && contract.status === 'draft' && !contract.tte_status && (
                             <>
                               <DropdownMenuSeparator />
@@ -317,7 +367,16 @@ export default function Contracts() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {canManage && contract.status === 'draft' && (
+                          
+                          {/* Show pending TTE status */}
+                          {contract.tte_status === 'pending' && (
+                            <DropdownMenuItem disabled className="text-muted-foreground">
+                              <Clock className="h-4 w-4 mr-2" />
+                              Menunggu Persetujuan TTE
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {canManage && contract.status === 'draft' && !contract.tte_status && (
                             <DropdownMenuItem onClick={() => handleMarkSigned(contract)}>
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Tandai Ditandatangani

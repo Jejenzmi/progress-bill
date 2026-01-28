@@ -49,6 +49,12 @@ interface SignedDocument {
   submitted_by?: string;
   submitted_at?: string;
   rejection_reason?: string;
+  // For contracts
+  contract?: {
+    id: string;
+    contract_number: string;
+    project_name: string;
+  } | null;
 }
 
 interface TTEStats {
@@ -100,22 +106,38 @@ export default function TTEReviewDashboard() {
       if (error) throw error;
 
       const docs = data || [];
-      setDocuments(docs);
+      
+      // Fetch contract info for documents that are linked to contracts
+      const contractDocs = await Promise.all(docs.map(async (doc) => {
+        // Check if this document is linked to a contract
+        const { data: contractData } = await supabase
+          .from('contracts')
+          .select('id, contract_number, project_name')
+          .eq('tte_document_id', doc.id)
+          .maybeSingle();
+        
+        return {
+          ...doc,
+          contract: contractData,
+        };
+      }));
+      
+      setDocuments(contractDocs);
       
       // Filter pending documents
-      const pending = docs.filter(d => d.tte_status === 'pending');
+      const pending = contractDocs.filter(d => d.tte_status === 'pending');
       setPendingDocs(pending);
       
       // Calculate stats
       setStats({
-        pending: docs.filter(d => d.tte_status === 'pending').length,
-        signed: docs.filter(d => d.tte_status === 'signed').length,
-        rejected: docs.filter(d => d.tte_status === 'rejected').length,
-        total: docs.length,
+        pending: contractDocs.filter(d => d.tte_status === 'pending').length,
+        signed: contractDocs.filter(d => d.tte_status === 'signed').length,
+        rejected: contractDocs.filter(d => d.tte_status === 'rejected').length,
+        total: contractDocs.length,
       });
 
       // Fetch submitter names
-      const submitterIds = [...new Set(docs.map(d => d.submitted_by).filter(Boolean))];
+      const submitterIds = [...new Set(contractDocs.map(d => d.submitted_by).filter(Boolean))];
       if (submitterIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
@@ -280,9 +302,11 @@ export default function TTEReviewDashboard() {
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <p className="font-medium truncate max-w-[200px]">{doc.original_file_name}</p>
+                              <p className="font-medium truncate max-w-[200px]">
+                                {doc.contract ? `SPK: ${doc.contract.contract_number}` : doc.original_file_name}
+                              </p>
                               <p className="text-xs text-muted-foreground">
-                                {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : '-'}
+                                {doc.contract ? doc.contract.project_name : (doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : '-')}
                               </p>
                             </div>
                           </div>
@@ -357,7 +381,16 @@ export default function TTEReviewDashboard() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
-                            <p className="font-medium truncate max-w-[200px]">{doc.original_file_name}</p>
+                            <div>
+                              <p className="font-medium truncate max-w-[200px]">
+                                {doc.contract ? `SPK: ${doc.contract.contract_number}` : doc.original_file_name}
+                              </p>
+                              {doc.contract && (
+                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                  {doc.contract.project_name}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(doc.tte_status)}</TableCell>
