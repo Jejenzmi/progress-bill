@@ -15,8 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, TrendingDown, Percent } from 'lucide-react';
+import { Loader2, Save, TrendingDown, Percent, AlertCircle, RefreshCw } from 'lucide-react';
 import { notifyRoleUsers } from '@/lib/notificationHelper';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface NegotiatedPriceDialogProps {
   quotation: {
@@ -27,6 +28,8 @@ interface NegotiatedPriceDialogProps {
     negotiation_notes: string | null;
     margin_percentage: number | null;
     client_name?: string;
+    negotiation_status?: string | null;
+    negotiation_rejection_reason?: string | null;
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,6 +79,8 @@ export function NegotiatedPriceDialog({
       return;
     }
 
+    const isRevision = quotation.negotiation_status === 'rejected';
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -86,15 +91,23 @@ export function NegotiatedPriceDialog({
           negotiated_by: user.id,
           negotiation_notes: notes.trim() || null,
           negotiation_status: 'pending', // Set to pending for BDO/COO approval
+          negotiation_rejection_reason: null, // Clear previous rejection reason
         })
         .eq('id', quotation.id);
 
       if (error) throw error;
 
       // Notify BDO/COO users for approval
+      const notificationTitle = isRevision 
+        ? 'Revisi Harga Negosiasi Perlu Approval'
+        : 'Harga Negosiasi Perlu Approval';
+      const notificationMessage = isRevision
+        ? `Quotation "${quotation.project_name}" memiliki REVISI harga negosiasi: ${formatCurrency(priceValue)}. Mohon review dan approve.`
+        : `Quotation "${quotation.project_name}" memiliki harga negosiasi baru: ${formatCurrency(priceValue)}. Mohon review dan approve.`;
+
       await notifyRoleUsers('bdo', 
-        'Harga Negosiasi Perlu Approval',
-        `Quotation "${quotation.project_name}" memiliki harga negosiasi baru: ${formatCurrency(priceValue)}. Mohon review dan approve.`,
+        notificationTitle,
+        notificationMessage,
         {
           type: 'warning',
           link: '/quotations',
@@ -104,8 +117,8 @@ export function NegotiatedPriceDialog({
       );
       
       await notifyRoleUsers('coo', 
-        'Harga Negosiasi Perlu Approval',
-        `Quotation "${quotation.project_name}" memiliki harga negosiasi baru: ${formatCurrency(priceValue)}. Mohon review dan approve.`,
+        notificationTitle,
+        notificationMessage,
         {
           type: 'warning',
           link: '/quotations',
@@ -116,7 +129,9 @@ export function NegotiatedPriceDialog({
 
       toast({
         title: 'Berhasil',
-        description: 'Harga negosiasi berhasil disubmit untuk approval BDO/COO',
+        description: isRevision 
+          ? 'Revisi harga negosiasi berhasil disubmit untuk approval ulang'
+          : 'Harga negosiasi berhasil disubmit untuk approval BDO/COO',
       });
 
       onSuccess();
@@ -142,16 +157,24 @@ export function NegotiatedPriceDialog({
     : '0';
   const discountAmount = originalPrice - negotiatedValue;
 
+  const isRevision = quotation.negotiation_status === 'rejected';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5" />
-            Input Harga Negosiasi
+            {isRevision ? (
+              <RefreshCw className="h-5 w-5" />
+            ) : (
+              <TrendingDown className="h-5 w-5" />
+            )}
+            {isRevision ? 'Revisi Harga Negosiasi' : 'Input Harga Negosiasi'}
           </DialogTitle>
           <DialogDescription>
-            Catat hasil negosiasi harga dengan klien
+            {isRevision 
+              ? 'Ajukan kembali harga negosiasi yang sudah direvisi'
+              : 'Catat hasil negosiasi harga dengan klien'}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,6 +199,29 @@ export function NegotiatedPriceDialog({
               </div>
             )}
           </div>
+
+          {/* Rejection Alert for Revision */}
+          {isRevision && quotation.negotiation_rejection_reason && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <span className="font-medium">Alasan Penolakan:</span>{' '}
+                {quotation.negotiation_rejection_reason}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Previous Negotiated Price for Revision */}
+          {isRevision && quotation.negotiated_price && (
+            <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Harga Sebelumnya (Ditolak):</span>
+                <span className="font-medium text-destructive line-through">
+                  {formatCurrency(quotation.negotiated_price)}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Negotiated Price Input */}
           <div className="space-y-2">
