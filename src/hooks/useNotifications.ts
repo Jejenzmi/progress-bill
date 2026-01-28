@@ -18,13 +18,31 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Get current user on mount
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
+    if (!currentUserId) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -38,7 +56,7 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   const markAsRead = useCallback(async (id: string) => {
     const { error } = await supabase
@@ -78,13 +96,20 @@ export function useNotifications() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates - filter by current user
   useEffect(() => {
+    if (!currentUserId) return;
+
     const channel = supabase
-      .channel('notifications-changes')
+      .channel(`notifications-${currentUserId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`
+        },
         () => {
           fetchNotifications();
         }
@@ -94,7 +119,7 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, currentUserId]);
 
   return {
     notifications,
