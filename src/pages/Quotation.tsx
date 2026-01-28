@@ -18,9 +18,10 @@ import { useClients } from '@/hooks/useClients';
 import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyProfile } from '@/lib/quotationPdfGenerator';
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
+import { ProductSelectorDialog } from '@/components/quotations/ProductSelectorDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
 import type { TTESettings } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, Stamp } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, Stamp, Package } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -56,6 +57,7 @@ export default function Quotation() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [addClientOpen, setAddClientOpen] = useState(false);
+  const [productSelectorOpen, setProductSelectorOpen] = useState(false);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   
   // TTE Signer selection
@@ -194,6 +196,16 @@ export default function Quotation() {
 
   const addItem = () => {
     setItems([...items, { item: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
+  };
+
+  const addProductsFromCatalog = (products: Array<{
+    item: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    total: number;
+  }>) => {
+    setItems([...items, ...products]);
   };
 
   const removeItem = (index: number) => {
@@ -606,10 +618,16 @@ export default function Quotation() {
                   </CardTitle>
                   <CardDescription>Daftar item yang ditawarkan</CardDescription>
                 </div>
-                <Button onClick={addItem} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah Item
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setProductSelectorOpen(true)} size="sm" variant="outline">
+                    <Package className="h-4 w-4 mr-2" />
+                    Dari Katalog
+                  </Button>
+                  <Button onClick={addItem} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Manual
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -925,6 +943,13 @@ export default function Quotation() {
         open={addClientOpen}
         onOpenChange={setAddClientOpen}
         onClientCreated={handleClientCreated}
+      />
+
+      {/* Product Selector Dialog */}
+      <ProductSelectorDialog
+        open={productSelectorOpen}
+        onOpenChange={setProductSelectorOpen}
+        onProductsSelected={addProductsFromCatalog}
       />
     </AppLayout>
   );
