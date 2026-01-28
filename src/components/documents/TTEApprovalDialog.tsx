@@ -421,8 +421,15 @@ export function TTEApprovalDialog({
               {isPdf ? (
                 <div className="relative w-full h-full min-h-[400px]">
                   <PdfPageCanvas src={previewUrl} pageNumber={previewPage} className="min-h-[400px]">
-                    {/* QR Position Indicator Overlay for PDF */}
-                    <QRPositionIndicator qrPosition={document.qr_position} qrPage={previewPage} isPdf={true} />
+                    {({ pagePt }) => (
+                      <TTEBoxOverlay
+                        qrPosition={document.qr_position}
+                        qrPage={previewPage}
+                        isPdf={true}
+                        showInfoBadge={true}
+                        pagePt={pagePt}
+                      />
+                    )}
                   </PdfPageCanvas>
                 </div>
               ) : isImage ? (
