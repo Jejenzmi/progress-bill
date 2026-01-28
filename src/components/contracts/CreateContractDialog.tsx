@@ -39,6 +39,8 @@ interface Quotation {
   id: string;
   project_name: string;
   grand_total: number | null;
+  negotiated_price: number | null;
+  negotiation_status: string | null;
   client_id: string | null;
   man_days: any;
   created_at: string;
@@ -255,13 +257,18 @@ export function CreateContractDialog({
         .eq('key', 'company_profile')
         .maybeSingle();
 
+      // Get the final contract value - use negotiated price if approved, otherwise grand_total
+      const contractValue = quotation.negotiation_status === 'approved' && quotation.negotiated_price
+        ? quotation.negotiated_price
+        : quotation.grand_total || 0;
+
       const contractData = {
         contract_number: contractNumber,
         quotation_id: quotation.id,
         client_id: quotation.client_id!,
         project_name: quotation.project_name,
         project_description: projectDescription,
-        total_value: quotation.grand_total || 0,
+        total_value: contractValue,
         start_date: startDate,
         end_date: endDate,
         duration_months: durationMonths,
@@ -309,8 +316,8 @@ export function CreateContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Buat Kontrak Kerjasama (SPK)
@@ -320,8 +327,8 @@ export function CreateContractDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4">
-          <div className="space-y-6 py-4">
+        <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(80vh - 180px)' }}>
+          <div className="space-y-6 py-2">
             {/* Quotation Info */}
             <div className="p-4 rounded-lg bg-muted">
               <div className="flex justify-between items-start">
@@ -330,8 +337,26 @@ export function CreateContractDialog({
                   <p className="text-sm text-muted-foreground">{quotation.clients?.name || 'Klien tidak diketahui'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(quotation.grand_total || 0)}</p>
-                  <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Approved</Badge>
+                  {quotation.negotiation_status === 'approved' && quotation.negotiated_price ? (
+                    <>
+                      <p className="text-sm text-muted-foreground line-through">
+                        {formatCurrency(quotation.grand_total || 0)}
+                      </p>
+                      <p className="font-bold text-lg text-primary">
+                        {formatCurrency(quotation.negotiated_price)}
+                      </p>
+                      <Badge className="bg-primary/10 text-primary border-primary/20">
+                        Harga Deal
+                      </Badge>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold text-lg">{formatCurrency(quotation.grand_total || 0)}</p>
+                      <Badge className="bg-primary/10 text-primary border-primary/20">
+                        Approved
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -587,7 +612,7 @@ export function CreateContractDialog({
               />
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
