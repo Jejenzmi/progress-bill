@@ -118,19 +118,29 @@ export function ProductCatalogManager() {
   };
 
   const handleSave = async () => {
-    if (!formData.name) {
-      toast({
-        title: 'Validasi',
-        description: 'Nama produk harus diisi',
-        variant: 'destructive',
-      });
-      return;
+    // Enhanced validation with specific error messages
+    const errors: string[] = [];
+    
+    if (!formData.name.trim()) {
+      errors.push('Nama produk harus diisi');
+    } else if (formData.name.length < 3) {
+      errors.push('Nama produk minimal 3 karakter');
     }
-
+    
     if (formData.base_price <= 0) {
+      errors.push('Harga dasar harus lebih dari 0');
+    } else if (formData.base_price > 100000000000) {
+      errors.push('Harga dasar terlalu besar (maksimal 100 miliar)');
+    }
+    
+    if (formData.sku && !/^[A-Za-z0-9-_]+$/.test(formData.sku)) {
+      errors.push('SKU hanya boleh berisi huruf, angka, tanda hubung, dan underscore');
+    }
+    
+    if (errors.length > 0) {
       toast({
-        title: 'Validasi',
-        description: 'Harga dasar harus lebih dari 0',
+        title: 'Validasi Gagal',
+        description: errors.join('. '),
         variant: 'destructive',
       });
       return;

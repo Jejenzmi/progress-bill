@@ -159,10 +159,25 @@ export function SalesTargetManager() {
   };
 
   const handleSave = async () => {
+    // Enhanced validation
+    const errors: string[] = [];
+    
     if (form.target_amount <= 0) {
+      errors.push('Target amount harus lebih dari 0');
+    }
+    
+    if (form.target_amount > 1000000000000) {
+      errors.push('Target amount terlalu besar (maksimal 1 triliun)');
+    }
+    
+    if (form.target_type === 'monthly' && !form.target_period) {
+      errors.push('Bulan harus dipilih untuk target bulanan');
+    }
+    
+    if (errors.length > 0) {
       toast({
-        title: 'Error',
-        description: 'Target amount harus lebih dari 0',
+        title: 'Validasi Gagal',
+        description: errors.join('. '),
         variant: 'destructive',
       });
       return;

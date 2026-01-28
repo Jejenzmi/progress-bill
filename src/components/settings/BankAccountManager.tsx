@@ -95,10 +95,29 @@ export function BankAccountManager() {
   };
 
   const handleSave = async () => {
-    if (!formData.bank_name || !formData.account_number || !formData.account_name) {
+    // Enhanced validation with specific error messages
+    const errors: string[] = [];
+    
+    if (!formData.bank_name.trim()) {
+      errors.push('Nama bank harus diisi');
+    }
+    
+    if (!formData.account_number.trim()) {
+      errors.push('Nomor rekening harus diisi');
+    } else if (!/^[0-9-]+$/.test(formData.account_number)) {
+      errors.push('Nomor rekening hanya boleh berisi angka dan tanda hubung');
+    } else if (formData.account_number.replace(/-/g, '').length < 8) {
+      errors.push('Nomor rekening minimal 8 digit');
+    }
+    
+    if (!formData.account_name.trim()) {
+      errors.push('Nama pemilik rekening harus diisi');
+    }
+    
+    if (errors.length > 0) {
       toast({
-        title: 'Validasi',
-        description: 'Semua field harus diisi',
+        title: 'Validasi Gagal',
+        description: errors.join('. '),
         variant: 'destructive',
       });
       return;
