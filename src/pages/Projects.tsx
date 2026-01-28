@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { TermStatusCard } from '@/components/dashboard/TermStatusCard';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { EditProjectDialog } from '@/components/projects/EditProjectDialog';
+import { EvidenceList } from '@/components/projects/EvidenceList';
 import { useProjects, ProjectWithDetails } from '@/hooks/useProjects';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/data/mockData';
@@ -33,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type ProjectStatus = Database['public']['Enums']['project_status'];
 type EvidenceType = Database['public']['Enums']['evidence_type'];
+type TermEvidence = Database['public']['Tables']['term_evidences']['Row'];
 
 const statusFilters: { value: ProjectStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Semua Status' },
@@ -391,41 +393,90 @@ export default function Projects() {
                 <div>
                   <h3 className="font-semibold mb-3">Termin Pembayaran</h3>
                   {selectedProject.payment_terms.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-6">
                       {selectedProject.payment_terms.map((term) => (
-                        <TermStatusCard
-                          key={term.id}
-                          term={{
-                            id: term.id,
-                            projectId: term.project_id,
-                            termName: term.term_name,
-                            percentage: Number(term.percentage),
-                            amount: Number(term.amount),
-                            triggerCondition: term.trigger_condition,
-                            triggerDescription: term.trigger_description || undefined,
-                            isLocked: term.is_locked || false,
-                            dueDate: term.due_date ? new Date(term.due_date) : undefined,
-                            evidences: [],
-                            invoice: term.invoice
-                              ? {
-                                  id: term.invoice.id,
-                                  invoiceNumber: term.invoice.invoice_number,
-                                  termId: term.invoice.term_id,
-                                  projectId: term.invoice.project_id,
-                                  amount: Number(term.invoice.amount),
-                                  invoiceDate: new Date(term.invoice.invoice_date),
-                                  dueDate: new Date(term.invoice.due_date),
-                                  status: term.invoice.status,
-                                  paidAt: term.invoice.paid_at
-                                    ? new Date(term.invoice.paid_at)
-                                    : undefined,
-                                }
-                              : undefined,
-                          }}
-                          projectName={selectedProject.project_name}
-                          onUploadEvidence={canUploadEvidence ? () => openUploadDialog(term) : undefined}
-                          onGenerateInvoice={canCreateInvoice ? () => handleGenerateInvoice(term, selectedProject) : undefined}
-                        />
+                        <div key={term.id} className="rounded-lg border bg-card p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="font-semibold">{term.term_name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {term.percentage}% - {formatCurrency(Number(term.amount))}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {term.invoice ? (
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                  Invoice: {term.invoice.invoice_number}
+                                </Badge>
+                              ) : term.is_locked ? (
+                                <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                  Terkunci
+                                </Badge>
+                              ) : term.evidences.length > 0 ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                  Siap Invoice
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-red-100 text-red-800">
+                                  Butuh Dokumen
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Trigger Info */}
+                          <div className="text-sm text-muted-foreground mb-4">
+                            <span className="font-medium">Trigger: </span>
+                            {term.trigger_description || term.trigger_condition}
+                          </div>
+
+                          {/* Evidence List */}
+                          {term.evidences.length > 0 && (
+                            <div className="mb-4">
+                              <EvidenceList
+                                evidences={term.evidences}
+                                canDelete={canUploadEvidence}
+                                onDelete={() => refetch()}
+                              />
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex flex-wrap gap-2">
+                            {canUploadEvidence && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openUploadDialog(term)}
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                {term.evidences.length > 0 ? 'Tambah Dokumen' : 'Upload Dokumen'}
+                              </Button>
+                            )}
+                            {canCreateInvoice && !term.invoice && !term.is_locked && term.evidences.length > 0 && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleGenerateInvoice(term, selectedProject)}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Buat Invoice
+                              </Button>
+                            )}
+                            {term.invoice && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedProject(null);
+                                  navigate('/invoices');
+                                }}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Lihat Invoice
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
