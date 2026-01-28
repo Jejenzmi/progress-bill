@@ -130,6 +130,7 @@ interface SignedDocument {
   file_type: string;
   file_size: number | null;
   qr_position: string;
+  qr_page?: number;
   signer_name: string;
   signer_position: string;
   signed_at: string;
@@ -302,6 +303,7 @@ export function TTEApprovalDialog({
         signerPosition: document.signer_position,
         signedAt,
         qrPosition: document.qr_position,
+        pageNumber: document.qr_page || 1,
       };
       
       console.log('Generating signed PDF...');

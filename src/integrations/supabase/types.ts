@@ -674,6 +674,7 @@ export type Database = {
           id: string
           original_file_name: string
           original_file_path: string
+          qr_page: number
           qr_position: string
           rejected_at: string | null
           rejected_by: string | null
@@ -699,6 +700,7 @@ export type Database = {
           id?: string
           original_file_name: string
           original_file_path: string
+          qr_page?: number
           qr_position?: string
           rejected_at?: string | null
           rejected_by?: string | null
@@ -724,6 +726,7 @@ export type Database = {
           id?: string
           original_file_name?: string
           original_file_path?: string
+          qr_page?: number
           qr_position?: string
           rejected_at?: string | null
           rejected_by?: string | null
