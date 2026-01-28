@@ -182,7 +182,7 @@ export function DocumentPreviewDialog({
             </div>
             
             {previewUrl ? (
-              <div className="relative w-full h-full flex items-center justify-center p-4">
+              <div className="absolute inset-0 flex items-center justify-center p-4 pt-10">
                 {isImage ? (
                   <div className="relative w-full h-full flex items-center justify-center">
                     <img
