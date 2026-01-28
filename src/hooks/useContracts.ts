@@ -42,7 +42,7 @@ export function useContracts() {
           *,
           client:clients(id, name, address, pic_name, pic_email, pic_phone, npwp_badan, client_type),
           quotation:quotations(id, project_name, grand_total),
-          project:projects(id, project_name, status)
+          project:projects!contracts_project_id_fkey(id, project_name, status)
         `)
         .order('created_at', { ascending: false });
 
