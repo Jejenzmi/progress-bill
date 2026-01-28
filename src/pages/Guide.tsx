@@ -42,6 +42,10 @@ import {
   RefreshCw,
   Eye,
   Download,
+  HandCoins,
+  XCircle,
+  Clock,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -875,6 +879,61 @@ export default function Guide() {
           </div>
         ),
       },
+      {
+        title: 'Negosiasi Harga',
+        subtitle: 'Input dan revisi harga deal dengan klien',
+        icon: HandCoins,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+              <h3 className="text-xl font-semibold mb-2">Alur Negosiasi Harga</h3>
+              <p className="text-muted-foreground">
+                Setelah quotation dikirim ke klien dan ada negosiasi harga, Marketing dapat mencatat 
+                harga deal yang disetujui klien. Harga ini harus diapprove oleh BDO/COO sebelum dianggap final.
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-4 gap-3 mb-6">
+              <div className="p-4 rounded-xl bg-muted/50 border text-center">
+                <Badge variant="secondary">Draft</Badge>
+                <p className="text-xs text-muted-foreground mt-2">Belum ada negosiasi</p>
+              </div>
+              <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-center">
+                <Badge className="bg-yellow-500">Pending</Badge>
+                <p className="text-xs text-muted-foreground mt-2">Menunggu approval</p>
+              </div>
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+                <Badge className="bg-green-500">Deal</Badge>
+                <p className="text-xs text-muted-foreground mt-2">Disetujui</p>
+              </div>
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+                <Badge variant="destructive">Ditolak</Badge>
+                <p className="text-xs text-muted-foreground mt-2">Perlu revisi</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <StepCard step={1} title="Buka Quotation" description="Klik ikon 'Harga Negosiasi' (ikon tangan+koin) di daftar quotation yang sudah Sent/Approved" />
+              <StepCard step={2} title="Input Harga Deal" description="Masukkan harga yang disepakati klien. Sistem akan menampilkan diskon/selisih dari harga awal" />
+              <StepCard step={3} title="Tambah Catatan" description="Jelaskan alasan diskon, misalnya 'repeat order' atau 'volume besar'" />
+              <StepCard step={4} title="Submit untuk Approval" description="Harga akan diajukan ke BDO/COO. Anda akan mendapat notifikasi saat disetujui/ditolak" />
+            </div>
+            
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Jika Ditolak</p>
+                  <p className="text-sm text-muted-foreground">
+                    Anda dapat merevisi harga negosiasi dengan klik ikon revisi (panah melingkar). 
+                    Sistem akan menampilkan alasan penolakan sebelumnya untuk panduan revisi Anda.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
     ],
     finance: [
       {
@@ -1185,6 +1244,102 @@ export default function Guide() {
                 <p className="text-sm text-muted-foreground">
                   Submitter akan mendapat notifikasi real-time saat Anda approve atau reject quotation mereka.
                 </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Approval Harga Negosiasi',
+        subtitle: 'Review dan setujui harga deal dari Marketing',
+        icon: HandCoins,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+              <h3 className="text-xl font-semibold mb-2">Tentang Approval Negosiasi</h3>
+              <p className="text-muted-foreground">
+                Saat Marketing menginput harga negosiasi dengan klien, BDO/COO harus mereview dan menyetujui 
+                atau menolak harga tersebut. Ini memastikan setiap deal sesuai dengan kebijakan margin perusahaan.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <StepCard step={1} title="Terima Notifikasi" description="Anda akan mendapat notifikasi 'Harga Negosiasi Perlu Approval' saat ada pengajuan baru" />
+              <StepCard step={2} title="Review di Quotation" description="Buka daftar quotation, cari yang status negosiasi 'Pending', klik ikon review (centang kuning)" />
+              <StepCard step={3} title="Periksa Detail" description="Lihat harga awal, harga negosiasi, persentase diskon, dan catatan dari Marketing" />
+              <StepCard step={4} title="Approve atau Reject" description="Setujui jika margin masih acceptable, atau tolak dengan alasan yang jelas" />
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  Jika Disetujui
+                </h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Status berubah ke "Deal"</li>
+                  <li>• Notifikasi ke Marketing & Finance</li>
+                  <li>• Harga final tercatat di sistem</li>
+                </ul>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  Jika Ditolak
+                </h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Wajib isi alasan penolakan</li>
+                  <li>• Notifikasi ke Marketing untuk revisi</li>
+                  <li>• Marketing bisa ajukan harga baru</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Riwayat Negosiasi',
+        subtitle: 'Monitoring dan laporan negosiasi',
+        icon: History,
+        content: (
+          <div className="space-y-6">
+            <div className="p-6 rounded-xl bg-muted/50 border">
+              <h3 className="font-semibold mb-4">Fitur Halaman Riwayat Negosiasi</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <FeatureCard
+                  icon={BarChart3}
+                  title="Grafik Tren Diskon"
+                  description="Visualisasi rata-rata diskon per bulan untuk analisis pricing"
+                />
+                <FeatureCard
+                  icon={Calendar}
+                  title="Filter Periode"
+                  description="Lihat negosiasi berdasarkan rentang tanggal tertentu"
+                />
+                <FeatureCard
+                  icon={Users}
+                  title="Filter Klien"
+                  description="Analisis negosiasi per klien untuk strategi pricing"
+                />
+                <FeatureCard
+                  icon={Download}
+                  title="Export CSV"
+                  description="Download data negosiasi untuk laporan eksternal"
+                />
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <div className="flex gap-2">
+                <Info className="h-5 w-5 text-blue-500 shrink-0" />
+                <div>
+                  <p className="font-medium text-blue-700 dark:text-blue-400">Akses Halaman</p>
+                  <p className="text-sm text-muted-foreground">
+                    Buka menu Keuangan → Riwayat Negosiasi untuk melihat laporan lengkap semua negosiasi 
+                    beserta statistik dan grafik tren bulanan.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
