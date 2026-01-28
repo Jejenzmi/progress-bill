@@ -5,6 +5,7 @@ import { TermStatusCard } from '@/components/dashboard/TermStatusCard';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { EditProjectDialog } from '@/components/projects/EditProjectDialog';
 import { EvidenceList } from '@/components/projects/EvidenceList';
+import { ProjectBonusWidget } from '@/components/projects/ProjectBonusWidget';
 import { useProjects, ProjectWithDetails } from '@/hooks/useProjects';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/data/mockData';
@@ -550,6 +551,17 @@ export default function Projects() {
                     </p>
                   )}
                 </div>
+
+                {/* Team Bonus Widget - Only for Won/Completed projects */}
+                {(selectedProject.status === 'Won' || selectedProject.status === 'Completed') && (
+                  <ProjectBonusWidget
+                    projectId={selectedProject.id}
+                    projectValue={Number(selectedProject.total_value)}
+                    marginPercentage={selectedProject.quotation?.margin_percentage 
+                      ? Number(selectedProject.quotation.margin_percentage) 
+                      : 20}
+                  />
+                )}
               </div>
             </>
           )}

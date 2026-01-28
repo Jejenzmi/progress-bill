@@ -9,7 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Users, 
   Calculator, 
@@ -20,7 +28,13 @@ import {
   Loader2,
   Percent,
   Award,
-  TrendingUp
+  TrendingUp,
+  Send,
+  ThumbsUp,
+  ThumbsDown,
+  DollarSign,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 
 interface TeamMember {
@@ -40,6 +54,14 @@ interface BonusSettings {
   bonus_pool_amount: number;
   is_finalized: boolean;
   notes: string;
+  finalized_status: 'draft' | 'proposed' | 'finance_approved' | 'finalized' | 'rejected';
+  proposed_by?: string;
+  proposed_at?: string;
+  approved_by_finance?: string;
+  approved_at_finance?: string;
+  finalized_by?: string;
+  finalized_at?: string;
+  rejection_reason?: string;
 }
 
 interface TeamMemberBonus {
@@ -58,6 +80,7 @@ interface TeamBonusCalculatorProps {
   quotationId?: string;
   marginAmount?: number;
   onClose?: () => void;
+  compact?: boolean;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -79,14 +102,23 @@ const COMPLEXITY_WEIGHTS = [
   { value: '2.0', label: '2.0 - Sangat Kompleks' },
 ];
 
+const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  draft: { label: 'Draft', variant: 'outline' },
+  proposed: { label: 'Menunggu Approval Finance', variant: 'secondary' },
+  finance_approved: { label: 'Disetujui Finance', variant: 'default' },
+  finalized: { label: 'Finalisasi', variant: 'default' },
+  rejected: { label: 'Ditolak', variant: 'destructive' },
+};
+
 export function TeamBonusCalculator({ 
   projectId, 
   quotationId, 
   marginAmount = 0,
-  onClose 
+  onClose,
+  compact = false
 }: TeamBonusCalculatorProps) {
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
@@ -97,11 +129,29 @@ export function TeamBonusCalculator({
     bonus_pool_amount: marginAmount * 0.1,
     is_finalized: false,
     notes: '',
+    finalized_status: 'draft',
   });
   const [calculatedBonuses, setCalculatedBonuses] = useState<TeamMemberBonus[]>([]);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const canEdit = hasRole('admin') || hasRole('finance');
-  const canManageTeam = hasRole('admin') || hasRole('marketing') || hasRole('project_manager') || hasRole('bdo');
+  const isAdmin = hasRole('admin');
+  const isFinance = hasRole('finance');
+  const isPM = hasRole('project_manager');
+  const isMarketing = hasRole('marketing');
+  const isBDO = hasRole('bdo');
+
+  const canEdit = (isAdmin || isFinance || isPM || isMarketing || isBDO) && 
+    bonusSettings.finalized_status === 'draft';
+  const canPropose = (isPM || isMarketing || isBDO || isAdmin) && 
+    bonusSettings.finalized_status === 'draft';
+  const canApproveFinance = (isFinance || isAdmin) && 
+    bonusSettings.finalized_status === 'proposed';
+  const canFinalize = isAdmin && 
+    bonusSettings.finalized_status === 'finance_approved';
+  const canReject = (isFinance || isAdmin) && 
+    ['proposed', 'finance_approved'].includes(bonusSettings.finalized_status);
 
   useEffect(() => {
     fetchData();
@@ -165,6 +215,14 @@ export function TeamBonusCalculator({
           bonus_pool_amount: Number(bonusData.bonus_pool_amount),
           is_finalized: bonusData.is_finalized || false,
           notes: bonusData.notes || '',
+          finalized_status: (bonusData.finalized_status as any) || 'draft',
+          proposed_by: bonusData.proposed_by || undefined,
+          proposed_at: bonusData.proposed_at || undefined,
+          approved_by_finance: bonusData.approved_by_finance || undefined,
+          approved_at_finance: bonusData.approved_at_finance || undefined,
+          finalized_by: bonusData.finalized_by || undefined,
+          finalized_at: bonusData.finalized_at || undefined,
+          rejection_reason: bonusData.rejection_reason || undefined,
         });
       } else if (marginAmount > 0) {
         setBonusSettings(prev => ({
@@ -186,7 +244,6 @@ export function TeamBonusCalculator({
       return;
     }
 
-    // Calculate weighted contributions
     const contributions = teamMembers.map(member => ({
       ...member,
       weighted_contribution: member.man_days * member.complexity_weight,
@@ -194,7 +251,6 @@ export function TeamBonusCalculator({
 
     const totalContribution = contributions.reduce((sum, m) => sum + m.weighted_contribution, 0);
 
-    // Calculate individual bonuses
     const bonuses: TeamMemberBonus[] = contributions.map(member => {
       const contributionPercentage = totalContribution > 0 
         ? (member.weighted_contribution / totalContribution) * 100 
@@ -232,8 +288,8 @@ export function TeamBonusCalculator({
     updated[index] = { ...updated[index], [field]: value };
     
     if (field === 'user_id') {
-      const user = users.find(u => u.id === value);
-      updated[index].user_name = user?.name || 'Unknown';
+      const foundUser = users.find(u => u.id === value);
+      updated[index].user_name = foundUser?.name || 'Unknown';
     }
     
     setTeamMembers(updated);
@@ -272,7 +328,6 @@ export function TeamBonusCalculator({
 
     setSaving(true);
     try {
-      // Save or update bonus settings
       const bonusSettingsData = {
         project_id: projectId || null,
         quotation_id: quotationId || null,
@@ -281,6 +336,7 @@ export function TeamBonusCalculator({
         bonus_pool_amount: bonusSettings.bonus_pool_amount,
         is_finalized: bonusSettings.is_finalized,
         notes: bonusSettings.notes,
+        finalized_status: bonusSettings.finalized_status,
       };
 
       let bonusSettingsId = bonusSettings.id;
@@ -303,14 +359,12 @@ export function TeamBonusCalculator({
         }
       }
 
-      // Delete existing team members for this project/quotation
       if (projectId) {
         await supabase.from('project_team_members').delete().eq('project_id', projectId);
       } else if (quotationId) {
         await supabase.from('project_team_members').delete().eq('quotation_id', quotationId);
       }
 
-      // Insert new team members
       if (teamMembers.length > 0) {
         const membersToInsert = teamMembers.map(m => ({
           project_id: projectId || null,
@@ -327,9 +381,7 @@ export function TeamBonusCalculator({
           .insert(membersToInsert)
           .select();
 
-        // Save calculated bonuses
         if (insertedMembers && bonusSettingsId) {
-          // Delete existing bonuses
           await supabase
             .from('team_member_bonuses')
             .delete()
@@ -364,6 +416,221 @@ export function TeamBonusCalculator({
     }
   };
 
+  const handlePropose = async () => {
+    if (teamMembers.length === 0) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Tambahkan minimal satu anggota tim sebelum mengajukan',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setActionLoading('propose');
+    try {
+      await saveAll();
+
+      const { error } = await supabase
+        .from('project_bonus_settings')
+        .update({
+          finalized_status: 'proposed',
+          proposed_by: user?.id,
+          proposed_at: new Date().toISOString(),
+        })
+        .eq('id', bonusSettings.id);
+
+      if (error) throw error;
+
+      setBonusSettings(prev => ({
+        ...prev,
+        finalized_status: 'proposed',
+        proposed_by: user?.id,
+        proposed_at: new Date().toISOString(),
+      }));
+
+      toast({
+        title: 'Berhasil',
+        description: 'Pengajuan bonus telah dikirim untuk approval Finance',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal mengajukan bonus',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleApproveFinance = async () => {
+    setActionLoading('approve');
+    try {
+      const { error } = await supabase
+        .from('project_bonus_settings')
+        .update({
+          finalized_status: 'finance_approved',
+          approved_by_finance: user?.id,
+          approved_at_finance: new Date().toISOString(),
+        })
+        .eq('id', bonusSettings.id);
+
+      if (error) throw error;
+
+      setBonusSettings(prev => ({
+        ...prev,
+        finalized_status: 'finance_approved',
+        approved_by_finance: user?.id,
+        approved_at_finance: new Date().toISOString(),
+      }));
+
+      toast({
+        title: 'Berhasil',
+        description: 'Bonus telah disetujui. Menunggu finalisasi Admin.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal menyetujui bonus',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleFinalize = async () => {
+    setActionLoading('finalize');
+    try {
+      const { error: settingsError } = await supabase
+        .from('project_bonus_settings')
+        .update({
+          finalized_status: 'finalized',
+          is_finalized: true,
+          finalized_by: user?.id,
+          finalized_at: new Date().toISOString(),
+        })
+        .eq('id', bonusSettings.id);
+
+      if (settingsError) throw settingsError;
+
+      // Update all team member bonuses to approved
+      await supabase
+        .from('team_member_bonuses')
+        .update({ status: 'approved' })
+        .eq('project_bonus_id', bonusSettings.id);
+
+      setBonusSettings(prev => ({
+        ...prev,
+        finalized_status: 'finalized',
+        is_finalized: true,
+        finalized_by: user?.id,
+        finalized_at: new Date().toISOString(),
+      }));
+
+      toast({
+        title: 'Berhasil',
+        description: 'Bonus telah difinalisasi dan siap untuk pembayaran.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal memfinalisasi bonus',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Mohon isi alasan penolakan',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setActionLoading('reject');
+    try {
+      const { error } = await supabase
+        .from('project_bonus_settings')
+        .update({
+          finalized_status: 'rejected',
+          rejection_reason: rejectionReason,
+        })
+        .eq('id', bonusSettings.id);
+
+      if (error) throw error;
+
+      setBonusSettings(prev => ({
+        ...prev,
+        finalized_status: 'rejected',
+        rejection_reason: rejectionReason,
+      }));
+
+      setShowRejectDialog(false);
+      setRejectionReason('');
+
+      toast({
+        title: 'Berhasil',
+        description: 'Pengajuan bonus telah ditolak.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal menolak bonus',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResetToDraft = async () => {
+    setActionLoading('reset');
+    try {
+      const { error } = await supabase
+        .from('project_bonus_settings')
+        .update({
+          finalized_status: 'draft',
+          rejection_reason: null,
+          proposed_by: null,
+          proposed_at: null,
+          approved_by_finance: null,
+          approved_at_finance: null,
+        })
+        .eq('id', bonusSettings.id);
+
+      if (error) throw error;
+
+      setBonusSettings(prev => ({
+        ...prev,
+        finalized_status: 'draft',
+        rejection_reason: undefined,
+        proposed_by: undefined,
+        proposed_at: undefined,
+        approved_by_finance: undefined,
+        approved_at_finance: undefined,
+      }));
+
+      toast({
+        title: 'Berhasil',
+        description: 'Status dikembalikan ke Draft untuk revisi.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal mereset status',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const totalWeightedContribution = useMemo(() => 
     calculatedBonuses.reduce((sum, b) => sum + b.weighted_contribution, 0), 
     [calculatedBonuses]
@@ -377,8 +644,74 @@ export function TeamBonusCalculator({
     );
   }
 
+  const statusInfo = STATUS_LABELS[bonusSettings.finalized_status] || STATUS_LABELS.draft;
+
   return (
     <div className="space-y-6">
+      {/* Status & Workflow Banner */}
+      {bonusSettings.id && (
+        <Card className={bonusSettings.finalized_status === 'rejected' ? 'border-destructive' : ''}>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                {bonusSettings.finalized_status === 'draft' && <Clock className="h-5 w-5 text-muted-foreground" />}
+                {bonusSettings.finalized_status === 'proposed' && <Send className="h-5 w-5 text-primary" />}
+                {bonusSettings.finalized_status === 'finance_approved' && <ThumbsUp className="h-5 w-5 text-primary" />}
+                {bonusSettings.finalized_status === 'finalized' && <CheckCircle className="h-5 w-5 text-primary" />}
+                {bonusSettings.finalized_status === 'rejected' && <AlertCircle className="h-5 w-5 text-destructive" />}
+                <div>
+                  <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                  {bonusSettings.rejection_reason && (
+                    <p className="text-sm text-destructive mt-1">
+                      Alasan: {bonusSettings.rejection_reason}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {canPropose && teamMembers.length > 0 && (
+                  <Button onClick={handlePropose} disabled={actionLoading !== null}>
+                    {actionLoading === 'propose' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Send className="h-4 w-4 mr-2" />
+                    Ajukan ke Finance
+                  </Button>
+                )}
+                {canApproveFinance && (
+                  <>
+                    <Button onClick={handleApproveFinance} disabled={actionLoading !== null}>
+                      {actionLoading === 'approve' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <ThumbsUp className="h-4 w-4 mr-2" />
+                      Setujui
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setShowRejectDialog(true)}
+                      disabled={actionLoading !== null}
+                    >
+                      <ThumbsDown className="h-4 w-4 mr-2" />
+                      Tolak
+                    </Button>
+                  </>
+                )}
+                {canFinalize && (
+                  <Button onClick={handleFinalize} disabled={actionLoading !== null}>
+                    {actionLoading === 'finalize' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Finalisasi Pembayaran
+                  </Button>
+                )}
+                {bonusSettings.finalized_status === 'rejected' && (isAdmin || isPM || isMarketing) && (
+                  <Button variant="outline" onClick={handleResetToDraft} disabled={actionLoading !== null}>
+                    {actionLoading === 'reset' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Revisi Ulang
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Bonus Pool Settings */}
       <Card>
         <CardHeader>
@@ -429,15 +762,16 @@ export function TeamBonusCalculator({
             </div>
           </div>
 
-          {/* Formula Display */}
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm font-medium mb-2">Formula Perhitungan:</p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• <strong>Bonus Pool</strong> = Margin × Persentase Alokasi</p>
-              <p>• <strong>Kontribusi Tertimbang</strong> = Man-days × Bobot Kompleksitas</p>
-              <p>• <strong>Bonus Individu</strong> = (Kontribusi Tertimbang / Total Kontribusi) × Bonus Pool</p>
+          {!compact && (
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium mb-2">Formula Perhitungan:</p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• <strong>Bonus Pool</strong> = Margin × Persentase Alokasi</p>
+                <p>• <strong>Kontribusi Tertimbang</strong> = Man-days × Bobot Kompleksitas</p>
+                <p>• <strong>Bonus Individu</strong> = (Kontribusi Tertimbang / Total Kontribusi) × Bonus Pool</p>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -454,7 +788,7 @@ export function TeamBonusCalculator({
                 Tambahkan anggota tim dan tentukan kontribusi masing-masing
               </CardDescription>
             </div>
-            {canManageTeam && (
+            {canEdit && (
               <Button onClick={addTeamMember} size="sm">
                 <Plus className="h-4 w-4 mr-1" />
                 Tambah Anggota
@@ -476,15 +810,15 @@ export function TeamBonusCalculator({
                     <Select
                       value={member.user_id}
                       onValueChange={(value) => updateTeamMember(index, 'user_id', value)}
-                      disabled={!canManageTeam}
+                      disabled={!canEdit}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih user" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
+                        {users.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -496,7 +830,7 @@ export function TeamBonusCalculator({
                       value={member.role_name}
                       onChange={(e) => updateTeamMember(index, 'role_name', e.target.value)}
                       placeholder="Contoh: Developer"
-                      disabled={!canManageTeam}
+                      disabled={!canEdit}
                     />
                   </div>
                   <div className="md:col-span-2 space-y-1">
@@ -507,7 +841,7 @@ export function TeamBonusCalculator({
                       step={0.5}
                       value={member.man_days}
                       onChange={(e) => updateTeamMember(index, 'man_days', parseFloat(e.target.value) || 0)}
-                      disabled={!canManageTeam}
+                      disabled={!canEdit}
                     />
                   </div>
                   <div className="md:col-span-2 space-y-1">
@@ -515,7 +849,7 @@ export function TeamBonusCalculator({
                     <Select
                       value={member.complexity_weight.toString()}
                       onValueChange={(value) => updateTeamMember(index, 'complexity_weight', parseFloat(value))}
-                      disabled={!canManageTeam}
+                      disabled={!canEdit}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -535,11 +869,11 @@ export function TeamBonusCalculator({
                       value={member.contribution_notes}
                       onChange={(e) => updateTeamMember(index, 'contribution_notes', e.target.value)}
                       placeholder="Opsional"
-                      disabled={!canManageTeam}
+                      disabled={!canEdit}
                     />
                   </div>
                   <div className="md:col-span-1 flex items-end">
-                    {canManageTeam && (
+                    {canEdit && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -609,7 +943,7 @@ export function TeamBonusCalculator({
       )}
 
       {/* Action Buttons */}
-      {(canEdit || canManageTeam) && (
+      {canEdit && (
         <div className="flex justify-end gap-3">
           {onClose && (
             <Button variant="outline" onClick={onClose}>
@@ -619,10 +953,46 @@ export function TeamBonusCalculator({
           <Button onClick={saveAll} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="h-4 w-4 mr-2" />
-            Simpan Semua
+            Simpan Draft
           </Button>
         </div>
       )}
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tolak Pengajuan Bonus</DialogTitle>
+            <DialogDescription>
+              Mohon berikan alasan penolakan agar pengaju dapat melakukan revisi
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Alasan Penolakan</Label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Jelaskan alasan penolakan..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+              Batal
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleReject}
+              disabled={actionLoading === 'reject'}
+            >
+              {actionLoading === 'reject' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Tolak
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
