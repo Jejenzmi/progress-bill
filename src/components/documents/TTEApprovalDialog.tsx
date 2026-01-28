@@ -19,6 +19,7 @@ import { createNotification } from '@/lib/notificationHelper';
 import { generateSignedPDF, DocumentTTEData } from '@/lib/documentTTEGenerator';
 import { parseQRPosition } from './QRPositionSelector';
 import { TTEBoxOverlay } from './TTEBoxOverlay';
+import { PdfPageCanvas } from './PdfPageCanvas';
 import { cn } from '@/lib/utils';
 import { 
   Loader2, 
@@ -377,6 +378,7 @@ export function TTEApprovalDialog({
 
   const isPdf = document.file_type === 'application/pdf';
   const isImage = document.file_type.startsWith('image/');
+  const previewPage = document.qr_page || 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -418,13 +420,10 @@ export function TTEApprovalDialog({
               
               {isPdf ? (
                 <div className="relative w-full h-full min-h-[400px]">
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full min-h-[400px] border-0"
-                    title="PDF Preview"
-                  />
-                  {/* QR Position Indicator Overlay for PDF */}
-                  <QRPositionIndicator qrPosition={document.qr_position} qrPage={document.qr_page} isPdf={true} />
+                  <PdfPageCanvas src={previewUrl} pageNumber={previewPage} className="min-h-[400px]">
+                    {/* QR Position Indicator Overlay for PDF */}
+                    <QRPositionIndicator qrPosition={document.qr_position} qrPage={previewPage} isPdf={true} />
+                  </PdfPageCanvas>
                 </div>
               ) : isImage ? (
                 <div className="w-full h-full min-h-[400px] flex items-center justify-center p-4 relative">

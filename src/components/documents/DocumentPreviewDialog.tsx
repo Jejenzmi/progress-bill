@@ -19,6 +19,7 @@ import {
 import { QRPositionSelector, QRPositionValue, parseQRPosition, stringifyQRPosition, QRSize } from './QRPositionSelector';
 import { TTEBoxOverlay } from './TTEBoxOverlay';
 import { PDFPageSelector } from './PDFPageSelector';
+import { PdfPageCanvas } from './PdfPageCanvas';
 import { Loader2, FileSignature, Eye, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -193,13 +194,10 @@ export function DocumentPreviewDialog({
                   </div>
                 ) : isPdf ? (
                   <div className="relative w-full h-full">
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-full border-0 rounded"
-                      title="PDF Preview"
-                    />
-                    {/* TTE Box Overlay for PDF */}
-                    <TTEBoxOverlay qrPosition={qrPosition} qrPage={selectedPage} isPdf={true} showInfoBadge={true} />
+                    <PdfPageCanvas src={previewUrl} pageNumber={selectedPage}>
+                      {/* TTE Box Overlay for PDF (relative to actual rendered page) */}
+                      <TTEBoxOverlay qrPosition={qrPosition} qrPage={selectedPage} isPdf={true} showInfoBadge={true} />
+                    </PdfPageCanvas>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
