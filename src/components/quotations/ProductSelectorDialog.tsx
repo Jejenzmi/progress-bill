@@ -41,7 +41,7 @@ interface ProductSelectorDialogProps {
     unit: string;
     unitPrice: number;
     total: number;
-  }>) => void;
+  }>, marginPercentage: number) => void;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -183,7 +183,7 @@ export function ProductSelectorDialog({
       total: p.quantity * p.finalPrice,
     }));
 
-    onProductsSelected(items);
+    onProductsSelected(items, effectiveMargin);
     onOpenChange(false);
   };
 
