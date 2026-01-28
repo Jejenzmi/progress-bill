@@ -717,6 +717,8 @@ export default function SignedDocuments() {
         onSignerPositionChange={setSignerPosition}
         onConfirm={handleUploadAndSign}
         uploading={uploading}
+        userTTEName={tteSettings?.signer_name}
+        userTTEPosition={tteSettings?.signer_position}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -738,6 +740,8 @@ export default function SignedDocuments() {
         onSignerPositionChange={setSignerPosition}
         onConfirm={handleBatchSign}
         uploading={uploading}
+        userTTEName={tteSettings?.signer_name}
+        userTTEPosition={tteSettings?.signer_position}
       />
 
       {/* Regenerate TTE Dialog */}
@@ -747,6 +751,8 @@ export default function SignedDocuments() {
         document={selectedDoc}
         onConfirm={handleRegenerateTTE}
         loading={regenerating}
+        userTTEName={tteSettings?.signer_name}
+        userTTEPosition={tteSettings?.signer_position}
       />
     </AppLayout>
   );

@@ -9,9 +9,22 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { QRPositionSelector, QRPositionValue, stringifyQRPosition } from './QRPositionSelector';
-import { Loader2, RefreshCw, FileSignature } from 'lucide-react';
+import { Loader2, RefreshCw, FileSignature, User, Shield } from 'lucide-react';
+
+// Predefined TTE signers - same as Quotation
+const TTE_SIGNERS = [
+  { id: 'self', label: 'Marketing (Saya Sendiri)', name: '', position: '' },
+  { id: 'coo', label: 'COO - Indra Apriana, S.Kom', name: 'Indra Apriana, S.Kom', position: 'Chief Operational Officer' },
+  { id: 'ceo', label: 'CEO - Jejen Jaenudin, SM., M.Kom', name: 'Jejen Jaenudin, SM., M.Kom', position: 'Chief Executive Officer' },
+];
 
 interface SignedDocument {
   id: string;
@@ -28,6 +41,9 @@ interface RegenerateTTEDialogProps {
   document: SignedDocument | null;
   onConfirm: (docId: string, qrPosition: string, signerName: string, signerPosition: string) => Promise<void>;
   loading: boolean;
+  // User TTE settings for "self" option
+  userTTEName?: string;
+  userTTEPosition?: string;
 }
 
 export function RegenerateTTEDialog({
@@ -36,18 +52,50 @@ export function RegenerateTTEDialog({
   document,
   onConfirm,
   loading,
+  userTTEName = '',
+  userTTEPosition = '',
 }: RegenerateTTEDialogProps) {
   const [qrPosition, setQrPosition] = useState('bottom-right');
   const [signerName, setSignerName] = useState('');
   const [signerPosition, setSignerPosition] = useState('');
+  const [selectedSigner, setSelectedSigner] = useState<string>('coo');
 
   useEffect(() => {
-    if (document) {
+    if (document && open) {
       setQrPosition(document.qr_position);
       setSignerName(document.signer_name);
       setSignerPosition(document.signer_position);
+      
+      // Try to match existing signer to predefined list
+      const matchedSigner = TTE_SIGNERS.find(s => 
+        s.name === document.signer_name && s.position === document.signer_position
+      );
+      if (matchedSigner) {
+        setSelectedSigner(matchedSigner.id);
+      } else if (document.signer_name === userTTEName && document.signer_position === userTTEPosition) {
+        setSelectedSigner('self');
+      } else {
+        // Default to showing current values with COO selected
+        setSelectedSigner('coo');
+      }
     }
-  }, [document]);
+  }, [document, open, userTTEName, userTTEPosition]);
+
+  // Handle signer selection change
+  const handleSignerChange = (signerId: string) => {
+    setSelectedSigner(signerId);
+    
+    if (signerId === 'self') {
+      setSignerName(userTTEName || '');
+      setSignerPosition(userTTEPosition || '');
+    } else {
+      const signer = TTE_SIGNERS.find(s => s.id === signerId);
+      if (signer) {
+        setSignerName(signer.name);
+        setSignerPosition(signer.position);
+      }
+    }
+  };
 
   const handleConfirm = async () => {
     if (!document) return;
@@ -59,6 +107,9 @@ export function RegenerateTTEDialog({
     signerName !== document.signer_name ||
     signerPosition !== document.signer_position
   );
+
+  // Check if self option is available
+  const selfAvailable = !!userTTEName && !!userTTEPosition;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,24 +146,49 @@ export function RegenerateTTEDialog({
             />
           </div>
 
-          {/* Signer Info */}
+          {/* Signer Selection */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nama Penandatangan *</Label>
-              <Input
-                placeholder="Nama lengkap"
-                value={signerName}
-                onChange={(e) => setSignerName(e.target.value)}
-              />
+              <Label className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Penandatangan Terdaftar *
+              </Label>
+              <Select value={selectedSigner} onValueChange={handleSignerChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih penandatangan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TTE_SIGNERS.map((signer) => (
+                    <SelectItem 
+                      key={signer.id} 
+                      value={signer.id}
+                      disabled={signer.id === 'self' && !selfAvailable}
+                    >
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        <span>{signer.label}</span>
+                        {signer.id === 'self' && !selfAvailable && (
+                          <span className="text-xs text-muted-foreground">(Belum diatur)</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Jabatan *</Label>
-              <Input
-                placeholder="Jabatan penandatangan"
-                value={signerPosition}
-                onChange={(e) => setSignerPosition(e.target.value)}
-              />
+            {/* Display selected signer info */}
+            <div className="bg-muted/50 border rounded-lg p-3 space-y-1 text-sm">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Nama:</span>
+                <span className="font-medium">{signerName || '-'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Jabatan:</span>
+                <span className="font-medium">{signerPosition || '-'}</span>
+              </div>
             </div>
           </div>
 
