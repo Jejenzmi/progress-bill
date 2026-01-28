@@ -203,8 +203,9 @@ export const generateQuotationPDF = async (
           text-align: right;
         }
         .header-logo {
-          height: 55px;
+          height: 60px;
           width: auto;
+          max-width: 280px;
         }
         .company-name {
           font-size: 13pt;
@@ -518,8 +519,7 @@ export const generateQuotationPDF = async (
         <div class="header">
           <div class="header-pattern"></div>
           <div class="header-info">
-            <img src="${logoSrc}" alt="Logo" class="header-logo" onerror="this.style.display='none'" />
-            <div class="company-name">PT. ZEN MULTIMEDIA<br/>INDONESIA</div>
+            <img src="${logoSrc}" alt="PT. Zen Multimedia Indonesia" class="header-logo" />
           </div>
         </div>
 
