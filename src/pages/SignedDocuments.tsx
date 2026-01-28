@@ -38,6 +38,9 @@ import {
   RotateCcw,
   CheckCircle2
 } from 'lucide-react';
+
+// Production verification URL (use custom domain)
+const VERIFICATION_BASE_URL = 'https://crm.zefin.id/verify';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DocumentPreviewDialog } from '@/components/documents/DocumentPreviewDialog';
@@ -152,7 +155,7 @@ export default function SignedDocuments() {
     setUploading(true);
     try {
       const signedAt = new Date();
-      const verifyUrl = `${window.location.origin}/verify`;
+      const verifyUrl = VERIFICATION_BASE_URL;
       
       // Generate signed PDF with TTE
       const tteData: DocumentTTEData = {
@@ -356,7 +359,7 @@ export default function SignedDocuments() {
     let errorCount = 0;
 
     try {
-      const verifyUrl = `${window.location.origin}/verify`;
+      const verifyUrl = VERIFICATION_BASE_URL;
       
       for (const file of files) {
         try {
@@ -445,7 +448,7 @@ export default function SignedDocuments() {
 
       const file = new File([fileData], doc.original_file_name, { type: doc.file_type });
       const signedAt = new Date();
-      const verifyUrl = `${window.location.origin}/verify`;
+      const verifyUrl = VERIFICATION_BASE_URL;
 
       const tteData: DocumentTTEData = {
         documentName: file.name,

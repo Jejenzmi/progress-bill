@@ -112,8 +112,8 @@ export const generateQuotationPDF = async (
   const signedAt = new Date();
   const verificationId = btoa(quotation.quotationNumber).substring(0, 16).toUpperCase();
   
-  // Get the published URL for verification (use production URL)
-  const publishedUrl = 'https://progress-bill.lovable.app';
+  // Get the published URL for verification (use production custom domain)
+  const publishedUrl = 'https://crm.zefin.id';
   const verificationUrl = `${publishedUrl}/verify?id=${verificationId}`;
   
   // Generate QR Code for TTE - QR code contains ONLY the URL for direct redirect
