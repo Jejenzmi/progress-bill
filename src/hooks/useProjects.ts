@@ -6,10 +6,11 @@ type Project = Database['public']['Tables']['projects']['Row'];
 type Client = Database['public']['Tables']['clients']['Row'];
 type PaymentTerm = Database['public']['Tables']['payment_terms']['Row'];
 type Invoice = Database['public']['Tables']['invoices']['Row'];
+type TermEvidence = Database['public']['Tables']['term_evidences']['Row'];
 
 export interface ProjectWithDetails extends Project {
   client: Client | null;
-  payment_terms: (PaymentTerm & { invoice: Invoice | null })[];
+  payment_terms: (PaymentTerm & { invoice: Invoice | null; evidences: TermEvidence[] })[];
 }
 
 export function useProjects() {
@@ -47,6 +48,14 @@ export function useProjects() {
 
       if (invoicesError) throw invoicesError;
 
+      // Fetch term evidences
+      const { data: evidencesData, error: evidencesError } = await supabase
+        .from('term_evidences')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (evidencesError) throw evidencesError;
+
       // Combine data
       const projectsWithDetails: ProjectWithDetails[] = (projectsData || []).map((project) => {
         const projectTerms = (termsData || [])
@@ -54,6 +63,7 @@ export function useProjects() {
           .map((term) => ({
             ...term,
             invoice: (invoicesData || []).find((inv) => inv.term_id === term.id) || null,
+            evidences: (evidencesData || []).filter((ev) => ev.term_id === term.id),
           }));
 
         return {
