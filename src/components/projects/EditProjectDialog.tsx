@@ -179,6 +179,19 @@ export function EditProjectDialog({ project, open, onOpenChange, onSuccess }: Ed
       });
       return;
     }
+    
+    // Validate quotation requirement for Won status or Closing stage
+    const requiresQuotation = status === 'Won' || (status === 'Pipeline' && pipelineStage === 'Closing');
+    if (requiresQuotation && !project.quotation_id) {
+      toast({
+        title: 'Error',
+        description: status === 'Won' 
+          ? 'Proyek harus memiliki Quotation yang terhubung untuk status "Won"'
+          : 'Proyek harus memiliki Quotation yang terhubung untuk masuk ke tahap "Closing"',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     try {

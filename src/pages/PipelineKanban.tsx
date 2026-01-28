@@ -37,6 +37,7 @@ interface PipelineProject {
   pipeline_stage: PipelineStage;
   probability: number;
   start_date: string;
+  quotation_id: string | null;
 }
 
 const pipelineStages: { stage: PipelineStage; label: string; probability: number }[] = [
@@ -81,6 +82,7 @@ export default function PipelineKanban() {
       pipeline_stage: (p.pipeline_stage as PipelineStage) || 'Meeting',
       probability: (p as any).probability || getDefaultProbability(p.pipeline_stage),
       start_date: p.start_date,
+      quotation_id: p.quotation_id,
     }))
     .filter(p => 
       p.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,6 +117,17 @@ export default function PipelineKanban() {
     
     const project = pipelineProjects.find(p => p.id === draggedProject);
     if (!project || project.pipeline_stage === targetStage) {
+      setDraggedProject(null);
+      return;
+    }
+
+    // Validate: Cannot move to Closing without quotation
+    if (targetStage === 'Closing' && !project.quotation_id) {
+      toast({
+        title: 'Tidak Dapat Dipindahkan',
+        description: 'Proyek harus memiliki Quotation yang terhubung untuk masuk ke tahap Closing',
+        variant: 'destructive',
+      });
       setDraggedProject(null);
       return;
     }
