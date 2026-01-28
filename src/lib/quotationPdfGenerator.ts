@@ -153,55 +153,74 @@ export const generateQuotationPDF = async (
         .page {
           width: 210mm;
           min-height: 297mm;
-          padding: 15mm 20mm;
+          padding: 0;
           margin: 0 auto;
           background: white;
           position: relative;
         }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 30px;
-          padding-bottom: 20px;
-          border-bottom: 3px solid #1a5f7a;
+        
+        /* Header with halftone pattern */
+        .header-container {
+          position: relative;
+          height: 110px;
+          margin-bottom: 15px;
+          overflow: hidden;
         }
-        .logo-section {
+        .header-pattern {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 320px;
+          height: 110px;
+          background: 
+            radial-gradient(circle at center, #3d5a80 2px, transparent 2px);
+          background-size: 10px 10px;
+          mask-image: 
+            linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, transparent 100%),
+            linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.2) 80%, transparent 100%);
+          mask-composite: intersect;
+          -webkit-mask-image: 
+            linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, transparent 100%);
+        }
+        .header-logo {
+          position: absolute;
+          top: 25px;
+          right: 20mm;
           display: flex;
           align-items: center;
           gap: 12px;
         }
-        .logo {
-          width: 50px;
-          height: 50px;
+        .header-logo img {
+          height: 60px;
+          width: auto;
+        }
+        .company-text {
+          text-align: left;
         }
         .company-name {
-          font-size: 18pt;
+          font-size: 15pt;
           font-weight: bold;
-          color: #1a5f7a;
+          color: #3d5a80;
+          letter-spacing: 0.5px;
         }
-        .company-subtitle {
-          font-size: 10pt;
-          color: #666;
-        }
-        .header-right {
-          text-align: right;
-          font-size: 9pt;
-          color: #666;
+        
+        /* Content area */
+        .content-area {
+          padding: 0 20mm 140px 20mm;
         }
         .title {
           text-align: center;
-          font-size: 20pt;
+          font-size: 18pt;
           font-weight: bold;
-          color: #1a5f7a;
-          margin: 20px 0;
+          color: #3d5a80;
+          margin: 15px 0;
           letter-spacing: 2px;
         }
         .meta-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 30px;
-          margin-bottom: 25px;
+          margin-bottom: 20px;
         }
         .meta-box {
           font-size: 10pt;
@@ -218,52 +237,56 @@ export const generateQuotationPDF = async (
           font-weight: 500;
         }
         .section-title {
-          font-size: 12pt;
+          font-size: 11pt;
           font-weight: bold;
-          color: #1a5f7a;
-          margin: 25px 0 12px;
+          color: #3d5a80;
+          margin: 20px 0 10px;
           padding-bottom: 5px;
-          border-bottom: 2px solid #1a5f7a;
+          border-bottom: 2px solid #3d5a80;
         }
         .project-title {
-          font-size: 13pt;
+          font-size: 12pt;
           font-weight: bold;
           color: #333;
-          margin-bottom: 15px;
+          margin-bottom: 12px;
           text-align: center;
-          background: #f0f7fa;
-          padding: 12px;
-          border-radius: 6px;
+          background: #e8f0f5;
+          padding: 10px;
+          border-radius: 4px;
         }
         .table {
           width: 100%;
           border-collapse: collapse;
-          margin: 15px 0;
-          font-size: 10pt;
+          margin: 12px 0;
+          font-size: 9pt;
         }
         .table th {
-          background: #1a5f7a;
+          background: #3d5a80;
           color: white;
-          padding: 12px;
+          padding: 10px;
           text-align: left;
           font-weight: 600;
-          border: 1px solid #1a5f7a;
+          border: 1px solid #3d5a80;
         }
         .table th.center { text-align: center; }
         .table th.right { text-align: right; }
+        .table td {
+          padding: 8px 10px;
+          border: 1px solid #ddd;
+        }
         .totals-section {
-          margin-top: 20px;
+          margin-top: 15px;
           display: flex;
           justify-content: flex-end;
         }
         .totals-box {
-          width: 350px;
+          width: 320px;
         }
         .total-row {
           display: flex;
           justify-content: space-between;
-          padding: 8px 12px;
-          font-size: 11pt;
+          padding: 6px 10px;
+          font-size: 10pt;
         }
         .total-row.subtotal {
           border-bottom: 1px solid #e0e0e0;
@@ -272,76 +295,122 @@ export const generateQuotationPDF = async (
           color: #666;
         }
         .total-row.grand {
-          background: #1a5f7a;
+          background: #3d5a80;
           color: white;
           font-weight: bold;
-          font-size: 12pt;
+          font-size: 11pt;
           border-radius: 4px;
           margin-top: 5px;
         }
         .terbilang {
-          background: #f9f9f9;
-          padding: 12px 15px;
-          margin-top: 15px;
-          border-radius: 6px;
+          background: #f5f8fa;
+          padding: 10px 12px;
+          margin-top: 12px;
+          border-radius: 4px;
           font-style: italic;
-          border-left: 4px solid #1a5f7a;
+          border-left: 4px solid #3d5a80;
+          font-size: 10pt;
         }
         .terms-list {
           list-style: none;
           padding-left: 0;
+          font-size: 10pt;
         }
         .terms-list li {
-          padding-left: 20px;
+          padding-left: 18px;
           position: relative;
+          margin-bottom: 4px;
         }
         .terms-list li::before {
           content: "•";
-          color: #1a5f7a;
+          color: #3d5a80;
           font-weight: bold;
           position: absolute;
           left: 0;
         }
-        .footer {
+        
+        /* Footer with curved design */
+        .footer-container {
           position: absolute;
-          bottom: 15mm;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 120px;
+          overflow: hidden;
+        }
+        .footer-curve {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 250px;
+          height: 200px;
+          background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
+          border-radius: 100% 0 0 0;
+          transform: translate(30px, 60px);
+        }
+        .footer-pattern {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 200px;
+          height: 150px;
+          background: radial-gradient(circle at center, rgba(255,255,255,0.3) 1.5px, transparent 1.5px);
+          background-size: 8px 8px;
+          mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.6) 0%, transparent 70%);
+          -webkit-mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.6) 0%, transparent 70%);
+        }
+        .footer-bar {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 8px;
+          background: #2c3e50;
+        }
+        .footer-contact {
+          position: absolute;
+          bottom: 20px;
           left: 20mm;
-          right: 20mm;
-          text-align: center;
           font-size: 9pt;
-          color: #666;
-          padding-top: 15px;
-          border-top: 1px solid #e0e0e0;
+          color: #333;
         }
-        .footer-content {
+        .footer-contact-row {
           display: flex;
-          justify-content: center;
-          gap: 30px;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
         }
+        .footer-contact-row svg {
+          width: 14px;
+          height: 14px;
+          fill: #3d5a80;
+          flex-shrink: 0;
+        }
+        
         .signature-section {
-          margin-top: 30px;
+          margin-top: 25px;
           display: flex;
           justify-content: flex-end;
         }
         .signature-box {
           text-align: center;
-          width: 200px;
+          width: 180px;
         }
         .signature-line {
           border-bottom: 1px solid #333;
-          margin-top: 50px;
+          margin-top: 45px;
           margin-bottom: 5px;
         }
-        ${getTTEStyles()}
         .valid-thru {
           display: inline-block;
           background: #fff3cd;
           color: #856404;
-          padding: 5px 15px;
+          padding: 4px 12px;
           border-radius: 4px;
-          font-size: 10pt;
-          margin-top: 10px;
+          font-size: 9pt;
+          margin-top: 8px;
         }
+        ${getTTEStyles()}
         @media print {
           body { 
             -webkit-print-color-adjust: exact !important;
@@ -349,7 +418,7 @@ export const generateQuotationPDF = async (
           }
           .page { 
             margin: 0; 
-            padding: 15mm 20mm;
+            padding: 0;
           }
           .no-print { display: none; }
         }
@@ -357,145 +426,156 @@ export const generateQuotationPDF = async (
     </head>
     <body>
       <div class="page">
-        <!-- Header -->
-        <div class="header">
-          <div class="logo-section">
-            ${company.logo_url ? `<img src="${company.logo_url}" alt="Company Logo" style="height: 50px; width: auto; object-fit: contain;" />` : ''}
-            <div>
-              <div class="company-name">${company.name}</div>
+        <!-- Header with halftone pattern -->
+        <div class="header-container">
+          <div class="header-pattern"></div>
+          <div class="header-logo">
+            ${company.logo_url ? `<img src="${company.logo_url}" alt="Company Logo" />` : ''}
+            <div class="company-text">
+              <div class="company-name">${company.name.toUpperCase()}</div>
             </div>
-          </div>
-          <div class="header-right">
-            <p>${company.address}</p>
-            <p>${company.email}</p>
-            <p>${company.phone}</p>
           </div>
         </div>
 
-        <!-- Title -->
-        <h1 class="title">QUOTATION</h1>
+        <!-- Content Area -->
+        <div class="content-area">
+          <!-- Title -->
+          <h1 class="title">QUOTATION</h1>
 
-        <!-- Meta Information -->
-        <div class="meta-grid">
+          <!-- Meta Information -->
+          <div class="meta-grid">
+            <div class="meta-box">
+              <div class="meta-row">
+                <span class="meta-label">Tanggal</span>
+                <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">No.</span>
+                <span class="meta-value">: ${quotation.quotationNumber}</span>
+              </div>
+            </div>
+            <div class="meta-box" style="text-align: right;">
+              <span class="valid-thru">Valid Thru: ${formatDate(quotation.validUntil)}</span>
+            </div>
+          </div>
+
+          <!-- Client Info -->
+          <div class="section-title">Dibuat Untuk</div>
           <div class="meta-box">
             <div class="meta-row">
-              <span class="meta-label">Tanggal</span>
-              <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
+              <span class="meta-label">Nama Klien</span>
+              <span class="meta-value">: ${quotation.clientName}</span>
             </div>
             <div class="meta-row">
-              <span class="meta-label">No.</span>
-              <span class="meta-value">: ${quotation.quotationNumber}</span>
+              <span class="meta-label">Alamat</span>
+              <span class="meta-value">: ${quotation.clientAddress || '-'}</span>
             </div>
           </div>
-          <div class="meta-box" style="text-align: right;">
-            <span class="valid-thru">Valid Thru: ${formatDate(quotation.validUntil)}</span>
-          </div>
-        </div>
 
-        <!-- Client Info -->
-        <div class="section-title">Dibuat Untuk</div>
-        <div class="meta-box">
-          <div class="meta-row">
-            <span class="meta-label">Nama Klien</span>
-            <span class="meta-value">: ${quotation.clientName}</span>
-          </div>
-          <div class="meta-row">
-            <span class="meta-label">Alamat</span>
-            <span class="meta-value">: ${quotation.clientAddress || '-'}</span>
-          </div>
-        </div>
+          <!-- Project Name -->
+          <div class="project-title">${quotation.projectName}</div>
 
-        <!-- Project Name -->
-        <div class="project-title">${quotation.projectName}</div>
+          ${quotation.projectDescription ? `
+          <p style="font-size: 10pt; color: #666; margin-bottom: 12px;">${quotation.projectDescription}</p>
+          ` : ''}
 
-        ${quotation.projectDescription ? `
-        <p style="font-size: 10pt; color: #666; margin-bottom: 15px;">${quotation.projectDescription}</p>
-        ` : ''}
+          <!-- Items Table -->
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 40%;">ITEM</th>
+                <th class="center" style="width: 10%;">JML</th>
+                <th class="center" style="width: 15%;">SATUAN</th>
+                <th class="right" style="width: 17%;">HARGA SATUAN</th>
+                <th class="right" style="width: 18%;">TOTAL HARGA</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows}
+            </tbody>
+          </table>
 
-        <!-- Items Table -->
-        <table class="table">
-          <thead>
-            <tr>
-              <th style="width: 40%;">ITEM</th>
-              <th class="center" style="width: 10%;">JML</th>
-              <th class="center" style="width: 15%;">SATUAN</th>
-              <th class="right" style="width: 17%;">HARGA SATUAN</th>
-              <th class="right" style="width: 18%;">TOTAL HARGA</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRows}
-          </tbody>
-        </table>
-
-        <!-- Totals -->
-        <div class="totals-section">
-          <div class="totals-box">
-            <div class="total-row subtotal">
-              <span>JUMLAH BIAYA</span>
-              <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
-            </div>
-            <div class="total-row ppn">
-              <span>PPN ${quotation.ppnPercentage}%</span>
-              <span>Rp. ${formatCurrencyPlain(quotation.ppnAmount)},-</span>
-            </div>
-            <div class="total-row grand">
-              <span>TOTAL BIAYA</span>
-              <span>Rp. ${formatCurrencyPlain(quotation.grandTotal)},-</span>
+          <!-- Totals -->
+          <div class="totals-section">
+            <div class="totals-box">
+              <div class="total-row subtotal">
+                <span>JUMLAH BIAYA</span>
+                <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
+              </div>
+              <div class="total-row ppn">
+                <span>PPN ${quotation.ppnPercentage}%</span>
+                <span>Rp. ${formatCurrencyPlain(quotation.ppnAmount)},-</span>
+              </div>
+              <div class="total-row grand">
+                <span>TOTAL BIAYA</span>
+                <span>Rp. ${formatCurrencyPlain(quotation.grandTotal)},-</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Terbilang -->
-        <div class="terbilang">
-          <strong>Terbilang:</strong> ${numberToWords(quotation.grandTotal)}
-        </div>
-
-        ${quotation.estimatedDuration ? `
-        <div class="section-title">Estimasi Waktu Pengerjaan</div>
-        <p style="font-size: 10pt;">${quotation.estimatedDuration}</p>
-        ` : ''}
-
-        ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
-        <div class="section-title">Ketentuan Pembayaran</div>
-        <ul class="terms-list">
-          ${paymentTermsHTML}
-        </ul>
-        ` : ''}
-
-        ${quotation.guaranteeTerms && quotation.guaranteeTerms.length > 0 ? `
-        <div class="section-title">Garansi & Support</div>
-        <ul class="terms-list">
-          ${guaranteeHTML}
-        </ul>
-        ` : ''}
-
-        <!-- Signature -->
-        <div class="signature-section">
-          <div class="signature-box">
-            <p>Hormat kami,</p>
-            <p style="font-weight: bold; margin-top: 5px;">${company.name}</p>
-            <div class="signature-line"></div>
-            <p style="font-size: 9pt; color: #666;">Authorized Signature</p>
+          <!-- Terbilang -->
+          <div class="terbilang">
+            <strong>Terbilang:</strong> ${numberToWords(quotation.grandTotal)}
           </div>
+
+          ${quotation.estimatedDuration ? `
+          <div class="section-title">Estimasi Waktu Pengerjaan</div>
+          <p style="font-size: 10pt;">${quotation.estimatedDuration}</p>
+          ` : ''}
+
+          ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
+          <div class="section-title">Ketentuan Pembayaran</div>
+          <ul class="terms-list">
+            ${paymentTermsHTML}
+          </ul>
+          ` : ''}
+
+          ${quotation.guaranteeTerms && quotation.guaranteeTerms.length > 0 ? `
+          <div class="section-title">Garansi & Support</div>
+          <ul class="terms-list">
+            ${guaranteeHTML}
+          </ul>
+          ` : ''}
+
+          <!-- Signature -->
+          <div class="signature-section">
+            <div class="signature-box">
+              <p>Hormat kami,</p>
+              <p style="font-weight: bold; margin-top: 5px;">${company.name}</p>
+              <div class="signature-line"></div>
+              <p style="font-size: 9pt; color: #666;">Authorized Signature</p>
+            </div>
+          </div>
+
+          <!-- TTE Section with QR Code -->
+          ${tteSection}
         </div>
 
-        <!-- TTE Section with QR Code -->
-        ${tteSection}
-
-        <!-- Footer -->
-        <div class="footer">
-          <div class="footer-content">
-            <span>${company.address}</span>
-            <span>${company.email}</span>
-            <span>${company.phone}</span>
+        <!-- Footer with curved design -->
+        <div class="footer-container">
+          <div class="footer-curve"></div>
+          <div class="footer-pattern"></div>
+          <div class="footer-contact">
+            <div class="footer-contact-row">
+              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+              <span>${company.address}</span>
+            </div>
+            <div class="footer-contact-row">
+              <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <span>${company.email}</span>
+            </div>
+            <div class="footer-contact-row">
+              <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              <span>${company.phone}</span>
+            </div>
           </div>
+          <div class="footer-bar"></div>
         </div>
       </div>
 
       <!-- Print Button -->
       <div class="no-print" style="text-align: center; padding: 30px; background: #f5f5f5;">
-        <button onclick="window.print()" style="padding: 12px 40px; background: #1a5f7a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14pt; font-weight: 600;">
+        <button onclick="window.print()" style="padding: 12px 40px; background: #3d5a80; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14pt; font-weight: 600;">
           Cetak / Download PDF
         </button>
       </div>
