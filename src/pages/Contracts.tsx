@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/data/mockData';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -246,20 +247,16 @@ export default function Contracts() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <AppLayout title="Kontrak SPK" subtitle="Memuat data...">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Kontrak Kerjasama</h1>
-        <p className="text-muted-foreground">
-          Kelola kontrak kerjasama (SPK) dengan klien
-        </p>
-      </div>
+    <AppLayout title="Kontrak Kerjasama" subtitle="Kelola kontrak kerjasama (SPK) dengan klien">
 
       <Card>
         <CardHeader>
@@ -466,6 +463,6 @@ export default function Contracts() {
         onOpenChange={setSigningOpen}
         onSuccess={refetch}
       />
-    </div>
+    </AppLayout>
   );
 }
