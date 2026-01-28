@@ -73,20 +73,37 @@ async function generateQRCodeBytes(data: string): Promise<Uint8Array> {
 }
 
 /**
- * Parse custom position string (format: "custom-X-Y" where X,Y are percentages)
+ * Parse QR position string (supports both preset and custom positions with size suffix)
+ * Formats:
+ * - Preset: "bottom-right", "bottom-right-large", "top-left-medium"
+ * - Custom: "custom-X-Y", "custom-X-Y-size"
  */
-function parseCustomPosition(position: string): { x: number; y: number } | null {
-  if (!position.startsWith('custom-')) return null;
-  
-  const parts = position.split('-');
-  if (parts.length >= 3) {
-    const x = parseFloat(parts[1]);
-    const y = parseFloat(parts[2]);
-    if (!isNaN(x) && !isNaN(y)) {
-      return { x, y };
-    }
+interface ParsedQRPosition {
+  type: 'preset' | 'custom';
+  preset?: string;
+  x?: number;
+  y?: number;
+  size: 'small' | 'medium' | 'large';
+}
+
+function parseQRPositionString(position: string): ParsedQRPosition {
+  // Handle custom positions (format: "custom-X-Y" or "custom-X-Y-size")
+  if (position.startsWith('custom-')) {
+    const parts = position.split('-');
+    const x = parseFloat(parts[1]) || 50;
+    const y = parseFloat(parts[2]) || 50;
+    const size = (parts[3] as 'small' | 'medium' | 'large') || 'medium';
+    return { type: 'custom', x, y, size };
   }
-  return null;
+  
+  // Handle preset positions with optional size suffix (format: "bottom-right-large")
+  const sizeMatch = position.match(/(small|medium|large)$/);
+  if (sizeMatch) {
+    const preset = position.replace(`-${sizeMatch[1]}`, '');
+    return { type: 'preset', preset, size: sizeMatch[1] as 'small' | 'medium' | 'large' };
+  }
+  
+  return { type: 'preset', preset: position, size: 'medium' };
 }
 
 /**
@@ -100,12 +117,12 @@ function getQRPositionCoords(
   boxHeight: number,
   margin: number = 15
 ): { x: number; y: number } {
-  const customPos = parseCustomPosition(position);
+  const parsed = parseQRPositionString(position);
   
-  if (customPos) {
+  if (parsed.type === 'custom' && parsed.x !== undefined && parsed.y !== undefined) {
     // pdf-lib uses bottom-left origin, so we need to flip Y
-    const x = (customPos.x / 100) * pageWidth - boxWidth / 2;
-    const y = pageHeight - (customPos.y / 100) * pageHeight - boxHeight / 2;
+    const x = (parsed.x / 100) * pageWidth - boxWidth / 2;
+    const y = pageHeight - (parsed.y / 100) * pageHeight - boxHeight / 2;
     
     return {
       x: Math.max(margin, Math.min(pageWidth - boxWidth - margin, x)),
@@ -114,7 +131,8 @@ function getQRPositionCoords(
   }
 
   // Preset positions (pdf-lib uses bottom-left origin)
-  switch (position) {
+  const preset = parsed.preset || 'bottom-right';
+  switch (preset) {
     case 'top-left':
       return { x: margin, y: pageHeight - boxHeight - margin };
     case 'top-right':
@@ -195,8 +213,12 @@ export async function embedTTEIntoPDF(
   const page = pages[targetPageIndex];
   const { width, height } = page.getSize();
   
-  // Get size configuration
-  const sizeConfig = QR_SIZES[data.qrSize] || QR_SIZES.medium;
+  // Parse position to also get size from position string if available
+  const parsedPosition = parseQRPositionString(data.qrPosition);
+  
+  // Get size configuration - prioritize data.qrSize, then position string, then default to medium
+  const effectiveSize = data.qrSize || parsedPosition.size || 'medium';
+  const sizeConfig = QR_SIZES[effectiveSize] || QR_SIZES.medium;
   
   // Calculate position
   const coords = getQRPositionCoords(
