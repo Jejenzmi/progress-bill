@@ -523,45 +523,63 @@ export type Database = {
       }
       project_bonus_settings: {
         Row: {
+          approved_at_finance: string | null
+          approved_by_finance: string | null
           bonus_pool_amount: number
           bonus_pool_percentage: number
           created_at: string
           finalized_at: string | null
           finalized_by: string | null
+          finalized_status: string | null
           id: string
           is_finalized: boolean | null
           margin_amount: number
           notes: string | null
           project_id: string | null
+          proposed_at: string | null
+          proposed_by: string | null
           quotation_id: string | null
+          rejection_reason: string | null
           updated_at: string
         }
         Insert: {
+          approved_at_finance?: string | null
+          approved_by_finance?: string | null
           bonus_pool_amount?: number
           bonus_pool_percentage?: number
           created_at?: string
           finalized_at?: string | null
           finalized_by?: string | null
+          finalized_status?: string | null
           id?: string
           is_finalized?: boolean | null
           margin_amount?: number
           notes?: string | null
           project_id?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
           quotation_id?: string | null
+          rejection_reason?: string | null
           updated_at?: string
         }
         Update: {
+          approved_at_finance?: string | null
+          approved_by_finance?: string | null
           bonus_pool_amount?: number
           bonus_pool_percentage?: number
           created_at?: string
           finalized_at?: string | null
           finalized_by?: string | null
+          finalized_status?: string | null
           id?: string
           is_finalized?: boolean | null
           margin_amount?: number
           notes?: string | null
           project_id?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
           quotation_id?: string | null
+          rejection_reason?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1007,6 +1025,8 @@ export type Database = {
           created_at: string
           id: string
           paid_at: string | null
+          payment_notes: string | null
+          payment_reference: string | null
           project_bonus_id: string | null
           status: string | null
           team_member_id: string | null
@@ -1019,6 +1039,8 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
           project_bonus_id?: string | null
           status?: string | null
           team_member_id?: string | null
@@ -1031,6 +1053,8 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
           project_bonus_id?: string | null
           status?: string | null
           team_member_id?: string | null
