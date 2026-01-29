@@ -22,16 +22,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Upload, Pen, QrCode, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Upload, Pen, QrCode, FileText, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
 import { ContractWithDetails } from '@/hooks/useContracts';
 import { 
-  generateContractPDF, 
   generateContractPDFWithTTE,
   ContractData, 
   ContractCompanyInfo, 
   ContractClientInfo,
-  ContractTTEInfo,
 } from '@/lib/contractPdfGenerator';
+import { ContractPreviewDialog } from './ContractPreviewDialog';
 
 interface ContractSigningDialogProps {
   contract: ContractWithDetails | null;
@@ -56,97 +55,151 @@ export function ContractSigningDialog({
   const [tteSignerType, setTteSignerType] = useState<TTESignerType>('ceo');
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  
+  // Preview states
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    contractData: ContractData;
+    company: ContractCompanyInfo;
+    client: ContractClientInfo;
+    signerInfo: { name: string; position: string };
+    verificationId: string;
+  } | null>(null);
 
-  const handleTTESigning = async () => {
+  const getSignerInfo = (type: TTESignerType) => {
+    return type === 'ceo'
+      ? { name: 'Jejen Jaenudin, SM., M.Kom', position: 'Direktur Utama' }
+      : { name: 'Indra Apriana, S.Kom', position: 'Chief Operating Officer' };
+  };
+
+  const prepareContractData = async () => {
+    if (!contract || !user) return null;
+
+    // Get company settings
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company_profile')
+      .maybeSingle();
+
+    const { data: bankAccount } = await supabase
+      .from('bank_accounts')
+      .select('*')
+      .eq('is_default', true)
+      .maybeSingle();
+
+    const companySettings = settings?.value as Record<string, any> || {};
+    const signerInfo = getSignerInfo(tteSignerType);
+
+    const company: ContractCompanyInfo = {
+      name: companySettings.name || 'PT Zen Multimedia Indonesia',
+      npwp: companySettings.npwp || '41.439.836.2-409.000',
+      address: companySettings.address || 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, INDONESIA',
+      director_name: signerInfo.name,
+      director_position: signerInfo.position,
+      email: companySettings.email || 'info@zenmultimedia.co.id',
+      phone: companySettings.phone || '085121045798',
+      logo_url: companySettings.logo_url,
+    };
+
+    const client: ContractClientInfo = {
+      company_name: contract.client?.name || '',
+      npwp: contract.client?.npwp_badan || '',
+      address: contract.client?.address || '',
+      pic_name: contract.client_signer_name || contract.client?.pic_name || '',
+      pic_nik: contract.client_signer_nik || '',
+      pic_position: contract.client_signer_position || 'Direktur',
+      pic_phone: contract.client?.pic_phone || '',
+      pic_email: contract.client?.pic_email || '',
+    };
+
+    const paymentTerms = (contract.payment_terms_snapshot as any[] || []).map((t: any) => ({
+      term_name: t.term_name,
+      percentage: t.percentage,
+      description: t.description,
+    }));
+
+    const contractData: ContractData = {
+      contract_number: contract.contract_number,
+      contract_date: new Date(contract.created_at),
+      project_name: contract.project_name,
+      project_description: contract.project_description || '',
+      total_value: Number(contract.total_value),
+      start_date: new Date(contract.start_date),
+      end_date: new Date(contract.end_date),
+      duration_months: contract.duration_months,
+      payment_terms: paymentTerms,
+      bank_info: {
+        bank_name: bankAccount?.bank_name || 'BCA',
+        account_name: bankAccount?.account_name || 'PT Zen Multimedia Indonesia',
+        account_number: bankAccount?.account_number || '2312665213',
+        branch: 'Purwakarta',
+      },
+      additional_costs: (contract.additional_costs as any[] || []),
+      additional_notes: contract.additional_notes || undefined,
+      custom_clauses: (contract.custom_clauses as any[] || []),
+      maintenance_period_months: 6,
+      free_server_months: 12,
+      free_domain_months: 24,
+      max_payment_days: 4,
+    };
+
+    return { contractData, company, client, signerInfo };
+  };
+
+  const handlePreviewContract = async () => {
     if (!contract || !user) return;
+
+    setPreviewLoading(true);
+    try {
+      const data = await prepareContractData();
+      if (!data) throw new Error('Gagal mempersiapkan data kontrak');
+
+      // Generate HTML with TTE for preview
+      const { html, verificationId } = await generateContractPDFWithTTE(
+        data.contractData,
+        data.company,
+        data.client,
+        data.signerInfo.name,
+        data.signerInfo.position
+      );
+
+      setPreviewHtml(html);
+      setPreviewData({ ...data, verificationId });
+      setShowPreview(true);
+    } catch (error: any) {
+      console.error('Error generating preview:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal membuat preview kontrak',
+        variant: 'destructive',
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmTTE = async () => {
+    if (!contract || !user || !previewData) return;
 
     setLoading(true);
     try {
-      const signerInfo = tteSignerType === 'ceo'
-        ? { name: 'Jejen Jaenudin, SM., M.Kom', position: 'Direktur Utama' }
-        : { name: 'Indra Apriana, S.Kom', position: 'Chief Operating Officer' };
-
-      // Generate PDF blob first
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'company_profile')
-        .maybeSingle();
-
-      const { data: bankAccount } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('is_default', true)
-        .maybeSingle();
-
-      const companySettings = settings?.value as Record<string, any> || {};
-
-      const company: ContractCompanyInfo = {
-        name: companySettings.name || 'PT Zen Multimedia Indonesia',
-        npwp: companySettings.npwp || '41.439.836.2-409.000',
-        address: companySettings.address || 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, INDONESIA',
-        director_name: signerInfo.name,
-        director_position: signerInfo.position,
-        email: companySettings.email || 'info@zenmultimedia.co.id',
-        phone: companySettings.phone || '085121045798',
-        logo_url: companySettings.logo_url,
-      };
-
-      const client: ContractClientInfo = {
-        company_name: contract.client?.name || '',
-        npwp: contract.client?.npwp_badan || '',
-        address: contract.client?.address || '',
-        pic_name: contract.client_signer_name || contract.client?.pic_name || '',
-        pic_nik: contract.client_signer_nik || '',
-        pic_position: contract.client_signer_position || 'Direktur',
-        pic_phone: contract.client?.pic_phone || '',
-        pic_email: contract.client?.pic_email || '',
-      };
-
-      const paymentTerms = (contract.payment_terms_snapshot as any[] || []).map((t: any) => ({
-        term_name: t.term_name,
-        percentage: t.percentage,
-        description: t.description,
-      }));
-
-      const contractData: ContractData = {
-        contract_number: contract.contract_number,
-        contract_date: new Date(contract.created_at),
-        project_name: contract.project_name,
-        project_description: contract.project_description || '',
-        total_value: Number(contract.total_value),
-        start_date: new Date(contract.start_date),
-        end_date: new Date(contract.end_date),
-        duration_months: contract.duration_months,
-        payment_terms: paymentTerms,
-        bank_info: {
-          bank_name: bankAccount?.bank_name || 'BCA',
-          account_name: bankAccount?.account_name || 'PT Zen Multimedia Indonesia',
-          account_number: bankAccount?.account_number || '2312665213',
-          branch: 'Purwakarta',
-        },
-        additional_costs: (contract.additional_costs as any[] || []),
-        additional_notes: contract.additional_notes || undefined,
-        custom_clauses: (contract.custom_clauses as any[] || []),
-        maintenance_period_months: 6,
-        free_server_months: 12,
-        free_domain_months: 24,
-        max_payment_days: 4,
-      };
-
-      // Generate HTML content with TTE QR Code
+      // Generate HTML content with TTE QR Code (use same verification ID)
       const { html: htmlContent, verificationId } = await generateContractPDFWithTTE(
-        contractData,
-        company,
-        client,
-        signerInfo.name,
-        signerInfo.position
+        previewData.contractData,
+        previewData.company,
+        previewData.client,
+        previewData.signerInfo.name,
+        previewData.signerInfo.position,
+        previewData.verificationId
       );
 
       // Create a Blob from HTML content
       const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
 
-      // Upload to storage (HTML file that can be printed to PDF)
+      // Upload to storage
       const fileName = `contracts/${contract.id}/contract_${Date.now()}.html`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -164,13 +217,13 @@ export function ContractSigningDialog({
           original_file_name: `SPK_${contract.contract_number}.pdf`,
           original_file_path: fileName,
           file_type: 'application/pdf',
-          signer_name: signerInfo.name,
-          signer_position: signerInfo.position,
+          signer_name: previewData.signerInfo.name,
+          signer_position: previewData.signerInfo.position,
           signer_type: tteSignerType,
           qr_position: 'bottom-right',
           qr_page: 1,
           verification_id: verificationId,
-          tte_status: tteSignerType === 'ceo' ? 'pending' : 'pending',
+          tte_status: 'pending',
           submitted_at: new Date().toISOString(),
           submitted_by: user.id,
         })
@@ -187,8 +240,8 @@ export function ContractSigningDialog({
           tte_status: 'pending',
           tte_document_id: signedDoc.id,
           signer_type: tteSignerType,
-          signer_name: signerInfo.name,
-          signer_position: signerInfo.position,
+          signer_name: previewData.signerInfo.name,
+          signer_position: previewData.signerInfo.position,
         })
         .eq('id', contract.id);
 
@@ -199,6 +252,7 @@ export function ContractSigningDialog({
         description: `Kontrak berhasil diajukan untuk TTE ${tteSignerType.toUpperCase()}. Menunggu persetujuan.`,
       });
 
+      setShowPreview(false);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -274,122 +328,145 @@ export function ContractSigningDialog({
   const hasPendingTTE = contract.tte_status === 'pending';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Pen className="h-5 w-5" />
-            Tanda Tangan Kontrak
-          </DialogTitle>
-          <DialogDescription>
-            {contract.contract_number} - {contract.project_name}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pen className="h-5 w-5" />
+              Tanda Tangan Kontrak
+            </DialogTitle>
+            <DialogDescription>
+              {contract.contract_number} - {contract.project_name}
+            </DialogDescription>
+          </DialogHeader>
 
-        {isAlreadySigned ? (
-          <div className="flex flex-col items-center gap-4 py-6">
-            <CheckCircle2 className="h-12 w-12 text-primary" />
-            <p className="text-center text-muted-foreground">
-              Kontrak ini sudah ditandatangani
-            </p>
-          </div>
-        ) : hasPendingTTE ? (
-          <div className="flex flex-col items-center gap-4 py-6">
-            <AlertCircle className="h-12 w-12 text-primary" />
-            <p className="text-center text-muted-foreground">
-              Kontrak sedang menunggu persetujuan TTE
-            </p>
-          </div>
-        ) : (
-          <Tabs value={signingMethod} onValueChange={(v) => setSigningMethod(v as SigningMethod)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="tte" className="flex items-center gap-2">
-                <QrCode className="h-4 w-4" />
-                TTE Digital
-              </TabsTrigger>
-              <TabsTrigger value="wet" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload Basah
-              </TabsTrigger>
-            </TabsList>
+          {isAlreadySigned ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <CheckCircle2 className="h-12 w-12 text-primary" />
+              <p className="text-center text-muted-foreground">
+                Kontrak ini sudah ditandatangani
+              </p>
+            </div>
+          ) : hasPendingTTE ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <AlertCircle className="h-12 w-12 text-primary" />
+              <p className="text-center text-muted-foreground">
+                Kontrak sedang menunggu persetujuan TTE
+              </p>
+            </div>
+          ) : (
+            <Tabs value={signingMethod} onValueChange={(v) => setSigningMethod(v as SigningMethod)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="tte" className="flex items-center gap-2">
+                  <QrCode className="h-4 w-4" />
+                  TTE Digital
+                </TabsTrigger>
+                <TabsTrigger value="wet" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload Basah
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="tte" className="space-y-4 pt-4">
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Kontrak akan ditandatangani secara digital dengan TTE (Tanda Tangan Elektronik) 
-                  dan QR Code verifikasi.
-                </p>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Penandatangan (Pihak Pertama)</Label>
-                    <Select value={tteSignerType} onValueChange={(v) => setTteSignerType(v as TTESignerType)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ceo">CEO - Jejen Jaenudin, SM., M.Kom</SelectItem>
-                        <SelectItem value="coo">COO - Indra Apriana, S.Kom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>
-                      Kontrak akan menunggu persetujuan dari {tteSignerType.toUpperCase()} sebelum ditandatangani
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <Button onClick={handleTTESigning} disabled={loading} className="w-full">
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Ajukan TTE
-              </Button>
-            </TabsContent>
-
-            <TabsContent value="wet" className="space-y-4 pt-4">
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Upload kontrak yang sudah ditandatangani secara fisik (tanda tangan basah). 
-                  File harus dalam format PDF.
-                </p>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>File Kontrak (PDF)</Label>
-                    <Input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
-                    />
-                  </div>
-                  {uploadingFile && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4" />
-                      <span>{uploadingFile.name}</span>
+              <TabsContent value="tte" className="space-y-4 pt-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Kontrak akan ditandatangani secara digital dengan TTE (Tanda Tangan Elektronik) 
+                    dan QR Code verifikasi.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Penandatangan (Pihak Pertama)</Label>
+                      <Select value={tteSignerType} onValueChange={(v) => setTteSignerType(v as TTESignerType)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ceo">CEO - Jejen Jaenudin, SM., M.Kom</SelectItem>
+                          <SelectItem value="coo">COO - Indra Apriana, S.Kom</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <Separator />
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>
+                        Kontrak akan menunggu persetujuan dari {tteSignerType.toUpperCase()} sebelum ditandatangani
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <Button 
-                onClick={handleWetSignatureUpload} 
-                disabled={loading || !uploadingFile} 
-                className="w-full"
-              >
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Upload Kontrak
-              </Button>
-            </TabsContent>
-          </Tabs>
-        )}
+                <Button 
+                  onClick={handlePreviewContract} 
+                  disabled={previewLoading} 
+                  className="w-full"
+                >
+                  {previewLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4 mr-2" />
+                  )}
+                  Preview Kontrak & Ajukan TTE
+                </Button>
+              </TabsContent>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Tutup
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <TabsContent value="wet" className="space-y-4 pt-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Upload kontrak yang sudah ditandatangani secara fisik (tanda tangan basah). 
+                    File harus dalam format PDF.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>File Kontrak (PDF)</Label>
+                      <Input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
+                      />
+                    </div>
+                    {uploadingFile && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        <span>{uploadingFile.name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleWetSignatureUpload} 
+                  disabled={loading || !uploadingFile} 
+                  className="w-full"
+                >
+                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Upload Kontrak
+                </Button>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contract Preview Dialog */}
+      <ContractPreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        html={previewHtml}
+        title={`Preview Kontrak SPK - ${contract.contract_number}`}
+        description="Periksa kontrak sebelum mengajukan TTE. QR Code verifikasi akan ditampilkan sesuai preview."
+        onConfirm={handleConfirmTTE}
+        confirmLabel="Konfirmasi & Ajukan TTE"
+        confirmLoading={loading}
+        showConfirmButton={true}
+      />
+    </>
   );
 }
