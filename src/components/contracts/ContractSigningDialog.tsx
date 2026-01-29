@@ -26,9 +26,11 @@ import { Loader2, Upload, Pen, QrCode, FileText, AlertCircle, CheckCircle2 } fro
 import { ContractWithDetails } from '@/hooks/useContracts';
 import { 
   generateContractPDF, 
+  generateContractPDFWithTTE,
   ContractData, 
   ContractCompanyInfo, 
-  ContractClientInfo 
+  ContractClientInfo,
+  ContractTTEInfo,
 } from '@/lib/contractPdfGenerator';
 
 interface ContractSigningDialogProps {
@@ -132,8 +134,8 @@ export function ContractSigningDialog({
         max_payment_days: 4,
       };
 
-      // Generate HTML content
-      const htmlContent = await generateContractPDF(
+      // Generate HTML content with TTE QR Code
+      const { html: htmlContent, verificationId } = await generateContractPDFWithTTE(
         contractData,
         company,
         client,
@@ -153,9 +155,6 @@ export function ContractSigningDialog({
         });
 
       if (uploadError) throw uploadError;
-
-      // Generate verification ID
-      const verificationId = btoa(contract.contract_number).substring(0, 16).toUpperCase();
 
       // Create signed_documents record
       const { data: signedDoc, error: docError } = await supabase
