@@ -66,7 +66,8 @@ export function MonthlyRevenueChart() {
         .eq('key', 'targets')
         .maybeSingle();
 
-      const monthlyTarget = (targetsData?.value as any)?.monthly_target_2026 || 500000000;
+      const targetsValue = targetsData?.value as { monthly_target_2026?: number } | null;
+      const monthlyTarget = targetsValue?.monthly_target_2026 || 500000000;
 
       // Group by month
       const monthlyData: { [key: number]: number } = {};

@@ -105,7 +105,7 @@ export default function Dashboard() {
         .eq('key', 'targets')
         .maybeSingle();
 
-      const targets = targetsData?.value as any || { monthly_target_2026: 500000000, yearly_target_2026: 6000000000 };
+      const targets = (targetsData?.value as { monthly_target_2026?: number; yearly_target_2026?: number } | null) || { monthly_target_2026: 500000000, yearly_target_2026: 6000000000 };
 
       const totalRevenue = paidInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
       const pendingAmount = pendingInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
