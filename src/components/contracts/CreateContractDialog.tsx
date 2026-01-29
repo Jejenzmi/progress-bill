@@ -31,10 +31,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Plus, Trash2, FileText, Calendar, LayoutTemplate } from 'lucide-react';
+import { Loader2, Plus, Trash2, FileText, Calendar, LayoutTemplate, Eye } from 'lucide-react';
 import { formatCurrency } from '@/data/mockData';
 import { getPaymentTermTemplates } from '@/components/settings/PaymentTermTemplateManager';
 import { getContractTemplates, getDefaultContractTemplate } from '@/components/settings/ContractTemplateManager';
+import { ContractPreviewDialog } from './ContractPreviewDialog';
+import {
+  generateContractPDF,
+  ContractData,
+  ContractCompanyInfo,
+  ContractClientInfo,
+} from '@/lib/contractPdfGenerator';
 
 interface Quotation {
   id: string;
@@ -94,7 +101,11 @@ export function CreateContractDialog({
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   
+  // Preview state
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
   // Form state
   const [contractNumber, setContractNumber] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -327,7 +338,88 @@ export function CreateContractDialog({
 
   const totalPercentage = paymentTerms.reduce((sum, t) => sum + (Number(t.percentage) || 0), 0);
 
-  const handleSubmit = async () => {
+  const getSignerInfo = () => {
+    return signerType === 'ceo' 
+      ? { name: 'Jejen Jaenudin, SM., M.Kom', position: 'Direktur Utama' }
+      : { name: 'Indra Apriana, S.Kom', position: 'Chief Operating Officer' };
+  };
+
+  const prepareContractPreviewData = async () => {
+    if (!quotation || !user) return null;
+
+    // Get company settings
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company_profile')
+      .maybeSingle();
+
+    const { data: bankAccount } = await supabase
+      .from('bank_accounts')
+      .select('*')
+      .eq('is_default', true)
+      .maybeSingle();
+
+    const companySettings = settings?.value as Record<string, any> || {};
+    const signerInfo = getSignerInfo();
+
+    const company: ContractCompanyInfo = {
+      name: companySettings.name || 'PT Zen Multimedia Indonesia',
+      npwp: companySettings.npwp || '41.439.836.2-409.000',
+      address: companySettings.address || 'Jl. Taman Pahlawan No.166, Purwamekar, Purwakarta, INDONESIA',
+      director_name: signerInfo.name,
+      director_position: signerInfo.position,
+      email: companySettings.email || 'info@zenmultimedia.co.id',
+      phone: companySettings.phone || '085121045798',
+      logo_url: companySettings.logo_url,
+    };
+
+    const client: ContractClientInfo = {
+      company_name: quotation.clients?.name || '',
+      npwp: quotation.clients?.npwp_badan || '',
+      address: quotation.clients?.address || '',
+      pic_name: clientSignerName || quotation.clients?.pic_name || '',
+      pic_nik: clientSignerNik || '',
+      pic_position: clientSignerPosition,
+      pic_phone: quotation.clients?.pic_phone || '',
+      pic_email: quotation.clients?.pic_email || '',
+    };
+
+    const contractValue = quotation.negotiation_status === 'approved' && quotation.negotiated_price
+      ? quotation.negotiated_price
+      : quotation.grand_total || 0;
+
+    const contractData: ContractData = {
+      contract_number: contractNumber,
+      contract_date: new Date(),
+      project_name: quotation.project_name,
+      project_description: projectDescription,
+      total_value: contractValue,
+      start_date: new Date(startDate),
+      end_date: new Date(endDate),
+      duration_months: durationMonths,
+      payment_terms: paymentTerms,
+      bank_info: {
+        bank_name: bankAccount?.bank_name || 'BCA',
+        account_name: bankAccount?.account_name || 'PT Zen Multimedia Indonesia',
+        account_number: bankAccount?.account_number || '2312665213',
+        branch: 'Purwakarta',
+      },
+      additional_costs: additionalCosts.filter(c => c.description && c.amount > 0),
+      additional_notes: additionalNotes || undefined,
+      custom_clauses: customClauses.filter(c => c.title && c.content),
+      maintenance_period_months: maintenancePeriod,
+      free_server_months: freeServerMonths,
+      free_domain_months: freeDomainMonths,
+      max_payment_days: maxPaymentDays,
+      party1_obligations: party1Obligations.filter(o => o.text.trim()),
+      party2_obligations: party2Obligations.filter(o => o.text.trim()),
+    };
+
+    return { contractData, company, client, signerInfo };
+  };
+
+  const handlePreviewContract = async () => {
     if (!quotation || !user) return;
 
     // Validate
@@ -348,12 +440,40 @@ export function CreateContractDialog({
       return;
     }
 
+    setPreviewLoading(true);
+    try {
+      const data = await prepareContractPreviewData();
+      if (!data) throw new Error('Gagal mempersiapkan data kontrak');
+
+      // Generate HTML preview (without TTE for now - just preview)
+      const html = await generateContractPDF(
+        data.contractData,
+        data.company,
+        data.client,
+        data.signerInfo.name,
+        data.signerInfo.position
+      );
+
+      setPreviewHtml(html);
+      setShowPreview(true);
+    } catch (error: any) {
+      console.error('Error generating preview:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal membuat preview kontrak',
+        variant: 'destructive',
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!quotation || !user) return;
+
     setLoading(true);
     try {
-      // Get signer info
-      const signerInfo = signerType === 'ceo' 
-        ? { name: 'Jejen Jaenudin, SM., M.Kom', position: 'Direktur Utama' }
-        : { name: 'Indra Apriana, S.Kom', position: 'Chief Operating Officer' };
+      const signerInfo = getSignerInfo();
 
       // Get company settings
       const { data: settings } = await supabase
@@ -405,6 +525,7 @@ export function CreateContractDialog({
         description: `Kontrak ${contractNumber} berhasil dibuat`,
       });
 
+      setShowPreview(false);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -815,12 +936,32 @@ export function CreateContractDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Batal
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || totalPercentage !== 100}>
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Buat Kontrak
+          <Button 
+            onClick={handlePreviewContract} 
+            disabled={previewLoading || totalPercentage !== 100}
+          >
+            {previewLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4 mr-2" />
+            )}
+            Preview Kontrak
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Contract Preview Dialog */}
+      <ContractPreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        html={previewHtml}
+        title={`Preview Kontrak SPK - ${contractNumber}`}
+        description="Periksa kontrak sebelum menyimpan. Setelah konfirmasi, kontrak akan dibuat dalam status draft."
+        onConfirm={handleConfirmCreate}
+        confirmLabel="Konfirmasi & Buat Kontrak"
+        confirmLoading={loading}
+        showConfirmButton={true}
+      />
     </Dialog>
   );
 }
