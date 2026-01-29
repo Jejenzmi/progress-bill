@@ -1,8 +1,12 @@
 import { ReactNode } from 'react';
 import { AppSidebar } from './AppSidebar';
-import { Search } from 'lucide-react';
+import { Search, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { NotificationBell } from './NotificationBell';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,6 +15,19 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await signOut();
+    toast({
+      title: 'Logout Berhasil',
+      description: 'Anda telah keluar dari sistem.',
+    });
+    navigate('/auth');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
@@ -35,6 +52,16 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             </div>
             
             <NotificationBell />
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </header>
 
