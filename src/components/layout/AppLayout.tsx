@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { Search, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,16 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -18,6 +28,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -56,7 +67,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleLogout}
+              onClick={() => setShowLogoutDialog(true)}
               className="text-muted-foreground hover:text-destructive"
               title="Logout"
             >
@@ -70,6 +81,24 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin keluar dari sistem? Anda perlu login kembali untuk mengakses aplikasi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ya, Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
