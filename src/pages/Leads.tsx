@@ -695,8 +695,8 @@ export default function Leads() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {selectedLead ? 'Edit Lead' : 'Tambah Lead Baru'}
             </DialogTitle>
@@ -705,7 +705,7 @@ export default function Leads() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2" style={{ maxHeight: 'calc(80vh - 160px)' }}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama *</Label>
@@ -809,7 +809,7 @@ export default function Leads() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Batal
             </Button>
