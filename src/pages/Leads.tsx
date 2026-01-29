@@ -755,7 +755,7 @@ export default function Leads() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px]">
                     <SelectItem value="cold">Cold</SelectItem>
                     <SelectItem value="warm">Warm</SelectItem>
                     <SelectItem value="hot">Hot</SelectItem>
@@ -771,7 +771,7 @@ export default function Leads() {
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih source" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px]">
                     {sourceOptions.map((src) => (
                       <SelectItem key={src} value={src}>{src}</SelectItem>
                     ))}
