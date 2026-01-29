@@ -133,11 +133,14 @@ export default function NegotiationHistory() {
 
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
 
-      const recordsWithNames = (data || []).map(r => ({
-        ...r,
-        client_name: (r.clients as any)?.name || 'N/A',
-        negotiator_name: r.negotiated_by ? profileMap.get(r.negotiated_by) || 'Unknown' : 'N/A',
-      }));
+      const recordsWithNames = (data || []).map(r => {
+        const clientData = r.clients as { name?: string } | null;
+        return {
+          ...r,
+          client_name: clientData?.name || 'N/A',
+          negotiator_name: r.negotiated_by ? profileMap.get(r.negotiated_by) || 'Unknown' : 'N/A',
+        };
+      });
 
       setRecords(recordsWithNames);
     } catch (error) {

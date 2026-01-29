@@ -72,14 +72,17 @@ export default function TeamBonus() {
 
         const marginMap = new Map(quotationsData?.map(q => [q.id, q.margin_percentage]) || []);
 
-        const projectsWithMargin: ProjectOption[] = projectsData.map(p => ({
-          id: p.id,
-          project_name: p.project_name,
-          total_value: p.total_value,
-          margin_percentage: marginMap.get(p.quotation_id || '') || null,
-          status: p.status,
-          client_name: (p.clients as any)?.name || 'N/A',
-        }));
+        const projectsWithMargin: ProjectOption[] = projectsData.map(p => {
+          const clientData = p.clients as { name?: string } | null;
+          return {
+            id: p.id,
+            project_name: p.project_name,
+            total_value: p.total_value,
+            margin_percentage: marginMap.get(p.quotation_id || '') || null,
+            status: p.status,
+            client_name: clientData?.name || 'N/A',
+          };
+        });
 
         setProjects(projectsWithMargin);
       }
