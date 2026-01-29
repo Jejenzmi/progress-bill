@@ -168,6 +168,63 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_templates: {
+        Row: {
+          confidentiality_terms: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          dispute_terms: string | null
+          force_majeure_terms: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          maintenance_terms: string | null
+          name: string
+          party1_obligations: Json | null
+          party2_obligations: Json | null
+          sanction_terms: string | null
+          standard_clauses: Json | null
+          updated_at: string
+        }
+        Insert: {
+          confidentiality_terms?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dispute_terms?: string | null
+          force_majeure_terms?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maintenance_terms?: string | null
+          name: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          sanction_terms?: string | null
+          standard_clauses?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          confidentiality_terms?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dispute_terms?: string | null
+          force_majeure_terms?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maintenance_terms?: string | null
+          name?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          sanction_terms?: string | null
+          standard_clauses?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           additional_costs: Json | null
