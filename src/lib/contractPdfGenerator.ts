@@ -1,6 +1,65 @@
 // Contract PDF Generator for Surat Perjanjian Kerjasama PT Zen Multimedia Indonesia
 
 import { formatCurrencyPlain, numberToWords, formatDate } from './quotationPdfGenerator';
+import QRCode from 'qrcode';
+
+const VERIFY_BASE_URL = 'https://crm.zefin.id/verify';
+
+/**
+ * Generate verification data for contract TTE
+ */
+const generateContractVerificationData = (
+  contractNumber: string,
+  signerName: string,
+  signerPosition: string,
+  signedAt: Date,
+  verificationId: string
+): string => {
+  return JSON.stringify({
+    document: `SPK ${contractNumber}`,
+    signer: signerName,
+    position: signerPosition,
+    signed_at: new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(signedAt) + ' WIB',
+    verification_id: verificationId,
+    verify_url: `${VERIFY_BASE_URL}?id=${verificationId}`,
+  }, null, 2);
+};
+
+/**
+ * Generate QR code as base64 data URL for contract
+ */
+const generateContractQRCode = async (data: string): Promise<string> => {
+  try {
+    return await QRCode.toDataURL(data, {
+      width: 120,
+      margin: 1,
+      color: {
+        dark: '#1a5f7a',
+        light: '#ffffff',
+      },
+      errorCorrectionLevel: 'M',
+    });
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    return '';
+  }
+};
+
+/**
+ * Generate unique verification ID for contract
+ */
+const generateContractVerificationId = (contractNumber: string): string => {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  const hash = btoa(contractNumber).replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+  return `SPK${hash}${random}`.toUpperCase().substring(0, 12);
+};
 
 export interface ContractCompanyInfo {
   name: string;
@@ -81,12 +140,21 @@ const formatDateShort = (date: Date): string => {
   return `${date.getDate()} ${['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][date.getMonth()]} ${date.getFullYear()}`;
 };
 
+export interface ContractTTEInfo {
+  enabled: boolean;
+  signerName: string;
+  signerPosition: string;
+  verificationId?: string;
+  signedAt?: Date;
+}
+
 export const generateContractPDF = async (
   contract: ContractData,
   company: ContractCompanyInfo,
   client: ContractClientInfo,
   signerName?: string,
-  signerPosition?: string
+  signerPosition?: string,
+  tteInfo?: ContractTTEInfo
 ): Promise<string> => {
   // Generate payment terms HTML
   const paymentTermsHTML = contract.payment_terms.map((term, idx) => `
@@ -165,6 +233,32 @@ export const generateContractPDF = async (
   let logoSrc = (await toDataUrl(company.logo_url)) || (await toDataUrl(logoLocalPath)) || logoLocalPath;
 
   const totalValueWords = numberToWords(contract.total_value).replace(' Rupiah', '');
+
+  // Generate TTE QR Code if enabled
+  let qrCodeDataUrl = '';
+  let verificationId = '';
+  let signedAtFormatted = '';
+  
+  if (tteInfo?.enabled) {
+    verificationId = tteInfo.verificationId || generateContractVerificationId(contract.contract_number);
+    const signedAt = tteInfo.signedAt || new Date();
+    signedAtFormatted = new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(signedAt) + ' WIB';
+    
+    const verificationData = generateContractVerificationData(
+      contract.contract_number,
+      tteInfo.signerName,
+      tteInfo.signerPosition,
+      signedAt,
+      verificationId
+    );
+    qrCodeDataUrl = await generateContractQRCode(verificationData);
+  }
 
   return `
     <!DOCTYPE html>
@@ -503,7 +597,20 @@ export const generateContractPDF = async (
         .signature-company {
           font-size: 10pt;
           color: #64748b;
-          margin-bottom: 70px;
+          margin-bottom: 15px;
+        }
+        
+        .signature-qr {
+          margin: 10px auto;
+        }
+        
+        .signature-qr img {
+          width: 90px;
+          height: 90px;
+          border: 2px solid #1a5f7a;
+          border-radius: 6px;
+          padding: 4px;
+          background: white;
         }
         
         .signature-line {
@@ -522,6 +629,78 @@ export const generateContractPDF = async (
           font-size: 10pt;
           color: #64748b;
           font-style: italic;
+        }
+        
+        /* TTE Section */
+        .tte-section {
+          margin-top: 30px;
+          display: flex;
+          align-items: flex-start;
+          gap: 15px;
+          padding: 15px;
+          background: linear-gradient(135deg, #f8fffe 0%, #f0f9ff 100%);
+          border: 1px solid #1a5f7a40;
+          border-radius: 8px;
+          page-break-inside: avoid;
+        }
+        
+        .tte-qr {
+          flex-shrink: 0;
+        }
+        
+        .tte-qr img {
+          width: 100px;
+          height: 100px;
+          border: 2px solid #1a5f7a;
+          border-radius: 4px;
+          padding: 4px;
+          background: white;
+        }
+        
+        .tte-info {
+          flex: 1;
+        }
+        
+        .tte-title {
+          font-size: 11pt;
+          font-weight: 600;
+          color: #1a5f7a;
+          margin-bottom: 8px;
+          padding-bottom: 5px;
+          border-bottom: 1px solid #1a5f7a40;
+        }
+        
+        .tte-detail {
+          font-size: 9pt;
+          margin-bottom: 3px;
+          display: flex;
+          gap: 8px;
+        }
+        
+        .tte-label {
+          color: #666;
+          min-width: 100px;
+        }
+        
+        .tte-hash {
+          margin-top: 8px;
+          font-family: 'Courier New', monospace;
+          font-size: 8pt;
+          color: #1a5f7a;
+          background: #1a5f7a10;
+          padding: 4px 8px;
+          border-radius: 4px;
+          display: inline-block;
+        }
+        
+        .tte-verified {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: #059669;
+          font-size: 9pt;
+          font-weight: 600;
+          margin-top: 5px;
         }
         
         /* ===== FOOTER SECTION ===== */
@@ -893,20 +1072,59 @@ export const generateContractPDF = async (
                 <td class="signature-box">
                   <p class="signature-party-label">PIHAK PERTAMA</p>
                   <p class="signature-company">${company.name}</p>
+                  ${tteInfo?.enabled && qrCodeDataUrl ? `
+                  <div class="signature-qr">
+                    <img src="${qrCodeDataUrl}" alt="QR Code TTE" />
+                  </div>
+                  ` : `
+                  <div style="height: 70px;"></div>
+                  `}
                   <div class="signature-line"></div>
-                  <p class="signature-name">${signerName || company.director_name}</p>
-                  <p class="signature-position">${signerPosition || company.director_position}</p>
+                  <p class="signature-name">${tteInfo?.enabled ? tteInfo.signerName : (signerName || company.director_name)}</p>
+                  <p class="signature-position">${tteInfo?.enabled ? tteInfo.signerPosition : (signerPosition || company.director_position)}</p>
                 </td>
                 <td style="width: 10%;"></td>
                 <td class="signature-box">
                   <p class="signature-party-label">PIHAK KEDUA</p>
                   <p class="signature-company">${client.company_name}</p>
+                  <div style="height: ${tteInfo?.enabled ? '90px' : '70px'};"></div>
                   <div class="signature-line"></div>
                   <p class="signature-name">${client.pic_name}</p>
                   <p class="signature-position">${client.pic_position || 'Direktur'}</p>
                 </td>
               </tr>
             </table>
+            
+            ${tteInfo?.enabled ? `
+            <!-- TTE Verification Section -->
+            <div class="tte-section">
+              <div class="tte-qr">
+                ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code TTE" />` : ''}
+              </div>
+              <div class="tte-info">
+                <div class="tte-title">Tanda Tangan Elektronik (TTE)</div>
+                <div class="tte-detail">
+                  <span class="tte-label">Dokumen:</span>
+                  <span>SPK ${contract.contract_number}</span>
+                </div>
+                <div class="tte-detail">
+                  <span class="tte-label">Ditandatangani:</span>
+                  <span>${signedAtFormatted}</span>
+                </div>
+                <div class="tte-detail">
+                  <span class="tte-label">Oleh:</span>
+                  <span>${tteInfo.signerName} (${tteInfo.signerPosition})</span>
+                </div>
+                <div class="tte-hash">
+                  ID Verifikasi: ${verificationId}
+                </div>
+                <div class="tte-verified">
+                  <span>✓</span>
+                  <span>Dokumen ini sah & terverifikasi oleh ${company.name}</span>
+                </div>
+              </div>
+            </div>
+            ` : ''}
           </div>
         </div>
         
@@ -932,9 +1150,10 @@ export const printContractPDF = async (
   company: ContractCompanyInfo,
   client: ContractClientInfo,
   signerName?: string,
-  signerPosition?: string
+  signerPosition?: string,
+  tteInfo?: ContractTTEInfo
 ): Promise<void> => {
-  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition);
+  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition, tteInfo);
   
   const printWindow = window.open('', '_blank', 'width=800,height=600');
   if (printWindow) {
@@ -958,10 +1177,40 @@ export const generateContractPDFBlob = async (
   company: ContractCompanyInfo,
   client: ContractClientInfo,
   signerName?: string,
-  signerPosition?: string
+  signerPosition?: string,
+  tteInfo?: ContractTTEInfo
 ): Promise<Blob> => {
-  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition);
+  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition, tteInfo);
   
   // Create a Blob from the HTML content
   return new Blob([htmlContent], { type: 'text/html' });
+};
+
+/**
+ * Generate contract PDF with TTE enabled
+ */
+export const generateContractPDFWithTTE = async (
+  contract: ContractData,
+  company: ContractCompanyInfo,
+  client: ContractClientInfo,
+  signerName: string,
+  signerPosition: string,
+  verificationId?: string
+): Promise<{ html: string; verificationId: string }> => {
+  const verId = verificationId || generateContractVerificationId(contract.contract_number);
+  
+  const tteInfo: ContractTTEInfo = {
+    enabled: true,
+    signerName,
+    signerPosition,
+    verificationId: verId,
+    signedAt: new Date(),
+  };
+  
+  const htmlContent = await generateContractPDF(contract, company, client, signerName, signerPosition, tteInfo);
+  
+  return {
+    html: htmlContent,
+    verificationId: verId,
+  };
 };
