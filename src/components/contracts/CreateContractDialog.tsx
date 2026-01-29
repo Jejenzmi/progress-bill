@@ -31,9 +31,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Plus, Trash2, FileText, Calendar } from 'lucide-react';
+import { Loader2, Plus, Trash2, FileText, Calendar, LayoutTemplate } from 'lucide-react';
 import { formatCurrency } from '@/data/mockData';
 import { getPaymentTermTemplates } from '@/components/settings/PaymentTermTemplateManager';
+import { getContractTemplates, getDefaultContractTemplate } from '@/components/settings/ContractTemplateManager';
 
 interface Quotation {
   id: string;
@@ -125,6 +126,10 @@ export function CreateContractDialog({
   const [freeDomainMonths, setFreeDomainMonths] = useState(24);
   const [maxPaymentDays, setMaxPaymentDays] = useState(4);
 
+  // Contract templates
+  const [contractTemplates, setContractTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+
   useEffect(() => {
     if (open && quotation) {
       initializeForm();
@@ -151,6 +156,25 @@ export function CreateContractDialog({
       setClientSignerName(quotation.clients.pic_name);
     }
     
+    // Load contract templates
+    try {
+      const templates = await getContractTemplates();
+      setContractTemplates(templates);
+      
+      // Get default template and apply it
+      const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+      if (defaultTemplate) {
+        setSelectedTemplateId(defaultTemplate.id);
+        applyTemplate(defaultTemplate);
+      } else {
+        // Fallback to hardcoded defaults if no templates exist
+        setDefaultObligations();
+      }
+    } catch (error) {
+      console.error('Error loading contract templates:', error);
+      setDefaultObligations();
+    }
+    
     // Load payment term templates
     try {
       const templates = await getPaymentTermTemplates();
@@ -172,22 +196,49 @@ export function CreateContractDialog({
         { term_name: 'Termin 3 (Final)', percentage: 40, description: 'setelah pengujian dan penerimaan sistem (User Acceptance Test) serta sistem go-live' },
       ]);
     }
-    
-    // Set default obligations for PIHAK PERTAMA
+  };
+
+  const setDefaultObligations = () => {
     setParty1Obligations([
       { text: 'Menyediakan tenaga ahli yang kompeten dan berpengalaman untuk pelaksanaan proyek.' },
       { text: 'Menyelesaikan proyek sesuai dengan jadwal yang telah disepakati dalam perjanjian ini.' },
       { text: 'Memberikan dukungan teknis dan pemeliharaan setelah sistem selesai dibangun sesuai ketentuan pada Pasal 5.' },
       { text: 'Menyediakan dokumentasi sistem dan memberikan pelatihan kepada pengguna.' },
     ]);
-    
-    // Set default obligations for PIHAK KEDUA
     setParty2Obligations([
       { text: 'Menyediakan data dan informasi yang dibutuhkan oleh PIHAK PERTAMA untuk menyelesaikan proyek.' },
       { text: 'Melakukan review terhadap hasil kerja PIHAK PERTAMA sesuai dengan jadwal yang disepakati.' },
       { text: 'Membayar biaya proyek sesuai dengan jadwal pembayaran yang disepakati.' },
       { text: 'Menyediakan akses untuk pengujian sistem di lingkungan PIHAK KEDUA.' },
     ]);
+  };
+
+  const applyTemplate = (template: any) => {
+    // Apply party 1 obligations
+    if (Array.isArray(template.party1_obligations)) {
+      setParty1Obligations(template.party1_obligations.map((text: string) => ({ text })));
+    }
+    
+    // Apply party 2 obligations
+    if (Array.isArray(template.party2_obligations)) {
+      setParty2Obligations(template.party2_obligations.map((text: string) => ({ text })));
+    }
+    
+    // Apply standard clauses
+    if (Array.isArray(template.standard_clauses)) {
+      setCustomClauses(template.standard_clauses.map((c: any) => ({
+        title: c.title || '',
+        content: c.content || '',
+      })));
+    }
+  };
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = contractTemplates.find(t => t.id === templateId);
+    if (template) {
+      applyTemplate(template);
+    }
   };
 
   const handleAddPaymentTerm = () => {
@@ -416,6 +467,32 @@ export function CreateContractDialog({
                 </div>
               </div>
             </div>
+
+            {/* Template Selection */}
+            {contractTemplates.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <LayoutTemplate className="h-4 w-4" />
+                  Template Kontrak
+                </Label>
+                <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contractTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                        {template.is_default && ' (Default)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Template akan mengisi otomatis Hak/Kewajiban dan Pasal standar. Anda dapat mengeditnya setelah dipilih.
+                </p>
+              </div>
+            )}
 
             {/* Contract Number & Dates */}
             <div className="grid grid-cols-2 gap-4">

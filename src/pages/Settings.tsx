@@ -17,6 +17,7 @@ import { PaymentTermTemplateManager } from '@/components/settings/PaymentTermTem
 import { ProductCatalogManager } from '@/components/settings/ProductCatalogManager';
 import { MarginSettingsCard } from '@/components/settings/MarginSettingsCard';
 import { SettingsBackupRestore } from '@/components/settings/SettingsBackupRestore';
+import { ContractTemplateManager } from '@/components/settings/ContractTemplateManager';
 
 interface SettingsData {
   company_profile: {
@@ -414,6 +415,11 @@ export default function Settings() {
         {/* Payment Term Templates */}
         {isAdmin && (
           <PaymentTermTemplateManager disabled={!isAdmin} />
+        )}
+
+        {/* Contract Templates */}
+        {isAdmin && (
+          <ContractTemplateManager />
         )}
 
         {/* Legacy Targets (for backwards compatibility) */}
