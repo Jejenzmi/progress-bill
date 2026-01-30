@@ -72,6 +72,7 @@ interface Quotation {
   negotiation_approved_at: string | null;
   negotiation_approved_by: string | null;
   negotiation_rejection_reason: string | null;
+  quotation_number: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -201,8 +202,11 @@ export default function QuotationList() {
         ? new Date(quotation.valid_until) 
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+      // Use stored quotation_number or fallback to ID-based format
+      const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
+      
       const quotationData = {
-        quotationNumber: `QUO-${quotation.id.substring(0, 8).toUpperCase()}`,
+        quotationNumber,
         quotationDate: new Date(quotation.created_at),
         validUntil,
         clientName: quotation.clients?.name || 'Klien',
@@ -245,7 +249,8 @@ export default function QuotationList() {
         ? new Date(quotation.valid_until) 
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-      const quotationNumber = `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
+      // Use stored quotation_number or fallback to ID-based format
+      const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
       
       const quotationData = {
         quotationNumber,
