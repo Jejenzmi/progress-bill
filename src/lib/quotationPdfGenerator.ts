@@ -479,24 +479,24 @@ export const generateQuotationPDF = async (
           bottom: 0;
           left: 0;
           right: 0;
-          height: 80px;
+          height: 50px;
         }
         .footer-curve {
           position: absolute;
           bottom: 0;
           right: 0;
-          width: 180px;
-          height: 140px;
+          width: 120px;
+          height: 90px;
           background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
           border-radius: 100% 0 0 0;
-          transform: translate(20px, 40px);
+          transform: translate(20px, 30px);
         }
         .footer-dots {
           position: absolute;
           bottom: 0;
           right: 0;
-          width: 140px;
-          height: 100px;
+          width: 100px;
+          height: 70px;
           background: radial-gradient(circle, rgba(255,255,255,0.25) 1px, transparent 1px);
           background-size: 6px 6px;
           mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.5) 0%, transparent 70%);
@@ -507,25 +507,28 @@ export const generateQuotationPDF = async (
           bottom: 0;
           left: 0;
           right: 0;
-          height: 6px;
+          height: 4px;
           background: #2c3e50;
         }
         .footer-contact {
           position: absolute;
-          bottom: 15px;
+          bottom: 8px;
           left: 15mm;
-          font-size: 7pt;
+          font-size: 6pt;
           color: #333;
+          display: flex;
+          gap: 15px;
+          align-items: center;
+          flex-wrap: wrap;
         }
         .footer-row {
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 2px;
+          gap: 4px;
         }
         .footer-row svg {
-          width: 10px;
-          height: 10px;
+          width: 8px;
+          height: 8px;
           fill: #3d5a80;
           flex-shrink: 0;
         }
