@@ -297,6 +297,8 @@ export default function QuotationList() {
                 signer_position: tteSettings.signer_position || '',
                 signed_at: new Date().toISOString(),
                 verification_id: verificationId,
+                tte_status: 'signed',
+                signer_type: 'self',
               });
             
             if (dbError) {
