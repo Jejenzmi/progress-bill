@@ -478,6 +478,7 @@ export default function QuotationList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>No. Quotation</TableHead>
                   <TableHead>Proyek</TableHead>
                   <TableHead>Klien</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -490,6 +491,9 @@ export default function QuotationList() {
               <TableBody>
                 {filteredQuotations.map((quotation) => (
                   <TableRow key={quotation.id}>
+                    <TableCell className="font-mono text-sm">
+                      {quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {quotation.project_name}
                     </TableCell>
