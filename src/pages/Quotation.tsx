@@ -173,6 +173,11 @@ export default function Quotation() {
         setEditingQuotationId(quotation.id);
         setProjectName(quotation.project_name);
         
+        // Set quotation number from database (fixed, never changes)
+        if ((quotation as any).quotation_number) {
+          setQuotationNumber((quotation as any).quotation_number);
+        }
+        
         // Set client info
         if (quotation.client_id) {
           setSelectedClientId(quotation.client_id);
@@ -390,13 +395,15 @@ export default function Quotation() {
         valid_until: validUntil.toISOString().split('T')[0],
         status: 'Draft',
         margin_percentage: usedMarginPercentage,
+        quotation_number: quotationNumber,
       };
 
       if (editingQuotationId) {
-        // Update existing
+        // Update existing (don't change the quotation_number)
+        const { quotation_number: _, ...updateData } = quotationData;
         const { error } = await supabase
           .from('quotations')
-          .update(quotationData)
+          .update(updateData)
           .eq('id', editingQuotationId);
 
         if (error) throw error;
@@ -406,7 +413,7 @@ export default function Quotation() {
           description: 'Quotation berhasil diupdate',
         });
       } else {
-        // Insert new
+        // Insert new with quotation_number
         const { error } = await supabase.from('quotations').insert([quotationData]);
 
         if (error) throw error;
