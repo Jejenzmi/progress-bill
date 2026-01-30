@@ -92,10 +92,34 @@ export default function Quotation() {
   
   // Margin tracking (from catalog products)
   const [usedMarginPercentage, setUsedMarginPercentage] = useState<number | null>(null);
+  const [defaultMarginPercentage, setDefaultMarginPercentage] = useState<number>(20);
+  const [applyMarginToMandays, setApplyMarginToMandays] = useState<boolean>(true);
 
-  // Fetch quotation prefix from settings and generate quotation number on mount or load edit data
+  // Fetch quotation settings, margin settings on mount
   useEffect(() => {
-    const loadData = async () => {
+    const loadSettings = async () => {
+      // Fetch margin settings
+      try {
+        const { data: marginData } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'margin_settings')
+          .maybeSingle();
+        
+        if (marginData?.value && typeof marginData.value === 'object') {
+          const settings = marginData.value as { default_margin_percentage?: number; apply_to_mandays?: boolean };
+          if (settings.default_margin_percentage !== undefined) {
+            setDefaultMarginPercentage(settings.default_margin_percentage);
+            setUsedMarginPercentage(settings.default_margin_percentage);
+          }
+          if (settings.apply_to_mandays !== undefined) {
+            setApplyMarginToMandays(settings.apply_to_mandays);
+          }
+        }
+      } catch (error) {
+        console.log('Using default margin settings');
+      }
+
       if (editId) {
         loadQuotationForEdit(editId);
       } else {
@@ -107,7 +131,7 @@ export default function Quotation() {
             .from('settings')
             .select('value')
             .eq('key', 'quotation_settings')
-            .single();
+            .maybeSingle();
           
           if (data?.value && typeof data.value === 'object') {
             const settings = data.value as { prefix?: string; last_number?: number };
@@ -131,7 +155,7 @@ export default function Quotation() {
       }
     };
     
-    loadData();
+    loadSettings();
   }, [editId]);
 
   const loadQuotationForEdit = async (id: string) => {
@@ -740,6 +764,20 @@ export default function Quotation() {
 
                 {/* Subtotal & PPN */}
                 <div className="border-t pt-4 mt-4 space-y-3">
+                  {/* Margin Info */}
+                  {usedMarginPercentage !== null && (
+                    <div className="flex items-center justify-between px-2 pb-2 border-b bg-muted/50 rounded-md p-2">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">Margin Profit:</span>
+                        <span className="text-sm font-bold text-primary">{usedMarginPercentage}%</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {applyMarginToMandays ? 'Diterapkan ke semua item' : 'Hanya untuk produk katalog'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* PPN Mode Selection */}
                   <div className="flex items-center gap-4 px-2 pb-2 border-b">
                     <span className="text-sm font-medium">Mode PPN:</span>
