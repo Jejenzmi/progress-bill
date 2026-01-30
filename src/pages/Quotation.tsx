@@ -118,8 +118,37 @@ export default function Quotation() {
         const now = new Date();
         const month = now.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
         const year = now.getFullYear();
-        const random = Math.floor(Math.random() * 900) + 100;
-        setQuotationNumber(`${random}/${prefix}/${month}/${year}`);
+        
+        // Get the last quotation number to continue sequential numbering
+        let nextNumber = 1;
+        try {
+          const { data: lastQuotation } = await supabase
+            .from('quotations')
+            .select('project_name')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (lastQuotation?.project_name) {
+            // Try to extract the number from the stored quotation_number pattern
+            // The quotation number is stored separately, let's check all quotations
+            const { data: allQuotations } = await supabase
+              .from('quotations')
+              .select('id, created_at')
+              .order('created_at', { ascending: false });
+            
+            if (allQuotations && allQuotations.length > 0) {
+              // Count total quotations and add 1 for the next number
+              nextNumber = allQuotations.length + 1;
+            }
+          }
+        } catch (error) {
+          console.log('Error getting last quotation number, using 1');
+        }
+        
+        // Format number with leading zeros (e.g., 001, 012, 123)
+        const formattedNumber = String(nextNumber).padStart(3, '0');
+        setQuotationNumber(`${formattedNumber}/${prefix}/${month}/${year}`);
       }
     };
     
