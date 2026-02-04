@@ -171,7 +171,7 @@ export const generateQuotationPDF = async (
       <style>
         @page { 
           size: A4; 
-          margin: 0; 
+          margin: 15mm 15mm 20mm 15mm; 
         }
         * { 
           margin: 0; 
@@ -183,15 +183,7 @@ export const generateQuotationPDF = async (
           color: #333; 
           font-size: 9pt;
           line-height: 1.4;
-        }
-        .page {
-          width: 210mm;
-          height: 297mm;
-          padding: 0;
-          margin: 0 auto;
           background: white;
-          position: relative;
-          overflow: hidden;
         }
         
         /* Header */
@@ -199,7 +191,8 @@ export const generateQuotationPDF = async (
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          padding: 10mm 15mm 8mm 15mm;
+          padding: 10px 0 15px 0;
+          margin-bottom: 10px;
         }
         .header-pattern {
           width: 180px;
@@ -235,7 +228,7 @@ export const generateQuotationPDF = async (
         
         /* Content */
         .content {
-          padding: 0 15mm;
+          padding: 0;
         }
         .title {
           text-align: center;
@@ -322,6 +315,11 @@ export const generateQuotationPDF = async (
         .center-cell { text-align: center; }
         .right-cell { text-align: right; }
         
+        /* Prevent table rows from breaking across pages */
+        .table tr {
+          page-break-inside: avoid;
+        }
+        
         /* Totals */
         .totals-wrapper {
           display: flex;
@@ -387,6 +385,7 @@ export const generateQuotationPDF = async (
           margin-top: 15px;
           display: flex;
           justify-content: flex-end;
+          page-break-inside: avoid;
         }
         .signature-box {
           text-align: center;
@@ -429,6 +428,7 @@ export const generateQuotationPDF = async (
           background: linear-gradient(135deg, #f8fffe 0%, #f0f9ff 100%);
           border: 1px solid #3d5a8040;
           border-radius: 6px;
+          page-break-inside: avoid;
         }
         .tte-qr {
           flex-shrink: 0;
@@ -473,47 +473,19 @@ export const generateQuotationPDF = async (
           display: inline-block;
         }
         
-        /* Footer */
+        /* Footer - now inline at bottom of content */
         .footer {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 50px;
+          margin-top: 20px;
+          padding-top: 15px;
+          border-top: 4px solid #2c3e50;
+          page-break-inside: avoid;
         }
-        .footer-curve {
-          position: absolute;
-          bottom: 0;
-          right: 0;
-          width: 120px;
-          height: 90px;
-          background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
-          border-radius: 100% 0 0 0;
-          transform: translate(20px, 30px);
-        }
-        .footer-dots {
-          position: absolute;
-          bottom: 0;
-          right: 0;
-          width: 100px;
-          height: 70px;
-          background: radial-gradient(circle, rgba(255,255,255,0.25) 1px, transparent 1px);
-          background-size: 6px 6px;
-          mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.5) 0%, transparent 70%);
-          -webkit-mask-image: radial-gradient(ellipse at bottom right, rgba(0,0,0,0.5) 0%, transparent 70%);
-        }
-        .footer-bar {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: #2c3e50;
+        .footer-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
         }
         .footer-contact {
-          position: absolute;
-          bottom: 8px;
-          left: 15mm;
           font-size: 6pt;
           color: #333;
           display: flex;
@@ -532,191 +504,199 @@ export const generateQuotationPDF = async (
           fill: #3d5a80;
           flex-shrink: 0;
         }
+        .footer-decoration {
+          width: 80px;
+          height: 60px;
+          background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
+          border-radius: 100% 0 0 0;
+          position: relative;
+          overflow: hidden;
+        }
+        .footer-decoration::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle, rgba(255,255,255,0.25) 1px, transparent 1px);
+          background-size: 6px 6px;
+        }
         
         @media print {
           body { 
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .page { 
-            margin: 0; 
-            padding: 0;
-            page-break-after: avoid;
-          }
           .no-print { display: none !important; }
         }
       </style>
     </head>
     <body>
-      <div class="page">
-        <!-- Header -->
-        <div class="header">
-          <div class="header-pattern"></div>
-          <div class="header-info">
-            <img src="${logoSrc}" alt="PT. Zen Multimedia Indonesia" class="header-logo" />
-          </div>
+      <!-- Header -->
+      <div class="header">
+        <div class="header-pattern"></div>
+        <div class="header-info">
+          <img src="${logoSrc}" alt="PT. Zen Multimedia Indonesia" class="header-logo" />
         </div>
+      </div>
 
-        <!-- Content -->
-        <div class="content">
-          <h1 class="title">QUOTATION</h1>
+      <!-- Content -->
+      <div class="content">
+        <h1 class="title">QUOTATION</h1>
 
-          <!-- Meta Info -->
-          <div class="meta-grid">
-            <div class="meta-left">
-              <div class="meta-row">
-                <span class="meta-label">Tanggal</span>
-                <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
-              </div>
-              <div class="meta-row">
-                <span class="meta-label">No.</span>
-                <span class="meta-value">: ${quotation.quotationNumber}</span>
-              </div>
-            </div>
-            <div class="valid-badge">Valid Thru: ${formatDate(quotation.validUntil)}</div>
-          </div>
-
-          <!-- Client Info -->
-          <div class="section-title">Dibuat Untuk</div>
+        <!-- Meta Info -->
+        <div class="meta-grid">
           <div class="meta-left">
             <div class="meta-row">
-              <span class="meta-label">Nama Klien</span>
-              <span class="meta-value">: ${quotation.clientName}</span>
+              <span class="meta-label">Tanggal</span>
+              <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
             </div>
             <div class="meta-row">
-              <span class="meta-label">Alamat</span>
-              <span class="meta-value">: ${quotation.clientAddress || '-'}</span>
+              <span class="meta-label">No.</span>
+              <span class="meta-value">: ${quotation.quotationNumber}</span>
             </div>
           </div>
-
-          <!-- Project Name -->
-          <div class="project-title">${quotation.projectName}</div>
-
-          ${quotation.projectDescription ? `<p style="font-size: 8pt; color: #666; margin-bottom: 8px;">${quotation.projectDescription}</p>` : ''}
-
-          <!-- Items Table -->
-          <table class="table">
-            <thead>
-              <tr>
-                <th>ITEM</th>
-                <th class="center" style="width: 8%;">JML</th>
-                <th class="center" style="width: 12%;">SATUAN</th>
-                <th class="right" style="width: 18%;">HARGA SATUAN</th>
-                <th class="right" style="width: 18%;">TOTAL HARGA</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemRows}
-            </tbody>
-          </table>
-
-          <!-- Totals -->
-          <div class="totals-wrapper">
-            <div class="totals-box">
-              <div class="total-row subtotal">
-                <span>JUMLAH BIAYA</span>
-                <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
-              </div>
-              <div class="total-row ppn">
-                <span>PPN ${quotation.ppnPercentage}%</span>
-                <span>Rp. ${formatCurrencyPlain(quotation.ppnAmount)},-</span>
-              </div>
-              <div class="total-row grand">
-                <span>TOTAL BIAYA</span>
-                <span>Rp. ${formatCurrencyPlain(quotation.grandTotal)},-</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Terbilang -->
-          <div class="terbilang">
-            <strong>Terbilang:</strong> ${numberToWords(quotation.grandTotal)}
-          </div>
-
-          ${quotation.estimatedDuration ? `
-          <div class="section-title">Estimasi Waktu Pengerjaan</div>
-          <p style="font-size: 8pt;">${quotation.estimatedDuration}</p>
-          ` : ''}
-
-          ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
-          <div class="section-title">Ketentuan Pembayaran</div>
-          <ul class="terms-list">${paymentTermsHTML}</ul>
-          ` : ''}
-
-          ${quotation.guaranteeTerms && quotation.guaranteeTerms.length > 0 ? `
-          <div class="section-title">Garansi & Support</div>
-          <ul class="terms-list">${guaranteeHTML}</ul>
-          ` : ''}
-
-          <!-- Signature with TTE -->
-          <div class="signature-section">
-            <div class="signature-box">
-              <p>Hormat kami,</p>
-              <p style="font-weight: bold;">${company.name}</p>
-              ${tteEnabled && qrCodeDataURL ? `
-                <div class="signature-qr">
-                  <img src="${qrCodeDataURL}" alt="QR Verifikasi Dokumen" />
-                </div>
-              ` : ''}
-              ${tteEnabled && tteSettings?.signer_name ? `
-                <p class="signer-name">${tteSettings.signer_name}</p>
-                <p class="signer-position">${tteSettings.signer_position || ''}</p>
-              ` : `
-                <div style="margin-top: 40px; border-top: 1px solid #333; padding-top: 5px;">
-                  <p style="font-size: 8pt; color: #666;">Authorized Signature</p>
-                </div>
-              `}
-            </div>
-          </div>
-
-          <!-- TTE Section -->
-          ${tteEnabled ? `
-          <div class="tte-section">
-            <div class="tte-info">
-              <div class="tte-title">Tanda Tangan Elektronik</div>
-              <div class="tte-detail">
-                <span class="tte-label">Dokumen:</span>
-                <span>${quotation.quotationNumber}</span>
-              </div>
-              <div class="tte-detail">
-                <span class="tte-label">Ditandatangani:</span>
-                <span>${new Intl.DateTimeFormat('id-ID', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(signedAt)} WIB</span>
-              </div>
-              <div class="tte-detail">
-                <span class="tte-label">Oleh:</span>
-                <span>${tteSettings?.signer_name || company.name}${tteSettings?.signer_position ? ` (${tteSettings.signer_position})` : ''}</span>
-              </div>
-              <div class="tte-hash">ID: ${verificationId}</div>
-            </div>
-          </div>
-          ` : ''}
+          <div class="valid-badge">Valid Thru: ${formatDate(quotation.validUntil)}</div>
         </div>
+
+        <!-- Client Info -->
+        <div class="section-title">Dibuat Untuk</div>
+        <div class="meta-left">
+          <div class="meta-row">
+            <span class="meta-label">Nama Klien</span>
+            <span class="meta-value">: ${quotation.clientName}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Alamat</span>
+            <span class="meta-value">: ${quotation.clientAddress || '-'}</span>
+          </div>
+        </div>
+
+        <!-- Project Name -->
+        <div class="project-title">${quotation.projectName}</div>
+
+        ${quotation.projectDescription ? `<p style="font-size: 8pt; color: #666; margin-bottom: 8px;">${quotation.projectDescription}</p>` : ''}
+
+        <!-- Items Table -->
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ITEM</th>
+              <th class="center" style="width: 8%;">JML</th>
+              <th class="center" style="width: 12%;">SATUAN</th>
+              <th class="right" style="width: 18%;">HARGA SATUAN</th>
+              <th class="right" style="width: 18%;">TOTAL HARGA</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows}
+          </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="totals-wrapper">
+          <div class="totals-box">
+            <div class="total-row subtotal">
+              <span>JUMLAH BIAYA</span>
+              <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
+            </div>
+            <div class="total-row ppn">
+              <span>PPN ${quotation.ppnPercentage}%</span>
+              <span>Rp. ${formatCurrencyPlain(quotation.ppnAmount)},-</span>
+            </div>
+            <div class="total-row grand">
+              <span>TOTAL BIAYA</span>
+              <span>Rp. ${formatCurrencyPlain(quotation.grandTotal)},-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terbilang -->
+        <div class="terbilang">
+          <strong>Terbilang:</strong> ${numberToWords(quotation.grandTotal)}
+        </div>
+
+        ${quotation.estimatedDuration ? `
+        <div class="section-title">Estimasi Waktu Pengerjaan</div>
+        <p style="font-size: 8pt;">${quotation.estimatedDuration}</p>
+        ` : ''}
+
+        ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
+        <div class="section-title">Ketentuan Pembayaran</div>
+        <ul class="terms-list">${paymentTermsHTML}</ul>
+        ` : ''}
+
+        ${quotation.guaranteeTerms && quotation.guaranteeTerms.length > 0 ? `
+        <div class="section-title">Garansi & Support</div>
+        <ul class="terms-list">${guaranteeHTML}</ul>
+        ` : ''}
+
+        <!-- Signature with TTE -->
+        <div class="signature-section">
+          <div class="signature-box">
+            <p>Hormat kami,</p>
+            <p style="font-weight: bold;">${company.name}</p>
+            ${tteEnabled && qrCodeDataURL ? `
+              <div class="signature-qr">
+                <img src="${qrCodeDataURL}" alt="QR Verifikasi Dokumen" />
+              </div>
+            ` : ''}
+            ${tteEnabled && tteSettings?.signer_name ? `
+              <p class="signer-name">${tteSettings.signer_name}</p>
+              <p class="signer-position">${tteSettings.signer_position || ''}</p>
+            ` : `
+              <div style="margin-top: 40px; border-top: 1px solid #333; padding-top: 5px;">
+                <p style="font-size: 8pt; color: #666;">Authorized Signature</p>
+              </div>
+            `}
+          </div>
+        </div>
+
+        <!-- TTE Section -->
+        ${tteEnabled ? `
+        <div class="tte-section">
+          <div class="tte-info">
+            <div class="tte-title">Tanda Tangan Elektronik</div>
+            <div class="tte-detail">
+              <span class="tte-label">Dokumen:</span>
+              <span>${quotation.quotationNumber}</span>
+            </div>
+            <div class="tte-detail">
+              <span class="tte-label">Ditandatangani:</span>
+              <span>${new Intl.DateTimeFormat('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }).format(signedAt)} WIB</span>
+            </div>
+            <div class="tte-detail">
+              <span class="tte-label">Oleh:</span>
+              <span>${tteSettings?.signer_name || company.name}${tteSettings?.signer_position ? ` (${tteSettings.signer_position})` : ''}</span>
+            </div>
+            <div class="tte-hash">ID: ${verificationId}</div>
+          </div>
+        </div>
+        ` : ''}
 
         <!-- Footer -->
         <div class="footer">
-          <div class="footer-curve"></div>
-          <div class="footer-dots"></div>
-          <div class="footer-contact">
-            <div class="footer-row">
-              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              <span>${company.address}</span>
+          <div class="footer-content">
+            <div class="footer-contact">
+              <div class="footer-row">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <span>${company.address}</span>
+              </div>
+              <div class="footer-row">
+                <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                <span>${company.email}</span>
+              </div>
+              <div class="footer-row">
+                <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                <span>${company.phone}</span>
+              </div>
             </div>
-            <div class="footer-row">
-              <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-              <span>${company.email}</span>
-            </div>
-            <div class="footer-row">
-              <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-              <span>${company.phone}</span>
-            </div>
+            <div class="footer-decoration"></div>
           </div>
-          <div class="footer-bar"></div>
         </div>
       </div>
 
