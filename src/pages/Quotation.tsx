@@ -173,6 +173,11 @@ export default function Quotation() {
         setEditingQuotationId(quotation.id);
         setProjectName(quotation.project_name);
         
+        // Set project description
+        if ((quotation as any).project_description) {
+          setProjectDescription((quotation as any).project_description);
+        }
+        
         // Set quotation number from database (fixed, never changes)
         if ((quotation as any).quotation_number) {
           setQuotationNumber((quotation as any).quotation_number);
@@ -390,6 +395,7 @@ export default function Quotation() {
 
       const quotationData = {
         project_name: projectName,
+        project_description: projectDescription || null,
         client_id: selectedClientId || null,
         man_days: items as any,
         hosting_cost: 0,
