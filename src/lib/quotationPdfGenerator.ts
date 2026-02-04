@@ -175,7 +175,7 @@ export const generateQuotationPDF = async (
       <style>
         @page { 
           size: A4; 
-          margin: 15mm 15mm 20mm 15mm; 
+          margin: 20mm 25mm 25mm 25mm; 
         }
         * { 
           margin: 0; 
@@ -195,12 +195,12 @@ export const generateQuotationPDF = async (
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          padding: 10px 0 15px 0;
-          margin-bottom: 10px;
+          padding: 5px 0 10px 0;
+          margin-bottom: 8px;
         }
         .header-pattern {
-          width: 180px;
-          height: 100px;
+          width: 150px;
+          height: 80px;
           background: radial-gradient(circle, #3d5a80 2px, transparent 2px);
           background-size: 10px 10px;
           mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 30%, rgba(0,0,0,0.4) 60%, transparent 100%),
@@ -218,9 +218,9 @@ export const generateQuotationPDF = async (
           text-align: right;
         }
         .header-logo {
-          height: 60px;
+          height: 50px;
           width: auto;
-          max-width: 280px;
+          max-width: 240px;
         }
         .company-name {
           font-size: 13pt;
@@ -236,28 +236,28 @@ export const generateQuotationPDF = async (
         }
         .title {
           text-align: center;
-          font-size: 16pt;
+          font-size: 14pt;
           font-weight: bold;
           color: #3d5a80;
-          margin: 10px 0 15px;
-          letter-spacing: 3px;
+          margin: 8px 0 12px;
+          letter-spacing: 2px;
         }
         
         /* Meta Grid */
         .meta-grid {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .meta-left {
-          font-size: 9pt;
+          font-size: 8pt;
         }
         .meta-row {
           display: flex;
           margin-bottom: 2px;
         }
         .meta-label {
-          width: 70px;
+          width: 65px;
           color: #666;
         }
         .meta-value {
@@ -266,44 +266,44 @@ export const generateQuotationPDF = async (
         .valid-badge {
           background: #fff3cd;
           color: #856404;
-          padding: 4px 10px;
+          padding: 3px 8px;
           border-radius: 4px;
-          font-size: 8pt;
+          font-size: 7pt;
           font-weight: 500;
           align-self: flex-start;
         }
         
         /* Section */
         .section-title {
-          font-size: 10pt;
+          font-size: 9pt;
           font-weight: bold;
           color: #3d5a80;
-          margin: 12px 0 6px;
-          padding-bottom: 3px;
+          margin: 10px 0 5px;
+          padding-bottom: 2px;
           border-bottom: 2px solid #3d5a80;
         }
         .project-title {
-          font-size: 11pt;
+          font-size: 10pt;
           font-weight: bold;
           color: #333;
           text-align: center;
           background: #e8f0f5;
-          padding: 8px;
+          padding: 6px;
           border-radius: 4px;
-          margin: 10px 0;
+          margin: 8px 0;
         }
         
         /* Table */
         .table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 8pt;
-          margin: 8px 0;
+          font-size: 7.5pt;
+          margin: 6px 0;
         }
         .table th {
           background: #3d5a80;
           color: white;
-          padding: 6px 8px;
+          padding: 5px 6px;
           text-align: left;
           font-weight: 600;
           border: 1px solid #3d5a80;
@@ -311,17 +311,17 @@ export const generateQuotationPDF = async (
         .table th.center { text-align: center; }
         .table th.right { text-align: right; }
         .table td {
-          padding: 5px 8px;
+          padding: 4px 6px;
           border: 1px solid #ddd;
           vertical-align: top;
         }
-        .item-cell { width: 38%; }
+        .item-cell { width: 40%; }
         .item-description {
-          font-size: 7pt;
+          font-size: 6.5pt;
           color: #666;
           font-style: italic;
-          margin-top: 2px;
-          line-height: 1.3;
+          margin-top: 1px;
+          line-height: 1.2;
         }
         .center-cell { text-align: center; }
         .right-cell { text-align: right; }
@@ -335,16 +335,16 @@ export const generateQuotationPDF = async (
         .totals-wrapper {
           display: flex;
           justify-content: flex-end;
-          margin-top: 8px;
+          margin-top: 6px;
         }
         .totals-box {
-          width: 280px;
+          width: 250px;
         }
         .total-row {
           display: flex;
           justify-content: space-between;
-          padding: 4px 8px;
-          font-size: 9pt;
+          padding: 3px 6px;
+          font-size: 8pt;
         }
         .total-row.subtotal {
           border-bottom: 1px solid #e0e0e0;
@@ -357,31 +357,31 @@ export const generateQuotationPDF = async (
           color: white;
           font-weight: bold;
           border-radius: 4px;
-          margin-top: 4px;
+          margin-top: 3px;
         }
         
         /* Terbilang */
         .terbilang {
           background: #f5f8fa;
-          padding: 6px 10px;
-          margin-top: 8px;
+          padding: 5px 8px;
+          margin-top: 6px;
           border-radius: 4px;
           font-style: italic;
           border-left: 3px solid #3d5a80;
-          font-size: 8pt;
+          font-size: 7pt;
         }
         
         /* Terms */
         .terms-list {
           list-style: none;
           padding-left: 0;
-          font-size: 8pt;
-          margin: 4px 0;
+          font-size: 7pt;
+          margin: 3px 0;
         }
         .terms-list li {
-          padding-left: 12px;
+          padding-left: 10px;
           position: relative;
-          margin-bottom: 2px;
+          margin-bottom: 1px;
         }
         .terms-list li::before {
           content: "•";
@@ -393,26 +393,26 @@ export const generateQuotationPDF = async (
         
         /* Signature Section - TTE integrated */
         .signature-section {
-          margin-top: 15px;
+          margin-top: 12px;
           display: flex;
           justify-content: flex-end;
           page-break-inside: avoid;
         }
         .signature-box {
           text-align: center;
-          width: 200px;
+          width: 180px;
         }
         .signature-box p {
-          font-size: 9pt;
+          font-size: 8pt;
         }
         .signature-qr {
-          margin-top: 10px;
+          margin-top: 8px;
           display: flex;
           justify-content: center;
         }
         .signature-qr img {
-          width: 70px;
-          height: 70px;
+          width: 60px;
+          height: 60px;
           border: 1px solid #3d5a80;
           border-radius: 4px;
           padding: 2px;
@@ -420,22 +420,22 @@ export const generateQuotationPDF = async (
         }
         .signer-name {
           font-weight: bold;
-          margin-top: 12px;
-          padding-top: 5px;
+          margin-top: 10px;
+          padding-top: 4px;
           border-top: 1px solid #333;
         }
         .signer-position {
-          font-size: 8pt;
+          font-size: 7pt;
           color: #666;
         }
         
         /* TTE Section */
         .tte-section {
-          margin-top: 15px;
+          margin-top: 12px;
           display: flex;
           align-items: flex-start;
-          gap: 12px;
-          padding: 10px 12px;
+          gap: 10px;
+          padding: 8px 10px;
           background: linear-gradient(135deg, #f8fffe 0%, #f0f9ff 100%);
           border: 1px solid #3d5a8040;
           border-radius: 6px;
@@ -445,8 +445,8 @@ export const generateQuotationPDF = async (
           flex-shrink: 0;
         }
         .tte-qr img {
-          width: 70px;
-          height: 70px;
+          width: 60px;
+          height: 60px;
           border: 1px solid #3d5a80;
           border-radius: 4px;
           padding: 2px;
@@ -456,39 +456,39 @@ export const generateQuotationPDF = async (
           flex: 1;
         }
         .tte-title {
-          font-size: 9pt;
+          font-size: 8pt;
           font-weight: 600;
           color: #3d5a80;
-          margin-bottom: 4px;
-          padding-bottom: 3px;
+          margin-bottom: 3px;
+          padding-bottom: 2px;
           border-bottom: 1px solid #3d5a8040;
         }
         .tte-detail {
-          font-size: 8pt;
-          margin-bottom: 2px;
+          font-size: 7pt;
+          margin-bottom: 1px;
           display: flex;
-          gap: 6px;
+          gap: 5px;
         }
         .tte-label {
           color: #666;
-          min-width: 80px;
+          min-width: 70px;
         }
         .tte-hash {
-          margin-top: 4px;
+          margin-top: 3px;
           font-family: 'Courier New', monospace;
-          font-size: 7pt;
+          font-size: 6pt;
           color: #3d5a80;
           background: #3d5a8015;
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 3px;
           display: inline-block;
         }
         
         /* Footer - now inline at bottom of content */
         .footer {
-          margin-top: 20px;
-          padding-top: 15px;
-          border-top: 4px solid #2c3e50;
+          margin-top: 15px;
+          padding-top: 12px;
+          border-top: 3px solid #2c3e50;
           page-break-inside: avoid;
         }
         .footer-content {
@@ -497,27 +497,27 @@ export const generateQuotationPDF = async (
           align-items: flex-end;
         }
         .footer-contact {
-          font-size: 6pt;
+          font-size: 5.5pt;
           color: #333;
           display: flex;
-          gap: 15px;
+          gap: 12px;
           align-items: center;
           flex-wrap: wrap;
         }
         .footer-row {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
         }
         .footer-row svg {
-          width: 8px;
-          height: 8px;
+          width: 7px;
+          height: 7px;
           fill: #3d5a80;
           flex-shrink: 0;
         }
         .footer-decoration {
-          width: 80px;
-          height: 60px;
+          width: 60px;
+          height: 45px;
           background: linear-gradient(135deg, #6b8cae 0%, #3d5a80 100%);
           border-radius: 100% 0 0 0;
           position: relative;
@@ -584,7 +584,7 @@ export const generateQuotationPDF = async (
         <!-- Project Name -->
         <div class="project-title">${quotation.projectName}</div>
 
-        ${quotation.projectDescription ? `<p style="font-size: 8pt; color: #666; margin-bottom: 8px;">${quotation.projectDescription}</p>` : ''}
+        ${quotation.projectDescription ? `<p style="font-size: 7pt; color: #666; margin-bottom: 6px;">${quotation.projectDescription}</p>` : ''}
 
         <!-- Items Table -->
         <table class="table">
@@ -627,7 +627,7 @@ export const generateQuotationPDF = async (
 
         ${quotation.estimatedDuration ? `
         <div class="section-title">Estimasi Waktu Pengerjaan</div>
-        <p style="font-size: 8pt;">${quotation.estimatedDuration}</p>
+        <p style="font-size: 7pt;">${quotation.estimatedDuration}</p>
         ` : ''}
 
         ${quotation.paymentTerms && quotation.paymentTerms.length > 0 ? `
