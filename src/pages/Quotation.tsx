@@ -73,7 +73,7 @@ export default function Quotation() {
   
   // Items
   const [items, setItems] = useState<QuotationItem[]>([
-    { item: 'Sistem Berbasis Web', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 },
+    { item: 'Sistem Berbasis Web', description: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 },
   ]);
   
   // Costs
@@ -245,7 +245,7 @@ export default function Quotation() {
   };
 
   const addItem = () => {
-    setItems([...items, { item: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
+    setItems([...items, { item: '', description: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
   };
 
   const addProductsFromCatalog = (products: Array<{
@@ -722,60 +722,71 @@ export default function Quotation() {
 
                 {/* Rows */}
                 {items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-3 items-center">
-                    <div className="col-span-4">
+                  <div key={index} className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                    <div className="grid grid-cols-12 gap-3 items-center">
+                      <div className="col-span-4">
+                        <Input
+                          value={item.item}
+                          onChange={(e) => updateItem(index, 'item', e.target.value)}
+                          placeholder="Nama item"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                          min={1}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Select
+                          value={item.unit}
+                          onValueChange={(value) => updateItem(index, 'unit', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Package">Package</SelectItem>
+                            <SelectItem value="Unit">Unit</SelectItem>
+                            <SelectItem value="License">License</SelectItem>
+                            <SelectItem value="Modul">Modul</SelectItem>
+                            <SelectItem value="Tahun">Tahun</SelectItem>
+                            <SelectItem value="Bulan">Bulan</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="number"
+                          value={item.unitPrice}
+                          onChange={(e) => updateItem(index, 'unitPrice', parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="col-span-2 text-right font-semibold text-sm">
+                        {formatCurrencyLocal(item.total)}
+                      </div>
+                      <div className="col-span-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => removeItem(index)}
+                          disabled={items.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {/* Description field */}
+                    <div className="pl-0">
                       <Input
-                        value={item.item}
-                        onChange={(e) => updateItem(index, 'item', e.target.value)}
-                        placeholder="Nama item"
+                        value={item.description || ''}
+                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        placeholder="Deskripsi item (opsional)"
+                        className="text-sm h-8"
                       />
-                    </div>
-                    <div className="col-span-1">
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                        min={1}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Select
-                        value={item.unit}
-                        onValueChange={(value) => updateItem(index, 'unit', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Package">Package</SelectItem>
-                          <SelectItem value="Unit">Unit</SelectItem>
-                          <SelectItem value="License">License</SelectItem>
-                          <SelectItem value="Modul">Modul</SelectItem>
-                          <SelectItem value="Tahun">Tahun</SelectItem>
-                          <SelectItem value="Bulan">Bulan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={(e) => updateItem(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="col-span-2 text-right font-semibold text-sm">
-                      {formatCurrencyLocal(item.total)}
-                    </div>
-                    <div className="col-span-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 ))}

@@ -21,6 +21,7 @@ export interface CompanyProfile {
 
 export interface QuotationItem {
   item: string;
+  description?: string;
   quantity: number;
   unit: string;
   unitPrice: number;
@@ -124,7 +125,10 @@ export const generateQuotationPDF = async (
   
   const itemRows = quotation.items.map((item) => `
     <tr>
-      <td class="item-cell">${item.item}</td>
+      <td class="item-cell">
+        <div>${item.item}</div>
+        ${item.description ? `<div class="item-description">${item.description}</div>` : ''}
+      </td>
       <td class="center-cell">${item.quantity}</td>
       <td class="center-cell">${item.unit}</td>
       <td class="right-cell">Rp. ${formatCurrencyPlain(item.unitPrice)}</td>
@@ -312,6 +316,13 @@ export const generateQuotationPDF = async (
           vertical-align: top;
         }
         .item-cell { width: 38%; }
+        .item-description {
+          font-size: 7pt;
+          color: #666;
+          font-style: italic;
+          margin-top: 2px;
+          line-height: 1.3;
+        }
         .center-cell { text-align: center; }
         .right-cell { text-align: right; }
         
