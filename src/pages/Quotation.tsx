@@ -188,10 +188,15 @@ export default function Quotation() {
           setClientAddress(clientData.address || '');
         }
 
-        // Set items from man_days
+        // Set items from man_days (including description field if exists)
         const manDays = quotation.man_days as unknown as QuotationItem[];
         if (Array.isArray(manDays) && manDays.length > 0) {
           setItems(manDays);
+        }
+
+        // Restore margin percentage if saved
+        if (quotation.margin_percentage !== null && quotation.margin_percentage !== undefined) {
+          setUsedMarginPercentage(quotation.margin_percentage);
         }
 
         toast({
