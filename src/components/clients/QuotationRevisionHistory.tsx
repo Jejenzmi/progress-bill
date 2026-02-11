@@ -112,6 +112,9 @@ export function QuotationRevisionHistory({ clientId }: { clientId: string }) {
                   {rev.revised_by_name && (
                     <p>Direvisi oleh: {rev.revised_by_name}</p>
                   )}
+                  {rev.revision_reason && (
+                    <p className="text-foreground/70 italic">Alasan: {rev.revision_reason}</p>
+                  )}
                   <p>{format(new Date(rev.created_at), 'dd MMM yyyy HH:mm', { locale: idLocale })}</p>
                 </div>
               </div>

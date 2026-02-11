@@ -15,6 +15,7 @@ import { CreateProjectFromQuotationDialog } from '@/components/quotations/Create
 import { NegotiatedPriceDialog } from '@/components/quotations/NegotiatedPriceDialog';
 import { NegotiationApprovalDialog } from '@/components/quotations/NegotiationApprovalDialog';
 import { CreateContractDialog } from '@/components/contracts/CreateContractDialog';
+import { RevisionReasonDialog } from '@/components/quotations/RevisionReasonDialog';
 import {
   Table,
   TableBody,
@@ -127,6 +128,10 @@ export default function QuotationList() {
   // Contract dialog states
   const [createContractDialogOpen, setCreateContractDialogOpen] = useState(false);
   const [quotationForContract, setQuotationForContract] = useState<Quotation | null>(null);
+  
+  // Revision dialog states
+  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
+  const [quotationForRevision, setQuotationForRevision] = useState<Quotation | null>(null);
   
   const canReviewNegotiation = hasRole('admin') || hasRole('bdo') || hasRole('coo');
   
@@ -337,7 +342,7 @@ export default function QuotationList() {
     navigate(`/quotation?edit=${quotation.id}`);
   };
 
-  const handleRevision = async (quotation: Quotation) => {
+  const handleRevision = async (quotation: Quotation, reason: string) => {
     try {
       // Save current version as a revision snapshot
       const { error: snapshotError } = await supabase
@@ -356,6 +361,7 @@ export default function QuotationList() {
           approved_by: quotation.approved_by || null,
           approved_at: quotation.approved_at,
           revised_by: user?.id || null,
+          revision_reason: reason,
           snapshot_data: {
             negotiated_price: quotation.negotiated_price,
             negotiation_status: quotation.negotiation_status,
@@ -743,7 +749,7 @@ export default function QuotationList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleRevision(quotation)}
+                            onClick={() => { setQuotationForRevision(quotation); setRevisionDialogOpen(true); }}
                             title="Revisi Quotation"
                             className="text-warning hover:text-warning"
                           >
@@ -883,6 +889,18 @@ export default function QuotationList() {
         open={createContractDialogOpen}
         onOpenChange={setCreateContractDialogOpen}
         onSuccess={fetchQuotations}
+      />
+
+      {/* Revision Reason Dialog */}
+      <RevisionReasonDialog
+        open={revisionDialogOpen}
+        onOpenChange={setRevisionDialogOpen}
+        quotationName={quotationForRevision?.project_name || ''}
+        onConfirm={async (reason) => {
+          if (quotationForRevision) {
+            await handleRevision(quotationForRevision, reason);
+          }
+        }}
       />
     </AppLayout>
   );
