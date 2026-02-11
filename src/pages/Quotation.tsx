@@ -21,7 +21,11 @@ import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { ProductSelectorDialog } from '@/components/quotations/ProductSelectorDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
 import type { TTESettings } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, Stamp, Package } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, Stamp, Package, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -70,6 +74,11 @@ export default function Quotation() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [validUntilDate, setValidUntilDate] = useState<Date | undefined>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d;
+  });
   
   // Items
   const [items, setItems] = useState<QuotationItem[]>([
@@ -202,6 +211,11 @@ export default function Quotation() {
         // Restore margin percentage if saved
         if (quotation.margin_percentage !== null && quotation.margin_percentage !== undefined) {
           setUsedMarginPercentage(quotation.margin_percentage);
+        }
+
+        // Set valid_until date
+        if (quotation.valid_until) {
+          setValidUntilDate(new Date(quotation.valid_until));
         }
 
         toast({
@@ -352,8 +366,7 @@ export default function Quotation() {
   };
 
   const buildQuotationData = () => {
-    const validUntil = new Date();
-    validUntil.setDate(validUntil.getDate() + 30);
+    const validUntil = validUntilDate || new Date();
 
     // For PDF, always show subtotal before PPN and then add PPN
     const displaySubtotal = ppnMode === 'include' ? subtotalBeforePPN : subtotal;
@@ -390,8 +403,7 @@ export default function Quotation() {
 
     setSaving(true);
     try {
-      const validUntil = new Date();
-      validUntil.setDate(validUntil.getDate() + 30);
+      const validUntil = validUntilDate || new Date();
 
       const quotationData = {
         project_name: projectName,
@@ -600,7 +612,7 @@ export default function Quotation() {
               <CardDescription>Detail dasar penawaran</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quotationNumber">Nomor Quotation</Label>
                   <Input
@@ -618,6 +630,32 @@ export default function Quotation() {
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Berlaku Sampai</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !validUntilDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {validUntilDate ? format(validUntilDate, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={validUntilDate}
+                        onSelect={setValidUntilDate}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               <div className="space-y-2">
