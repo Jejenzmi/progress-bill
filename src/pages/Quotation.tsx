@@ -202,10 +202,26 @@ export default function Quotation() {
           setClientAddress(clientData.address || '');
         }
 
-        // Set items from man_days (including description field if exists)
-        const manDays = quotation.man_days as unknown as QuotationItem[];
-        if (Array.isArray(manDays) && manDays.length > 0) {
-          setItems(manDays);
+        // Set items from man_days (supports both array format and object with metadata)
+        const manDaysRaw = quotation.man_days as any;
+        if (manDaysRaw && typeof manDaysRaw === 'object' && !Array.isArray(manDaysRaw) && manDaysRaw.items) {
+          // New format: { items, paymentTerms, guaranteeTerms, estimatedDuration }
+          const parsed = manDaysRaw as { items: QuotationItem[]; paymentTerms?: string[]; guaranteeTerms?: string[]; estimatedDuration?: string };
+          if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+            setItems(parsed.items);
+          }
+          if (Array.isArray(parsed.paymentTerms) && parsed.paymentTerms.length > 0) {
+            setPaymentTerms(parsed.paymentTerms);
+          }
+          if (Array.isArray(parsed.guaranteeTerms) && parsed.guaranteeTerms.length > 0) {
+            setGuaranteeTerms(parsed.guaranteeTerms);
+          }
+          if (parsed.estimatedDuration) {
+            setEstimatedDuration(parsed.estimatedDuration);
+          }
+        } else if (Array.isArray(manDaysRaw) && manDaysRaw.length > 0) {
+          // Legacy format: plain array of items
+          setItems(manDaysRaw as QuotationItem[]);
         }
 
         // Restore margin percentage if saved
@@ -429,7 +445,7 @@ export default function Quotation() {
         project_name: projectName,
         project_description: projectDescription || null,
         client_id: (selectedClientId && selectedClientId !== 'manual') ? selectedClientId : null,
-        man_days: items as any,
+        man_days: { items, paymentTerms: paymentTerms.filter(t => t.trim()), guaranteeTerms: guaranteeTerms.filter(t => t.trim()), estimatedDuration } as any,
         hosting_cost: 0,
         maintenance_cost: 0,
         maintenance_period: 'Tahunan',
