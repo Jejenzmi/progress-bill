@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Search, Building2, User, Phone, Mail, MapPin, Briefcase, Loader2, Pencil, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { QuotationRevisionHistory } from '@/components/clients/QuotationRevisionHistory';
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -564,6 +565,9 @@ export default function Clients() {
                     <p className="text-sm text-muted-foreground">Total Nilai Proyek</p>
                   </div>
                 </div>
+
+                {/* Revision History */}
+                <QuotationRevisionHistory clientId={selectedClient.id} />
               </div>
             </>
           )}

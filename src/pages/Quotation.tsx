@@ -410,11 +410,11 @@ export default function Quotation() {
       };
 
       if (editingQuotationId) {
-        // Update existing (don't change the quotation_number)
+        // Update existing (don't change the quotation_number or revision_number)
         const { quotation_number: _, ...updateData } = quotationData;
         const { error } = await supabase
           .from('quotations')
-          .update(updateData)
+          .update({ ...updateData, status: updateData.status })
           .eq('id', editingQuotationId);
 
         if (error) throw error;
