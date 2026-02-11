@@ -747,13 +747,14 @@ export default function QuotationList() {
                         {/* Revisi button - for approved quotations */}
                         {canSubmit && quotation.approval_status === 'approved' && (
                           <Button
-                            variant="ghost"
-                            size="icon"
+                            variant="outline"
+                            size="sm"
                             onClick={() => { setQuotationForRevision(quotation); setRevisionDialogOpen(true); }}
                             title="Revisi Quotation"
-                            className="text-warning hover:text-warning"
+                            className="text-warning border-warning hover:bg-warning/10 hover:text-warning"
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Revisi
                           </Button>
                         )}
                         
