@@ -365,6 +365,26 @@ export default function Quotation() {
     return await fetchTTEForPDF();
   };
 
+  const resetForm = () => {
+    setEditingQuotationId(null);
+    setProjectName('');
+    setProjectDescription('');
+    setSelectedClientId('');
+    setClientName('');
+    setClientAddress('');
+    setQuotationNumber('');
+    setItems([{ item: 'Sistem Berbasis Web', description: '', quantity: 1, unit: 'Package', unitPrice: 0, total: 0 }]);
+    setPpnMode('exclude');
+    setPpnPercentage(11);
+    setEstimatedDuration('1–30 hari kalender');
+    setPaymentTerms(['50% – Down Payment', '50% – Setelah progress 100%']);
+    setGuaranteeTerms(['Garansi bug fixing 60 hari', 'Support teknis selama masa garansi', 'Opsional maintenance bulanan tersedia jika diperlukan']);
+    setSelectedTTESigner('self');
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    setValidUntilDate(d);
+  };
+
   const buildQuotationData = () => {
     const validUntil = validUntilDate || new Date();
 
@@ -470,6 +490,8 @@ export default function Quotation() {
         });
       }
       
+      // Reset form after successful save
+      resetForm();
       navigate('/quotations');
     } catch (error: any) {
       console.error('Error saving quotation:', error);
@@ -651,6 +673,7 @@ export default function Quotation() {
                         mode="single"
                         selected={validUntilDate}
                         onSelect={setValidUntilDate}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                         initialFocus
                         className={cn("p-3 pointer-events-auto")}
                       />
