@@ -43,6 +43,7 @@ import {
   Percent,
   RefreshCw,
   ScrollText,
+  Copy,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -340,6 +341,47 @@ export default function QuotationList() {
 
   const handleEdit = (quotation: Quotation) => {
     navigate(`/quotation?edit=${quotation.id}`);
+  };
+
+  const handleDuplicate = async (quotation: Quotation) => {
+    try {
+      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const { data, error } = await supabase.from('quotations').insert([{
+        project_name: `${quotation.project_name} (Copy)`,
+        project_description: quotation.project_description || null,
+        client_id: quotation.client_id || null,
+        man_days: items as any,
+        hosting_cost: 0,
+        maintenance_cost: 0,
+        maintenance_period: 'Tahunan',
+        total_development: items.reduce((sum: number, item: any) => sum + (item.total || 0), 0),
+        grand_total: quotation.grand_total || 0,
+        valid_until: null,
+        status: 'Draft',
+        margin_percentage: quotation.margin_percentage,
+        created_by: user?.id || null,
+      }]).select().single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Quotation berhasil diduplikasi. Silakan edit draft baru.',
+      });
+
+      if (data) {
+        navigate(`/quotation?edit=${data.id}`);
+      } else {
+        fetchQuotations();
+      }
+    } catch (error: any) {
+      console.error('Error duplicating quotation:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal menduplikasi quotation',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRevision = async (quotation: Quotation, reason: string) => {
@@ -757,6 +799,16 @@ export default function QuotationList() {
                             Revisi
                           </Button>
                         )}
+                        
+                        {/* Duplicate button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDuplicate(quotation)}
+                          title="Duplikasi Quotation"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                         
                         {/* Edit button - only for non-approved or allow edit */}
                         {(quotation.approval_status !== 'approved' && quotation.approval_status !== 'pending') && (
