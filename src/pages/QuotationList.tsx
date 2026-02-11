@@ -59,6 +59,7 @@ interface Quotation {
   submitted_at: string | null;
   submitted_by: string | null;
   approved_at: string | null;
+  approved_by: string | null;
   rejected_at: string | null;
   rejection_reason: string | null;
   created_at: string;
@@ -73,6 +74,8 @@ interface Quotation {
   negotiation_approved_by: string | null;
   negotiation_rejection_reason: string | null;
   quotation_number: string | null;
+  revision_number: number;
+  project_description: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -334,6 +337,74 @@ export default function QuotationList() {
     navigate(`/quotation?edit=${quotation.id}`);
   };
 
+  const handleRevision = async (quotation: Quotation) => {
+    try {
+      // Save current version as a revision snapshot
+      const { error: snapshotError } = await supabase
+        .from('quotation_revisions')
+        .insert({
+          quotation_id: quotation.id,
+          revision_number: quotation.revision_number,
+          quotation_number: quotation.quotation_number,
+          project_name: quotation.project_name,
+          project_description: quotation.project_description,
+          client_id: quotation.client_id,
+          man_days: quotation.man_days as any,
+          grand_total: quotation.grand_total,
+          margin_percentage: quotation.margin_percentage,
+          approval_status: quotation.approval_status,
+          approved_by: quotation.approved_by || null,
+          approved_at: quotation.approved_at,
+          revised_by: user?.id || null,
+          snapshot_data: {
+            negotiated_price: quotation.negotiated_price,
+            negotiation_status: quotation.negotiation_status,
+            status: quotation.status,
+          } as any,
+        });
+
+      if (snapshotError) throw snapshotError;
+
+      // Increment revision number and update quotation number with revision code
+      const newRevisionNumber = quotation.revision_number + 1;
+      const baseNumber = quotation.quotation_number?.replace(/-R\d+$/, '') || '';
+      const newQuotationNumber = `${baseNumber}-R${newRevisionNumber}`;
+
+      const { error: updateError } = await supabase
+        .from('quotations')
+        .update({
+          revision_number: newRevisionNumber,
+          quotation_number: newQuotationNumber,
+          approval_status: 'draft',
+          submitted_at: null,
+          submitted_by: null,
+          approved_at: null,
+          approved_by: null,
+          rejected_at: null,
+          rejection_reason: null,
+          status: 'Draft',
+        })
+        .eq('id', quotation.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Revisi Dibuat',
+        description: `Quotation direvisi menjadi R${newRevisionNumber}. Silakan edit dan submit ulang untuk approval COO.`,
+      });
+
+      // Navigate to edit
+      navigate(`/quotation?edit=${quotation.id}`);
+    } catch (error: any) {
+      console.error('Error creating revision:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal membuat revisi',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!quotationToDelete) return;
 
@@ -493,6 +564,9 @@ export default function QuotationList() {
                   <TableRow key={quotation.id}>
                     <TableCell className="font-mono text-sm">
                       {quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`}
+                      {quotation.revision_number > 0 && (
+                        <Badge variant="outline" className="ml-2 text-xs border-warning text-warning">R{quotation.revision_number}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="font-medium">
                       {quotation.project_name}
@@ -664,14 +738,30 @@ export default function QuotationList() {
                           </Button>
                         )}
                         
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(quotation)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {/* Revisi button - for approved quotations */}
+                        {canSubmit && quotation.approval_status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRevision(quotation)}
+                            title="Revisi Quotation"
+                            className="text-warning hover:text-warning"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Edit button - only for non-approved or allow edit */}
+                        {(quotation.approval_status !== 'approved' && quotation.approval_status !== 'pending') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(quotation)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

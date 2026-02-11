@@ -967,6 +967,81 @@ export type Database = {
           },
         ]
       }
+      quotation_revisions: {
+        Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string | null
+          created_at: string
+          grand_total: number | null
+          id: string
+          man_days: Json | null
+          margin_percentage: number | null
+          project_description: string | null
+          project_name: string
+          quotation_id: string
+          quotation_number: string | null
+          revised_by: string | null
+          revision_number: number
+          revision_reason: string | null
+          snapshot_data: Json | null
+        }
+        Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          grand_total?: number | null
+          id?: string
+          man_days?: Json | null
+          margin_percentage?: number | null
+          project_description?: string | null
+          project_name: string
+          quotation_id: string
+          quotation_number?: string | null
+          revised_by?: string | null
+          revision_number: number
+          revision_reason?: string | null
+          snapshot_data?: Json | null
+        }
+        Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          grand_total?: number | null
+          id?: string
+          man_days?: Json | null
+          margin_percentage?: number | null
+          project_description?: string | null
+          project_name?: string
+          quotation_id?: string
+          quotation_number?: string | null
+          revised_by?: string | null
+          revision_number?: number
+          revision_reason?: string | null
+          snapshot_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_revisions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_revisions_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           approval_status: string | null
@@ -998,6 +1073,7 @@ export type Database = {
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
+          revision_number: number
           status: string | null
           submitted_at: string | null
           submitted_by: string | null
@@ -1035,6 +1111,7 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          revision_number?: number
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
@@ -1072,6 +1149,7 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          revision_number?: number
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
