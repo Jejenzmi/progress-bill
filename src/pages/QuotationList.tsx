@@ -53,7 +53,7 @@ interface Quotation {
   id: string;
   project_name: string;
   client_id: string | null;
-  man_days: QuotationItem[];
+  man_days: QuotationItem[] | { items: QuotationItem[]; paymentTerms?: string[]; guaranteeTerms?: string[]; estimatedDuration?: string };
   grand_total: number | null;
   valid_until: string | null;
   status: string | null;
@@ -91,6 +91,11 @@ const formatCurrency = (amount: number): string => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+};
+const extractItems = (manDays: Quotation['man_days']): QuotationItem[] => {
+  if (Array.isArray(manDays)) return manDays;
+  if (manDays && typeof manDays === 'object' && 'items' in manDays && Array.isArray(manDays.items)) return manDays.items;
+  return [];
 };
 
 export default function QuotationList() {
@@ -202,7 +207,7 @@ export default function QuotationList() {
       const company = await getCompanyProfile();
       const tteSettings = await fetchTTEForPDF();
       
-      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const items = extractItems(quotation.man_days);
       const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
       const ppnAmount = Math.round(subtotal * 0.11);
       const grandTotal = subtotal + ppnAmount;
@@ -249,7 +254,7 @@ export default function QuotationList() {
       const company = await getCompanyProfile();
       const tteSettings = await fetchTTEForPDF();
       
-      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const items = extractItems(quotation.man_days);
       const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
       const ppnAmount = Math.round(subtotal * 0.11);
       const grandTotal = subtotal + ppnAmount;
@@ -345,12 +350,12 @@ export default function QuotationList() {
 
   const handleDuplicate = async (quotation: Quotation) => {
     try {
-      const items = Array.isArray(quotation.man_days) ? quotation.man_days : [];
+      const items = extractItems(quotation.man_days);
       const { data, error } = await supabase.from('quotations').insert([{
         project_name: `${quotation.project_name} (Copy)`,
         project_description: quotation.project_description || null,
         client_id: quotation.client_id || null,
-        man_days: items as any,
+        man_days: quotation.man_days as any,
         hosting_cost: 0,
         maintenance_cost: 0,
         maintenance_period: 'Tahunan',
