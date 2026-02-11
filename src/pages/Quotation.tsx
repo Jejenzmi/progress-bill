@@ -396,7 +396,7 @@ export default function Quotation() {
       const quotationData = {
         project_name: projectName,
         project_description: projectDescription || null,
-        client_id: selectedClientId || null,
+        client_id: (selectedClientId && selectedClientId !== 'manual') ? selectedClientId : null,
         man_days: items as any,
         hosting_cost: 0,
         maintenance_cost: 0,
@@ -407,6 +407,7 @@ export default function Quotation() {
         status: 'Draft',
         margin_percentage: usedMarginPercentage,
         quotation_number: quotationNumber,
+        created_by: user?.id || null,
       };
 
       if (editingQuotationId) {
