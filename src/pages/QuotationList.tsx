@@ -97,6 +97,16 @@ const extractItems = (manDays: Quotation['man_days']): QuotationItem[] => {
   if (manDays && typeof manDays === 'object' && 'items' in manDays && Array.isArray(manDays.items)) return manDays.items;
   return [];
 };
+const extractMetadata = (manDays: Quotation['man_days']): { paymentTerms?: string[]; guaranteeTerms?: string[]; estimatedDuration?: string } => {
+  if (manDays && typeof manDays === 'object' && !Array.isArray(manDays)) {
+    return {
+      paymentTerms: (manDays as any).paymentTerms,
+      guaranteeTerms: (manDays as any).guaranteeTerms,
+      estimatedDuration: (manDays as any).estimatedDuration,
+    };
+  }
+  return {};
+};
 
 export default function QuotationList() {
   const { toast } = useToast();
@@ -219,6 +229,7 @@ export default function QuotationList() {
       // Use stored quotation_number or fallback to ID-based format
       const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
       
+      const metadata = extractMetadata(quotation.man_days);
       const quotationData = {
         quotationNumber,
         quotationDate: new Date(quotation.created_at),
@@ -226,11 +237,15 @@ export default function QuotationList() {
         clientName: quotation.clients?.name || 'Klien',
         clientAddress: quotation.clients?.address || '',
         projectName: quotation.project_name,
+        projectDescription: quotation.project_description || undefined,
         items,
         subtotal,
         ppnPercentage: 11,
         ppnAmount,
         grandTotal,
+        paymentTerms: metadata.paymentTerms,
+        estimatedDuration: metadata.estimatedDuration,
+        guaranteeTerms: metadata.guaranteeTerms,
       };
 
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
@@ -266,6 +281,7 @@ export default function QuotationList() {
       // Use stored quotation_number or fallback to ID-based format
       const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
       
+      const metadata = extractMetadata(quotation.man_days);
       const quotationData = {
         quotationNumber,
         quotationDate: new Date(quotation.created_at),
@@ -273,11 +289,15 @@ export default function QuotationList() {
         clientName: quotation.clients?.name || 'Klien',
         clientAddress: quotation.clients?.address || '',
         projectName: quotation.project_name,
+        projectDescription: quotation.project_description || undefined,
         items,
         subtotal,
         ppnPercentage: 11,
         ppnAmount,
         grandTotal,
+        paymentTerms: metadata.paymentTerms,
+        estimatedDuration: metadata.estimatedDuration,
+        guaranteeTerms: metadata.guaranteeTerms,
       };
 
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
