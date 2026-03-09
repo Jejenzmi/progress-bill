@@ -218,7 +218,11 @@ export default function QuotationList() {
       const tteSettings = await fetchTTEForPDF();
       
       const items = extractItems(quotation.man_days);
-      const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const originalSubtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+      
+      // Use negotiated price as DPP if negotiation is approved
+      const hasNegotiatedPrice = quotation.negotiation_status === 'approved' && quotation.negotiated_price != null;
+      const subtotal = hasNegotiatedPrice ? quotation.negotiated_price! : originalSubtotal;
       const ppnAmount = Math.round(subtotal * 0.11);
       const grandTotal = subtotal + ppnAmount;
 
