@@ -611,10 +611,21 @@ export const generateQuotationPDF = async (
         <!-- Totals -->
         <div class="totals-wrapper">
           <div class="totals-box">
+            ${quotation.isNegotiated ? `
+            <div class="total-row subtotal" style="color: #999;">
+              <span>HARGA ASLI (DPP)</span>
+              <span style="text-decoration: line-through;">Rp. ${formatCurrencyPlain(quotation.originalSubtotal || 0)},-</span>
+            </div>
+            <div class="total-row" style="color: #d32f2f; font-weight: 600;">
+              <span>HARGA NEGO (DPP) <span style="font-size: 6pt; font-weight: normal;">${quotation.negotiationDiscount ? `(-${quotation.negotiationDiscount.toFixed(1)}%)` : ''}</span></span>
+              <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
+            </div>
+            ` : `
             <div class="total-row subtotal">
               <span>JUMLAH BIAYA</span>
               <span>Rp. ${formatCurrencyPlain(quotation.subtotal)},-</span>
             </div>
+            `}
             <div class="total-row ppn">
               <span>PPN ${quotation.ppnPercentage}%</span>
               <span>Rp. ${formatCurrencyPlain(quotation.ppnAmount)},-</span>
