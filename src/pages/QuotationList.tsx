@@ -220,10 +220,11 @@ export default function QuotationList() {
       const items = extractItems(quotation.man_days);
       const originalSubtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
       
-      // Use negotiated price as DPP if negotiation is approved
+      // Use negotiated price if negotiation is approved
+      // negotiated_price in DB = total (DPP + PPN), so extract DPP = negotiated_price / 1.11
       const hasNegotiatedPrice = quotation.negotiation_status === 'approved' && quotation.negotiated_price != null;
-      const subtotal = hasNegotiatedPrice ? quotation.negotiated_price! : originalSubtotal;
-      const ppnAmount = Math.round(subtotal * 0.11);
+      const subtotal = hasNegotiatedPrice ? Math.round(quotation.negotiated_price! / 1.11) : originalSubtotal;
+      const ppnAmount = hasNegotiatedPrice ? Math.round(subtotal * 0.11) : Math.round(originalSubtotal * 0.11);
       const grandTotal = subtotal + ppnAmount;
 
       const validUntil = quotation.valid_until 
@@ -276,9 +277,10 @@ export default function QuotationList() {
       const items = extractItems(quotation.man_days);
       const originalSubtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
       
-      // Use negotiated price as DPP if negotiation is approved
+      // Use negotiated price if negotiation is approved
+      // negotiated_price in DB = total (DPP + PPN), so extract DPP = negotiated_price / 1.11
       const hasNegotiatedPrice = quotation.negotiation_status === 'approved' && quotation.negotiated_price != null;
-      const subtotal = hasNegotiatedPrice ? quotation.negotiated_price! : originalSubtotal;
+      const subtotal = hasNegotiatedPrice ? Math.round(quotation.negotiated_price! / 1.11) : originalSubtotal;
       const ppnAmount = Math.round(subtotal * 0.11);
       const grandTotal = subtotal + ppnAmount;
 
