@@ -44,6 +44,12 @@ export interface QuotationData {
   paymentTerms?: string[];
   estimatedDuration?: string;
   guaranteeTerms?: string[];
+  // Negotiation info
+  isNegotiated?: boolean;
+  originalSubtotal?: number;
+  originalPpnAmount?: number;
+  originalGrandTotal?: number;
+  negotiationDiscount?: number; // percentage
 }
 
 export const formatCurrency = (amount: number): string => {
