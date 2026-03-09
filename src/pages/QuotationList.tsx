@@ -235,6 +235,12 @@ export default function QuotationList() {
       const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
       
       const metadata = extractMetadata(quotation.man_days);
+      const originalPpnAmount = Math.round(originalSubtotal * 0.11);
+      const originalGrandTotal = originalSubtotal + originalPpnAmount;
+      const negotiationDiscount = hasNegotiatedPrice && originalSubtotal > 0
+        ? ((originalSubtotal - subtotal) / originalSubtotal) * 100
+        : 0;
+
       const quotationData = {
         quotationNumber,
         quotationDate: new Date(quotation.created_at),
@@ -251,6 +257,12 @@ export default function QuotationList() {
         paymentTerms: metadata.paymentTerms,
         estimatedDuration: metadata.estimatedDuration,
         guaranteeTerms: metadata.guaranteeTerms,
+        // Negotiation info
+        isNegotiated: hasNegotiatedPrice,
+        originalSubtotal: hasNegotiatedPrice ? originalSubtotal : undefined,
+        originalPpnAmount: hasNegotiatedPrice ? originalPpnAmount : undefined,
+        originalGrandTotal: hasNegotiatedPrice ? originalGrandTotal : undefined,
+        negotiationDiscount: hasNegotiatedPrice ? negotiationDiscount : undefined,
       };
 
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
@@ -292,6 +304,12 @@ export default function QuotationList() {
       const quotationNumber = quotation.quotation_number || `QUO-${quotation.id.substring(0, 8).toUpperCase()}`;
       
       const metadata = extractMetadata(quotation.man_days);
+      const originalPpnAmount = Math.round(originalSubtotal * 0.11);
+      const originalGrandTotal = originalSubtotal + originalPpnAmount;
+      const negotiationDiscount = hasNegotiatedPrice && originalSubtotal > 0
+        ? ((originalSubtotal - subtotal) / originalSubtotal) * 100
+        : 0;
+
       const quotationData = {
         quotationNumber,
         quotationDate: new Date(quotation.created_at),
@@ -308,6 +326,11 @@ export default function QuotationList() {
         paymentTerms: metadata.paymentTerms,
         estimatedDuration: metadata.estimatedDuration,
         guaranteeTerms: metadata.guaranteeTerms,
+        isNegotiated: hasNegotiatedPrice,
+        originalSubtotal: hasNegotiatedPrice ? originalSubtotal : undefined,
+        originalPpnAmount: hasNegotiatedPrice ? originalPpnAmount : undefined,
+        originalGrandTotal: hasNegotiatedPrice ? originalGrandTotal : undefined,
+        negotiationDiscount: hasNegotiatedPrice ? negotiationDiscount : undefined,
       };
 
       const html = await generateQuotationPDF(quotationData, company, tteSettings);
