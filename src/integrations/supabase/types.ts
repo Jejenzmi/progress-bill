@@ -14,6 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          assigned_to: string | null
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_completed: boolean
+          lead_id: string | null
+          project_id: string | null
+          reminder_at: string | null
+          reminder_sent: boolean
+          scheduled_at: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          project_id?: string | null
+          reminder_at?: string | null
+          reminder_sent?: boolean
+          scheduled_at?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          project_id?: string | null
+          reminder_at?: string | null
+          reminder_sent?: boolean
+          scheduled_at?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -21,6 +133,8 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          npwp_badan: string | null
+          npwp_pribadi: string | null
           pic_email: string | null
           pic_name: string | null
           pic_phone: string | null
@@ -32,6 +146,8 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          npwp_badan?: string | null
+          npwp_pribadi?: string | null
           pic_email?: string | null
           pic_name?: string | null
           pic_phone?: string | null
@@ -43,12 +159,217 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          npwp_badan?: string | null
+          npwp_pribadi?: string | null
           pic_email?: string | null
           pic_name?: string | null
           pic_phone?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      contract_templates: {
+        Row: {
+          confidentiality_terms: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          dispute_terms: string | null
+          force_majeure_terms: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          maintenance_terms: string | null
+          name: string
+          party1_obligations: Json | null
+          party2_obligations: Json | null
+          sanction_terms: string | null
+          standard_clauses: Json | null
+          updated_at: string
+        }
+        Insert: {
+          confidentiality_terms?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dispute_terms?: string | null
+          force_majeure_terms?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maintenance_terms?: string | null
+          name: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          sanction_terms?: string | null
+          standard_clauses?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          confidentiality_terms?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dispute_terms?: string | null
+          force_majeure_terms?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maintenance_terms?: string | null
+          name?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          sanction_terms?: string | null
+          standard_clauses?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contracts: {
+        Row: {
+          additional_costs: Json | null
+          additional_notes: string | null
+          client_id: string
+          client_signer_name: string | null
+          client_signer_nik: string | null
+          client_signer_position: string | null
+          company_settings: Json | null
+          contract_number: string
+          created_at: string
+          created_by: string | null
+          custom_clauses: Json | null
+          duration_months: number
+          end_date: string
+          id: string
+          party1_obligations: Json | null
+          party2_obligations: Json | null
+          payment_terms_snapshot: Json
+          project_description: string | null
+          project_id: string | null
+          project_name: string
+          quotation_id: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_contract_path: string | null
+          signed_contract_uploaded_at: string | null
+          signed_contract_uploaded_by: string | null
+          signer_name: string | null
+          signer_position: string | null
+          signer_type: string
+          start_date: string
+          status: string
+          total_value: number
+          tte_document_id: string | null
+          tte_enabled: boolean | null
+          tte_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_costs?: Json | null
+          additional_notes?: string | null
+          client_id: string
+          client_signer_name?: string | null
+          client_signer_nik?: string | null
+          client_signer_position?: string | null
+          company_settings?: Json | null
+          contract_number: string
+          created_at?: string
+          created_by?: string | null
+          custom_clauses?: Json | null
+          duration_months?: number
+          end_date: string
+          id?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          payment_terms_snapshot?: Json
+          project_description?: string | null
+          project_id?: string | null
+          project_name: string
+          quotation_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_contract_path?: string | null
+          signed_contract_uploaded_at?: string | null
+          signed_contract_uploaded_by?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          signer_type?: string
+          start_date: string
+          status?: string
+          total_value?: number
+          tte_document_id?: string | null
+          tte_enabled?: boolean | null
+          tte_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_costs?: Json | null
+          additional_notes?: string | null
+          client_id?: string
+          client_signer_name?: string | null
+          client_signer_nik?: string | null
+          client_signer_position?: string | null
+          company_settings?: Json | null
+          contract_number?: string
+          created_at?: string
+          created_by?: string | null
+          custom_clauses?: Json | null
+          duration_months?: number
+          end_date?: string
+          id?: string
+          party1_obligations?: Json | null
+          party2_obligations?: Json | null
+          payment_terms_snapshot?: Json
+          project_description?: string | null
+          project_id?: string | null
+          project_name?: string
+          quotation_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_contract_path?: string | null
+          signed_contract_uploaded_at?: string | null
+          signed_contract_uploaded_by?: string | null
+          signer_name?: string | null
+          signer_position?: string | null
+          signer_type?: string
+          start_date?: string
+          status?: string
+          total_value?: number
+          tte_document_id?: string | null
+          tte_enabled?: boolean | null
+          tte_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_tte_document_id_fkey"
+            columns: ["tte_document_id"]
+            isOneToOne: false
+            referencedRelation: "signed_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_notifications: {
         Row: {
@@ -83,6 +404,7 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          bank_account_id: string | null
           created_at: string
           created_by: string | null
           due_date: string
@@ -94,12 +416,14 @@ export type Database = {
           payment_proof_file: string | null
           project_id: string
           status: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued: boolean | null
           tax_invoice_number: string | null
           term_id: string
           updated_at: string
         }
         Insert: {
           amount: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date: string
@@ -111,12 +435,14 @@ export type Database = {
           payment_proof_file?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued?: boolean | null
           tax_invoice_number?: string | null
           term_id: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string
@@ -128,11 +454,19 @@ export type Database = {
           payment_proof_file?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          tax_invoice_issued?: boolean | null
           tax_invoice_number?: string | null
           term_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_project_id_fkey"
             columns: ["project_id"]
@@ -148,6 +482,128 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leads: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          company_name: string | null
+          company_size: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          estimated_value: number | null
+          id: string
+          industry: string | null
+          last_contacted_at: string | null
+          name: string
+          next_follow_up_at: string | null
+          notes: string | null
+          phone: string | null
+          score: number
+          source: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          company_size?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          id?: string
+          industry?: string | null
+          last_contacted_at?: string | null
+          name: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          score?: number
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          company_size?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          id?: string
+          industry?: string | null
+          last_contacted_at?: string | null
+          name?: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          score?: number
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          related_id: string | null
+          related_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          related_id?: string | null
+          related_type?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          related_id?: string | null
+          related_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       payment_terms: {
         Row: {
@@ -202,6 +658,45 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          base_price: number
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sku: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -229,16 +724,151 @@ export type Database = {
         }
         Relationships: []
       }
+      project_bonus_settings: {
+        Row: {
+          approved_at_finance: string | null
+          approved_by_finance: string | null
+          bonus_pool_amount: number
+          bonus_pool_percentage: number
+          created_at: string
+          finalized_at: string | null
+          finalized_by: string | null
+          finalized_status: string | null
+          id: string
+          is_finalized: boolean | null
+          margin_amount: number
+          notes: string | null
+          project_id: string | null
+          proposed_at: string | null
+          proposed_by: string | null
+          quotation_id: string | null
+          rejection_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at_finance?: string | null
+          approved_by_finance?: string | null
+          bonus_pool_amount?: number
+          bonus_pool_percentage?: number
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          finalized_status?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          margin_amount?: number
+          notes?: string | null
+          project_id?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
+          quotation_id?: string | null
+          rejection_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at_finance?: string | null
+          approved_by_finance?: string | null
+          bonus_pool_amount?: number
+          bonus_pool_percentage?: number
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          finalized_status?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          margin_amount?: number
+          notes?: string | null
+          project_id?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
+          quotation_id?: string | null
+          rejection_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_bonus_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_bonus_settings_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: true
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_team_members: {
+        Row: {
+          complexity_weight: number
+          contribution_notes: string | null
+          created_at: string
+          id: string
+          man_days: number
+          project_id: string | null
+          quotation_id: string | null
+          role_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          complexity_weight?: number
+          contribution_notes?: string | null
+          created_at?: string
+          id?: string
+          man_days?: number
+          project_id?: string | null
+          quotation_id?: string | null
+          role_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          complexity_weight?: number
+          contribution_notes?: string | null
+          created_at?: string
+          id?: string
+          man_days?: number
+          project_id?: string | null
+          quotation_id?: string | null
+          role_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_team_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_team_members_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           client_id: string
+          contract_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           end_date: string | null
           id: string
           pipeline_stage: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability: number | null
           project_name: string
+          quotation_id: string | null
           spk_file_path: string | null
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
@@ -247,13 +877,16 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability?: number | null
           project_name: string
+          quotation_id?: string | null
           spk_file_path?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -262,13 +895,16 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          probability?: number | null
           project_name?: string
+          quotation_id?: string | null
           spk_file_path?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -283,53 +919,243 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          quotation_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          quotation_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          quotation_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_comments_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_revisions: {
+        Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string | null
+          created_at: string
+          grand_total: number | null
+          id: string
+          man_days: Json | null
+          margin_percentage: number | null
+          project_description: string | null
+          project_name: string
+          quotation_id: string
+          quotation_number: string | null
+          revised_by: string | null
+          revision_number: number
+          revision_reason: string | null
+          snapshot_data: Json | null
+        }
+        Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          grand_total?: number | null
+          id?: string
+          man_days?: Json | null
+          margin_percentage?: number | null
+          project_description?: string | null
+          project_name: string
+          quotation_id: string
+          quotation_number?: string | null
+          revised_by?: string | null
+          revision_number: number
+          revision_reason?: string | null
+          snapshot_data?: Json | null
+        }
+        Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          grand_total?: number | null
+          id?: string
+          man_days?: Json | null
+          margin_percentage?: number | null
+          project_description?: string | null
+          project_name?: string
+          quotation_id?: string
+          quotation_number?: string | null
+          revised_by?: string | null
+          revision_number?: number
+          revision_reason?: string | null
+          snapshot_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_revisions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_revisions_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       quotations: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          auto_create_project: boolean | null
           client_id: string | null
           created_at: string
           created_by: string | null
           grand_total: number | null
           hosting_cost: number | null
           id: string
+          lead_id: string | null
           maintenance_cost: number | null
           maintenance_period: string | null
           man_days: Json
+          margin_percentage: number | null
+          negotiated_at: string | null
+          negotiated_by: string | null
+          negotiated_price: number | null
+          negotiation_approved_at: string | null
+          negotiation_approved_by: string | null
+          negotiation_notes: string | null
+          negotiation_rejection_reason: string | null
+          negotiation_status: string | null
+          project_description: string | null
           project_name: string
+          quotation_date: string | null
+          quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          revision_number: number
           status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           total_development: number | null
           updated_at: string
           valid_until: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_create_project?: boolean | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number | null
           hosting_cost?: number | null
           id?: string
+          lead_id?: string | null
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
+          margin_percentage?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_price?: number | null
+          negotiation_approved_at?: string | null
+          negotiation_approved_by?: string | null
+          negotiation_notes?: string | null
+          negotiation_rejection_reason?: string | null
+          negotiation_status?: string | null
+          project_description?: string | null
           project_name: string
+          quotation_date?: string | null
+          quotation_number?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          revision_number?: number
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_create_project?: boolean | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number | null
           hosting_cost?: number | null
           id?: string
+          lead_id?: string | null
           maintenance_cost?: number | null
           maintenance_period?: string | null
           man_days?: Json
+          margin_percentage?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_price?: number | null
+          negotiation_approved_at?: string | null
+          negotiation_approved_by?: string | null
+          negotiation_notes?: string | null
+          negotiation_rejection_reason?: string | null
+          negotiation_status?: string | null
+          project_description?: string | null
           project_name?: string
+          quotation_date?: string | null
+          quotation_number?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          revision_number?: number
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -342,7 +1168,50 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "quotations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      sales_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          target_amount: number
+          target_period: string
+          target_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          target_amount?: number
+          target_period: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          target_amount?: number
+          target_period?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       settings: {
         Row: {
@@ -370,54 +1239,144 @@ export type Database = {
       }
       signed_documents: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           file_size: number | null
           file_type: string
           id: string
           original_file_name: string
           original_file_path: string
+          qr_page: number
           qr_position: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           signed_at: string
           signed_file_path: string | null
           signer_name: string
           signer_position: string
+          signer_type: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          tte_status: string | null
           updated_at: string
           user_id: string
           verification_id: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           file_size?: number | null
           file_type: string
           id?: string
           original_file_name: string
           original_file_path: string
+          qr_page?: number
           qr_position?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           signed_at?: string
           signed_file_path?: string | null
           signer_name: string
           signer_position: string
+          signer_type?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tte_status?: string | null
           updated_at?: string
           user_id: string
           verification_id?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           file_size?: number | null
           file_type?: string
           id?: string
           original_file_name?: string
           original_file_path?: string
+          qr_page?: number
           qr_position?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           signed_at?: string
           signed_file_path?: string | null
           signer_name?: string
           signer_position?: string
+          signer_type?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tte_status?: string | null
           updated_at?: string
           user_id?: string
           verification_id?: string | null
         }
         Relationships: []
+      }
+      team_member_bonuses: {
+        Row: {
+          bonus_amount: number
+          contribution_percentage: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          payment_notes: string | null
+          payment_reference: string | null
+          project_bonus_id: string | null
+          status: string | null
+          team_member_id: string | null
+          updated_at: string
+          weighted_contribution: number
+        }
+        Insert: {
+          bonus_amount?: number
+          contribution_percentage?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
+          project_bonus_id?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          updated_at?: string
+          weighted_contribution?: number
+        }
+        Update: {
+          bonus_amount?: number
+          contribution_percentage?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
+          project_bonus_id?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          updated_at?: string
+          weighted_contribution?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_bonuses_project_bonus_id_fkey"
+            columns: ["project_bonus_id"]
+            isOneToOne: false
+            referencedRelation: "project_bonus_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_bonuses_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "project_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       term_evidences: {
         Row: {
@@ -555,7 +1514,20 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "marketing" | "finance" | "project_manager"
+      activity_type:
+        | "meeting"
+        | "call"
+        | "email"
+        | "whatsapp"
+        | "note"
+        | "follow_up"
+      app_role:
+        | "admin"
+        | "marketing"
+        | "finance"
+        | "project_manager"
+        | "bdo"
+        | "coo"
       client_type: "Pemerintah" | "Swasta"
       evidence_type:
         | "BAST"
@@ -565,6 +1537,7 @@ export type Database = {
         | "SPK"
         | "Lainnya"
       invoice_status: "Draft" | "Sent" | "Paid" | "Overdue"
+      lead_status: "cold" | "warm" | "hot"
       pipeline_stage: "Meeting" | "Proposal" | "Negosiasi" | "Closing"
       project_status: "Pipeline" | "Won" | "Lost" | "Completed"
       term_trigger:
@@ -700,7 +1673,22 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "marketing", "finance", "project_manager"],
+      activity_type: [
+        "meeting",
+        "call",
+        "email",
+        "whatsapp",
+        "note",
+        "follow_up",
+      ],
+      app_role: [
+        "admin",
+        "marketing",
+        "finance",
+        "project_manager",
+        "bdo",
+        "coo",
+      ],
       client_type: ["Pemerintah", "Swasta"],
       evidence_type: [
         "BAST",
@@ -711,6 +1699,7 @@ export const Constants = {
         "Lainnya",
       ],
       invoice_status: ["Draft", "Sent", "Paid", "Overdue"],
+      lead_status: ["cold", "warm", "hot"],
       pipeline_stage: ["Meeting", "Proposal", "Negosiasi", "Closing"],
       project_status: ["Pipeline", "Won", "Lost", "Completed"],
       term_trigger: [

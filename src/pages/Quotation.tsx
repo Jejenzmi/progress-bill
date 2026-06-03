@@ -19,8 +19,13 @@ import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyPr
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, CalendarIcon } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -53,6 +58,7 @@ export default function Quotation() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [quotationDate, setQuotationDate] = useState<Date>(new Date());
   
   // Items
   const [items, setItems] = useState<QuotationItem[]>([
@@ -99,6 +105,10 @@ export default function Quotation() {
       if (quotation) {
         setEditingQuotationId(quotation.id);
         setProjectName(quotation.project_name);
+        if ((quotation as any).quotation_number) setQuotationNumber((quotation as any).quotation_number);
+        if ((quotation as any).project_description) setProjectDescription((quotation as any).project_description);
+        const qDate = (quotation as any).quotation_date || quotation.created_at;
+        if (qDate) setQuotationDate(new Date(qDate));
         
         // Set client info
         if (quotation.client_id) {
@@ -220,12 +230,12 @@ export default function Quotation() {
   // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const buildQuotationData = () => {
-    const validUntil = new Date();
+    const validUntil = new Date(quotationDate);
     validUntil.setDate(validUntil.getDate() + 30);
 
     return {
       quotationNumber,
-      quotationDate: new Date(),
+      quotationDate: quotationDate,
       validUntil,
       clientName: clientName || 'Klien',
       clientAddress: clientAddress || '',
@@ -254,12 +264,15 @@ export default function Quotation() {
 
     setSaving(true);
     try {
-      const validUntil = new Date();
+      const validUntil = new Date(quotationDate);
       validUntil.setDate(validUntil.getDate() + 30);
 
       const quotationData = {
         project_name: projectName,
-        client_id: selectedClientId || null,
+        project_description: projectDescription || null,
+        quotation_number: quotationNumber || null,
+        quotation_date: quotationDate.toISOString().split('T')[0],
+        client_id: selectedClientId && selectedClientId !== 'manual' ? selectedClientId : null,
         man_days: items as any,
         hosting_cost: 0,
         maintenance_cost: 0,
@@ -389,6 +402,33 @@ export default function Quotation() {
                     onChange={(e) => setProjectName(e.target.value)}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Tanggal Quotation</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !quotationDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {quotationDate ? format(quotationDate, "dd MMMM yyyy", { locale: idLocale }) : <span>Pilih tanggal</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={quotationDate}
+                      onSelect={(d) => d && setQuotationDate(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">Bisa memilih tanggal mundur (back date).</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectDescription">Deskripsi Proyek</Label>

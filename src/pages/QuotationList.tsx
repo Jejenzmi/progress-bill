@@ -50,6 +50,7 @@ interface Quotation {
   valid_until: string | null;
   status: string | null;
   created_at: string;
+  quotation_date?: string | null;
   clients?: {
     name: string;
     address: string | null;
@@ -148,7 +149,7 @@ export default function QuotationList() {
 
     const quotationData = {
       quotationNumber: `QUO-${quotation.id.substring(0, 8).toUpperCase()}`,
-      quotationDate: new Date(quotation.created_at),
+      quotationDate: quotation.quotation_date ? new Date(quotation.quotation_date) : new Date(quotation.created_at),
       validUntil,
       clientName: quotation.clients?.name || 'Klien',
       clientAddress: quotation.clients?.address || '',
