@@ -280,6 +280,7 @@ export default function QuotationList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Tanggal</TableHead>
                   <TableHead>Proyek</TableHead>
                   <TableHead>Klien</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -291,6 +292,15 @@ export default function QuotationList() {
               <TableBody>
                 {filteredQuotations.map((quotation) => (
                   <TableRow key={quotation.id}>
+                    <TableCell>
+                      {quotation.quotation_date
+                        ? format(new Date(quotation.quotation_date), 'dd MMM yyyy', {
+                            locale: idLocale,
+                          })
+                        : format(new Date(quotation.created_at), 'dd MMM yyyy', {
+                            locale: idLocale,
+                          })}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {quotation.project_name}
                     </TableCell>
