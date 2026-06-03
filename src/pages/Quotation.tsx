@@ -105,6 +105,10 @@ export default function Quotation() {
       if (quotation) {
         setEditingQuotationId(quotation.id);
         setProjectName(quotation.project_name);
+        if ((quotation as any).quotation_number) setQuotationNumber((quotation as any).quotation_number);
+        if ((quotation as any).project_description) setProjectDescription((quotation as any).project_description);
+        const qDate = (quotation as any).quotation_date || quotation.created_at;
+        if (qDate) setQuotationDate(new Date(qDate));
         
         // Set client info
         if (quotation.client_id) {
