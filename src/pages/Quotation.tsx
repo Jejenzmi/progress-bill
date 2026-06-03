@@ -19,8 +19,13 @@ import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyPr
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, CalendarIcon } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
