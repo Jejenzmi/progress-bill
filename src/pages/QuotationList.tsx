@@ -178,6 +178,35 @@ export default function QuotationList() {
     navigate(`/quotation?edit=${quotation.id}`);
   };
 
+  const handleDateChange = async (quotationId: string, newDate: Date) => {
+    try {
+      const { error } = await supabase
+        .from('quotations')
+        .update({ quotation_date: newDate.toISOString().split('T')[0] })
+        .eq('id', quotationId);
+
+      if (error) throw error;
+
+      setQuotations((prev) =>
+        prev.map((q) =>
+          q.id === quotationId ? { ...q, quotation_date: newDate.toISOString().split('T')[0] } : q
+        )
+      );
+
+      toast({
+        title: 'Berhasil',
+        description: 'Tanggal penerbitan diperbarui',
+      });
+    } catch (error: any) {
+      console.error('Error updating quotation date:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal memperbarui tanggal',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!quotationToDelete) return;
 
