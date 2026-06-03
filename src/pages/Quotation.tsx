@@ -404,7 +404,7 @@ export default function Quotation() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Tanggal Quotation</Label>
+                <Label>Tanggal Penerbitan Quotation</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
