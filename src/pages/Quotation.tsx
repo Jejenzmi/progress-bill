@@ -58,6 +58,7 @@ export default function Quotation() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [quotationDate, setQuotationDate] = useState<Date>(new Date());
   
   // Items
   const [items, setItems] = useState<QuotationItem[]>([
