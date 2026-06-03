@@ -230,12 +230,12 @@ export default function Quotation() {
   // TTE settings now come from useUserTTE hook - fetchTTEForPDF()
 
   const buildQuotationData = () => {
-    const validUntil = new Date();
+    const validUntil = new Date(quotationDate);
     validUntil.setDate(validUntil.getDate() + 30);
 
     return {
       quotationNumber,
-      quotationDate: new Date(),
+      quotationDate: quotationDate,
       validUntil,
       clientName: clientName || 'Klien',
       clientAddress: clientAddress || '',
