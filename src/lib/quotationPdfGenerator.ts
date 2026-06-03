@@ -379,7 +379,7 @@ export const generateQuotationPDF = async (
         <div class="meta-grid">
           <div class="meta-box">
             <div class="meta-row">
-              <span class="meta-label">Tanggal</span>
+              <span class="meta-label">Tanggal Penerbitan</span>
               <span class="meta-value">: ${formatDate(quotation.quotationDate)}</span>
             </div>
             <div class="meta-row">
