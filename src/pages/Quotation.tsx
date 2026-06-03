@@ -404,6 +404,33 @@ export default function Quotation() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label>Tanggal Quotation</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !quotationDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {quotationDate ? format(quotationDate, "dd MMMM yyyy", { locale: idLocale }) : <span>Pilih tanggal</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={quotationDate}
+                      onSelect={(d) => d && setQuotationDate(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">Bisa memilih tanggal mundur (back date).</p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="projectDescription">Deskripsi Proyek</Label>
                 <Textarea
                   id="projectDescription"
