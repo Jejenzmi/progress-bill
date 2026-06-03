@@ -50,6 +50,7 @@ interface Quotation {
   valid_until: string | null;
   status: string | null;
   created_at: string;
+  quotation_date?: string | null;
   clients?: {
     name: string;
     address: string | null;
