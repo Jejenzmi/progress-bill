@@ -1069,6 +1069,7 @@ export type Database = {
           negotiation_status: string | null
           project_description: string | null
           project_name: string
+          quotation_date: string | null
           quotation_number: string | null
           rejected_at: string | null
           rejected_by: string | null
@@ -1107,6 +1108,7 @@ export type Database = {
           negotiation_status?: string | null
           project_description?: string | null
           project_name: string
+          quotation_date?: string | null
           quotation_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -1145,6 +1147,7 @@ export type Database = {
           negotiation_status?: string | null
           project_description?: string | null
           project_name?: string
+          quotation_date?: string | null
           quotation_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
