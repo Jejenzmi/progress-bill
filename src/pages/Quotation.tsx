@@ -264,12 +264,15 @@ export default function Quotation() {
 
     setSaving(true);
     try {
-      const validUntil = new Date();
+      const validUntil = new Date(quotationDate);
       validUntil.setDate(validUntil.getDate() + 30);
 
       const quotationData = {
         project_name: projectName,
-        client_id: selectedClientId || null,
+        project_description: projectDescription || null,
+        quotation_number: quotationNumber || null,
+        quotation_date: quotationDate.toISOString().split('T')[0],
+        client_id: selectedClientId && selectedClientId !== 'manual' ? selectedClientId : null,
         man_days: items as any,
         hosting_cost: 0,
         maintenance_cost: 0,
