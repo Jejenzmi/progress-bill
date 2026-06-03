@@ -280,6 +280,7 @@ export default function QuotationList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Tanggal</TableHead>
                   <TableHead>Proyek</TableHead>
                   <TableHead>Klien</TableHead>
                   <TableHead className="text-right">Total</TableHead>
