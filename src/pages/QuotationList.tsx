@@ -28,6 +28,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import {
   Plus,
   Search,
   Eye,
@@ -36,10 +42,12 @@ import {
   Download,
   FileText,
   Loader2,
+  CalendarIcon,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface Quotation {
   id: string;
@@ -170,6 +178,35 @@ export default function QuotationList() {
     navigate(`/quotation?edit=${quotation.id}`);
   };
 
+  const handleDateChange = async (quotationId: string, newDate: Date) => {
+    try {
+      const { error } = await supabase
+        .from('quotations')
+        .update({ quotation_date: newDate.toISOString().split('T')[0] })
+        .eq('id', quotationId);
+
+      if (error) throw error;
+
+      setQuotations((prev) =>
+        prev.map((q) =>
+          q.id === quotationId ? { ...q, quotation_date: newDate.toISOString().split('T')[0] } : q
+        )
+      );
+
+      toast({
+        title: 'Berhasil',
+        description: 'Tanggal penerbitan diperbarui',
+      });
+    } catch (error: any) {
+      console.error('Error updating quotation date:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal memperbarui tanggal',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!quotationToDelete) return;
 
@@ -293,13 +330,40 @@ export default function QuotationList() {
                 {filteredQuotations.map((quotation) => (
                   <TableRow key={quotation.id}>
                     <TableCell>
-                      {quotation.quotation_date
-                        ? format(new Date(quotation.quotation_date), 'dd MMM yyyy', {
-                            locale: idLocale,
-                          })
-                        : format(new Date(quotation.created_at), 'dd MMM yyyy', {
-                            locale: idLocale,
-                          })}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "h-8 px-2 text-left font-normal hover:bg-muted",
+                              !quotation.quotation_date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                            {quotation.quotation_date
+                              ? format(new Date(quotation.quotation_date), 'dd MMM yyyy', {
+                                  locale: idLocale,
+                                })
+                              : format(new Date(quotation.created_at), 'dd MMM yyyy', {
+                                  locale: idLocale,
+                                })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={quotation.quotation_date ? new Date(quotation.quotation_date) : new Date(quotation.created_at)}
+                            onSelect={(date) => {
+                              if (date) {
+                                handleDateChange(quotation.id, date);
+                              }
+                            }}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </TableCell>
                     <TableCell className="font-medium">
                       {quotation.project_name}
