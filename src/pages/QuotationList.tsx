@@ -330,13 +330,40 @@ export default function QuotationList() {
                 {filteredQuotations.map((quotation) => (
                   <TableRow key={quotation.id}>
                     <TableCell>
-                      {quotation.quotation_date
-                        ? format(new Date(quotation.quotation_date), 'dd MMM yyyy', {
-                            locale: idLocale,
-                          })
-                        : format(new Date(quotation.created_at), 'dd MMM yyyy', {
-                            locale: idLocale,
-                          })}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "h-8 px-2 text-left font-normal hover:bg-muted",
+                              !quotation.quotation_date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                            {quotation.quotation_date
+                              ? format(new Date(quotation.quotation_date), 'dd MMM yyyy', {
+                                  locale: idLocale,
+                                })
+                              : format(new Date(quotation.created_at), 'dd MMM yyyy', {
+                                  locale: idLocale,
+                                })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={quotation.quotation_date ? new Date(quotation.quotation_date) : new Date(quotation.created_at)}
+                            onSelect={(date) => {
+                              if (date) {
+                                handleDateChange(quotation.id, date);
+                              }
+                            }}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </TableCell>
                     <TableCell className="font-medium">
                       {quotation.project_name}
