@@ -26,6 +26,11 @@ import { id as idLocale } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import {
+  DEFAULT_TERMS_CONDITIONS,
+  DEFAULT_PAYMENT_TERMS,
+  DEFAULT_GUARANTEE_TERMS,
+} from '@/lib/quotationDefaults';
 
 const formatCurrencyLocal = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
@@ -70,20 +75,9 @@ export default function Quotation() {
   // Costs
   const [ppnPercentage, setPpnPercentage] = useState(11);
   const [estimatedDuration, setEstimatedDuration] = useState('1–30 hari kalender');
-  const [paymentTerms, setPaymentTerms] = useState<string[]>([
-    '50% – Down Payment',
-    '50% – Setelah progress 100%',
-  ]);
-  const [termsConditions, setTermsConditions] = useState<string[]>([
-    'Harga sudah termasuk PPN sesuai ketentuan yang berlaku.',
-    'Penawaran ini berlaku selama 30 hari sejak tanggal penerbitan.',
-    'Pekerjaan dimulai setelah pembayaran Down Payment diterima.',
-  ]);
-  const [guaranteeTerms, setGuaranteeTerms] = useState<string[]>([
-    'Garansi bug fixing 60 hari',
-    'Support teknis selama masa garansi',
-    'Opsional maintenance bulanan tersedia jika diperlukan',
-  ]);
+  const [paymentTerms, setPaymentTerms] = useState<string[]>(DEFAULT_PAYMENT_TERMS);
+  const [termsConditions, setTermsConditions] = useState<string[]>(DEFAULT_TERMS_CONDITIONS);
+  const [guaranteeTerms, setGuaranteeTerms] = useState<string[]>(DEFAULT_GUARANTEE_TERMS);
 
   // Generate quotation number on mount or load edit data
   useEffect(() => {
@@ -117,7 +111,9 @@ export default function Quotation() {
         const qDate = (quotation as any).quotation_date || quotation.created_at;
         if (qDate) setQuotationDate(new Date(qDate));
         const tc = (quotation as any).terms_conditions;
-        if (Array.isArray(tc) && tc.length > 0) setTermsConditions(tc as string[]);
+        setTermsConditions(
+          Array.isArray(tc) && tc.length > 0 ? (tc as string[]) : DEFAULT_TERMS_CONDITIONS
+        );
         
         // Set client info
         if (quotation.client_id) {
