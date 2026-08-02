@@ -57,15 +57,15 @@ export default function VerifyDocument() {
 
     try {
       const { data, error: queryError } = await supabase
-        .from('document_verifications')
-        .select('*')
-        .eq('verification_id', searchId.toUpperCase())
-        .maybeSingle();
+        .rpc('verify_document', { _verification_id: searchId.toUpperCase() });
 
       if (queryError) throw queryError;
 
-      if (data) {
-        setResult(data);
+      const record = Array.isArray(data) ? data[0] : null;
+
+      if (record) {
+        setResult(record as VerificationResult);
+
       } else {
         setError('Dokumen tidak ditemukan. Pastikan ID verifikasi sudah benar.');
       }
