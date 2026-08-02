@@ -48,6 +48,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import {
+  DEFAULT_TERMS_CONDITIONS,
+  DEFAULT_PAYMENT_TERMS,
+  DEFAULT_GUARANTEE_TERMS,
+} from '@/lib/quotationDefaults';
 
 interface Quotation {
   id: string;
@@ -168,7 +173,12 @@ export default function QuotationList() {
       ppnPercentage: 11,
       ppnAmount,
       grandTotal,
-      termsConditions: Array.isArray(quotation.terms_conditions) ? quotation.terms_conditions : [],
+      paymentTerms: DEFAULT_PAYMENT_TERMS,
+      guaranteeTerms: DEFAULT_GUARANTEE_TERMS,
+      termsConditions:
+        Array.isArray(quotation.terms_conditions) && quotation.terms_conditions.length > 0
+          ? quotation.terms_conditions
+          : DEFAULT_TERMS_CONDITIONS,
     };
 
     const html = await generateQuotationPDF(quotationData, company, tteSettings);
