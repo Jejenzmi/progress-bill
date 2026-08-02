@@ -59,6 +59,7 @@ interface Quotation {
   status: string | null;
   created_at: string;
   quotation_date?: string | null;
+  terms_conditions?: string[] | null;
   clients?: {
     name: string;
     address: string | null;
@@ -167,6 +168,7 @@ export default function QuotationList() {
       ppnPercentage: 11,
       ppnAmount,
       grandTotal,
+      termsConditions: Array.isArray(quotation.terms_conditions) ? quotation.terms_conditions : [],
     };
 
     const html = await generateQuotationPDF(quotationData, company, tteSettings);

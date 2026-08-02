@@ -43,6 +43,7 @@ export interface QuotationData {
   paymentTerms?: string[];
   estimatedDuration?: string;
   guaranteeTerms?: string[];
+  termsConditions?: string[];
 }
 
 export const formatCurrency = (amount: number): string => {
@@ -125,6 +126,10 @@ export const generateQuotationPDF = async (
   `).join('') || '';
 
   const guaranteeHTML = quotation.guaranteeTerms?.map((term, i) => `
+    <li style="margin-bottom: 4px;">${term}</li>
+  `).join('') || '';
+
+  const termsConditionsHTML = quotation.termsConditions?.map((term) => `
     <li style="margin-bottom: 4px;">${term}</li>
   `).join('') || '';
 
@@ -467,6 +472,13 @@ export const generateQuotationPDF = async (
         <div class="section-title">Garansi & Support</div>
         <ul class="terms-list">
           ${guaranteeHTML}
+        </ul>
+        ` : ''}
+
+        ${quotation.termsConditions && quotation.termsConditions.length > 0 ? `
+        <div class="section-title">Syarat dan Ketentuan (Terms &amp; Conditions)</div>
+        <ul class="terms-list">
+          ${termsConditionsHTML}
         </ul>
         ` : ''}
 
