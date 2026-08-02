@@ -72,6 +72,11 @@ export default function Quotation() {
     '50% – Down Payment',
     '50% – Setelah progress 100%',
   ]);
+  const [termsConditions, setTermsConditions] = useState<string[]>([
+    'Harga sudah termasuk PPN sesuai ketentuan yang berlaku.',
+    'Penawaran ini berlaku selama 30 hari sejak tanggal penerbitan.',
+    'Pekerjaan dimulai setelah pembayaran Down Payment diterima.',
+  ]);
   const [guaranteeTerms, setGuaranteeTerms] = useState<string[]>([
     'Garansi bug fixing 60 hari',
     'Support teknis selama masa garansi',
@@ -109,6 +114,8 @@ export default function Quotation() {
         if ((quotation as any).project_description) setProjectDescription((quotation as any).project_description);
         const qDate = (quotation as any).quotation_date || quotation.created_at;
         if (qDate) setQuotationDate(new Date(qDate));
+        const tc = (quotation as any).terms_conditions;
+        if (Array.isArray(tc) && tc.length > 0) setTermsConditions(tc as string[]);
         
         // Set client info
         if (quotation.client_id) {
@@ -197,6 +204,20 @@ export default function Quotation() {
     setPaymentTerms(updated);
   };
 
+  const addTermCondition = () => {
+    setTermsConditions([...termsConditions, '']);
+  };
+
+  const updateTermCondition = (index: number, value: string) => {
+    const updated = [...termsConditions];
+    updated[index] = value;
+    setTermsConditions(updated);
+  };
+
+  const removeTermCondition = (index: number) => {
+    setTermsConditions(termsConditions.filter((_, i) => i !== index));
+  };
+
   const removePaymentTerm = (index: number) => {
     setPaymentTerms(paymentTerms.filter((_, i) => i !== index));
   };
@@ -249,6 +270,7 @@ export default function Quotation() {
       paymentTerms: paymentTerms.filter(t => t.trim()),
       estimatedDuration: estimatedDuration || undefined,
       guaranteeTerms: guaranteeTerms.filter(t => t.trim()),
+      termsConditions: termsConditions.filter(t => t.trim()),
     };
   };
 
@@ -272,6 +294,7 @@ export default function Quotation() {
         project_description: projectDescription || null,
         quotation_number: quotationNumber || null,
         quotation_date: quotationDate.toISOString().split('T')[0],
+        terms_conditions: termsConditions.filter(t => t.trim()) as any,
         client_id: selectedClientId && selectedClientId !== 'manual' ? selectedClientId : null,
         man_days: items as any,
         hosting_cost: 0,
@@ -660,6 +683,36 @@ export default function Quotation() {
                     </Button>
                   </div>
                 ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Syarat dan Ketentuan (Terms &amp; Conditions)</Label>
+                  <Button variant="ghost" size="sm" onClick={addTermCondition}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Tambah
+                  </Button>
+                </div>
+                {termsConditions.map((term, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={term}
+                      onChange={(e) => updateTermCondition(index, e.target.value)}
+                      placeholder="Tulis syarat & ketentuan..."
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => removeTermCondition(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {termsConditions.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Belum ada syarat &amp; ketentuan.</p>
+                )}
               </div>
             </CardContent>
           </Card>

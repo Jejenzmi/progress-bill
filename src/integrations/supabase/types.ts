@@ -1078,6 +1078,7 @@ export type Database = {
           status: string | null
           submitted_at: string | null
           submitted_by: string | null
+          terms_conditions: Json
           total_development: number | null
           updated_at: string
           valid_until: string | null
@@ -1117,6 +1118,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          terms_conditions?: Json
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -1156,6 +1158,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          terms_conditions?: Json
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
