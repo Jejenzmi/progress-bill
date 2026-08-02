@@ -19,7 +19,7 @@ import { generateQuotationPDF, numberToWords, type QuotationItem, type CompanyPr
 import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { useUserTTE } from '@/hooks/useUserTTE';
-import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Save, Loader2, Calculator, Eye, Users, UserPlus, CalendarIcon, GripVertical } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -59,6 +59,8 @@ export default function Quotation() {
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   const [quotationDate, setQuotationDate] = useState<Date>(new Date());
+  const [draggedTermIndex, setDraggedTermIndex] = useState<number | null>(null);
+  const [dragOverTermIndex, setDragOverTermIndex] = useState<number | null>(null);
   
   // Items
   const [items, setItems] = useState<QuotationItem[]>([
@@ -212,6 +214,21 @@ export default function Quotation() {
     const updated = [...termsConditions];
     updated[index] = value;
     setTermsConditions(updated);
+  };
+
+  const moveTermCondition = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= termsConditions.length || to >= termsConditions.length) return;
+    const updated = [...termsConditions];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    setTermsConditions(updated);
+  };
+
+  const handleTermDrop = (index: number) => {
+    if (draggedTermIndex === null) return;
+    moveTermCondition(draggedTermIndex, index);
+    setDraggedTermIndex(null);
+    setDragOverTermIndex(null);
   };
 
   const removeTermCondition = (index: number) => {
@@ -693,8 +710,52 @@ export default function Quotation() {
                     Tambah
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Tarik ikon titik-titik untuk mengubah urutan syarat &amp; ketentuan.
+                </p>
                 {termsConditions.map((term, index) => (
-                  <div key={index} className="flex gap-2">
+                  <div
+                    key={index}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverTermIndex(index);
+                    }}
+                    onDragLeave={() => setDragOverTermIndex((prev) => (prev === index ? null : prev))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleTermDrop(index);
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border border-transparent transition-colors',
+                      dragOverTermIndex === index && draggedTermIndex !== null && draggedTermIndex !== index
+                        ? 'border-primary bg-primary/5'
+                        : '',
+                      draggedTermIndex === index ? 'opacity-50' : ''
+                    )}
+                  >
+                    <div
+                      draggable
+                      onDragStart={() => setDraggedTermIndex(index)}
+                      onDragEnd={() => {
+                        setDraggedTermIndex(null);
+                        setDragOverTermIndex(null);
+                      }}
+                      className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
+                      aria-label={`Ubah urutan syarat ${index + 1}`}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          moveTermCondition(index, index - 1);
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          moveTermCondition(index, index + 1);
+                        }
+                      }}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </div>
                     <Input
                       value={term}
                       onChange={(e) => updateTermCondition(index, e.target.value)}
