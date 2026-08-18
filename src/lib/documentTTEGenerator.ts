@@ -313,9 +313,8 @@ export const generateSignedPDF = async (
     const imageDataUrl = await readFileAsDataURL(file);
     blob = await generatePDFWithTTEFromImage(imageDataUrl, dataWithId, verifyUrl);
   } else if (fileType === 'application/pdf') {
-    // For PDF files, we'll create a cover page with TTE
-    // (Full PDF manipulation would require pdf-lib which is more complex)
-    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
+    // Keep ALL original pages, stamp the TTE QR onto the last page
+    blob = await stampTTEOnExistingPDF(file, dataWithId, verifyUrl);
   } else {
     // For other document types, create a certificate page
     blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
