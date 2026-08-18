@@ -1069,6 +1069,7 @@ export type Database = {
           negotiation_status: string | null
           project_description: string | null
           project_name: string
+          quotation_date: string | null
           quotation_number: string | null
           rejected_at: string | null
           rejected_by: string | null
@@ -1077,6 +1078,7 @@ export type Database = {
           status: string | null
           submitted_at: string | null
           submitted_by: string | null
+          terms_conditions: Json
           total_development: number | null
           updated_at: string
           valid_until: string | null
@@ -1107,6 +1109,7 @@ export type Database = {
           negotiation_status?: string | null
           project_description?: string | null
           project_name: string
+          quotation_date?: string | null
           quotation_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -1115,6 +1118,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          terms_conditions?: Json
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -1145,6 +1149,7 @@ export type Database = {
           negotiation_status?: string | null
           project_description?: string | null
           project_name?: string
+          quotation_date?: string | null
           quotation_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -1153,6 +1158,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          terms_conditions?: Json
           total_development?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -1469,33 +1475,7 @@ export type Database = {
       }
     }
     Views: {
-      document_verifications: {
-        Row: {
-          file_type: string | null
-          original_file_name: string | null
-          signed_at: string | null
-          signer_name: string | null
-          signer_position: string | null
-          verification_id: string | null
-        }
-        Insert: {
-          file_type?: string | null
-          original_file_name?: string | null
-          signed_at?: string | null
-          signer_name?: string | null
-          signer_position?: string | null
-          verification_id?: string | null
-        }
-        Update: {
-          file_type?: string | null
-          original_file_name?: string | null
-          signed_at?: string | null
-          signer_name?: string | null
-          signer_position?: string | null
-          verification_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_user_roles: {
@@ -1508,6 +1488,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      verify_document: {
+        Args: { _verification_id: string }
+        Returns: {
+          file_type: string
+          original_file_name: string
+          signed_at: string
+          signer_name: string
+          signer_position: string
+          verification_id: string
+        }[]
       }
     }
     Enums: {
