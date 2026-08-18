@@ -285,6 +285,102 @@ export const addTTEQRCodeToPDF = async (
 };
 
 /**
+ * Stamp the TTE QR box onto an existing PDF, preserving every original page.
+ */
+export const stampTTEOnExistingPDF = async (
+  file: File,
+  data: DocumentTTEData,
+  verifyUrl: string = ''
+): Promise<Blob> => {
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const pages = pdfDoc.getPages();
+  const page = pages[pages.length - 1];
+  const { width, height } = page.getSize();
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // mm -> pt
+  const mm = (v: number) => (v * 72) / 25.4;
+  const qrSize = mm(35);
+  const pad = mm(5);
+  const boxWidth = mm(35 + 50);
+  const boxHeight = qrSize + mm(15);
+  const margin = mm(15);
+
+  let x: number;
+  let y: number;
+  switch (data.qrPosition) {
+    case 'top-left':
+      x = margin; y = height - boxHeight - margin; break;
+    case 'top-right':
+      x = width - boxWidth - margin; y = height - boxHeight - margin; break;
+    case 'bottom-left':
+      x = margin; y = margin; break;
+    case 'center':
+      x = (width - boxWidth) / 2; y = (height - boxHeight) / 2; break;
+    case 'bottom-right':
+    default:
+      x = width - boxWidth - margin; y = margin; break;
+  }
+
+  const accent = rgb(26 / 255, 95 / 255, 122 / 255);
+
+  page.drawRectangle({
+    x,
+    y,
+    width: boxWidth,
+    height: boxHeight,
+    color: rgb(248 / 255, 255 / 255, 254 / 255),
+    borderColor: accent,
+    borderWidth: 0.8,
+    opacity: 0.95,
+  });
+
+  const verificationData = generateTTEVerificationData(data, verifyUrl);
+  const qrDataUrl = await generateQRCodeForTTE(verificationData);
+  if (qrDataUrl) {
+    const qrImage = await pdfDoc.embedPng(qrDataUrl);
+    page.drawImage(qrImage, {
+      x: x + pad,
+      y: y + boxHeight - pad - qrSize,
+      width: qrSize,
+      height: qrSize,
+    });
+  }
+
+  const textX = x + qrSize + pad + mm(3);
+  let textY = y + boxHeight - pad - 8;
+
+  page.drawText('Tanda Tangan Elektronik', { x: textX, y: textY, size: 7, font: bold, color: accent });
+  textY -= 11;
+  page.drawText(`Oleh: ${data.signerName}`, { x: textX, y: textY, size: 6, font, color: rgb(0.3, 0.3, 0.3) });
+  textY -= 9;
+  page.drawText(`${data.signerPosition}`, { x: textX, y: textY, size: 6, font, color: rgb(0.3, 0.3, 0.3) });
+  textY -= 12;
+  const dateStr = new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(data.signedAt);
+  page.drawText(`Tgl: ${dateStr}`, { x: textX, y: textY, size: 6, font, color: rgb(0.3, 0.3, 0.3) });
+  textY -= 12;
+  page.drawText(`ID: ${data.verificationId || generateVerificationId(data)}`, {
+    x: textX,
+    y: textY,
+    size: 5,
+    font,
+    color: accent,
+  });
+
+  const out = await pdfDoc.save({ useObjectStreams: false });
+  return new Blob([out as unknown as BlobPart], { type: 'application/pdf' });
+};
+
+/**
  * Result from generateSignedPDF containing both the blob and verification ID
  */
 export interface SignedPDFResult {
@@ -313,9 +409,8 @@ export const generateSignedPDF = async (
     const imageDataUrl = await readFileAsDataURL(file);
     blob = await generatePDFWithTTEFromImage(imageDataUrl, dataWithId, verifyUrl);
   } else if (fileType === 'application/pdf') {
-    // For PDF files, we'll create a cover page with TTE
-    // (Full PDF manipulation would require pdf-lib which is more complex)
-    blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
+    // Keep ALL original pages, stamp the TTE QR onto the last page
+    blob = await stampTTEOnExistingPDF(file, dataWithId, verifyUrl);
   } else {
     // For other document types, create a certificate page
     blob = await generatePDFWithTTEForDocument(file.name, dataWithId, verifyUrl);
